@@ -50,8 +50,10 @@ export default defineNuxtConfig({
       password: '',
       maxAge: 60 * 60 * 24 * 30, // 30 days
     },
-    // Server-to-server calls to the auth service (shadow users, Phase 2) and
-    // the inbound GDPR hook bearer. Worker secret AUTH_SERVICE_TOKEN.
+    // Server-to-server calls to the auth service (shadow users) and the
+    // inbound GDPR hook bearer. Worker secret NUXT_AUTH_SERVICE_TOKEN — the
+    // NUXT_ prefix is load-bearing, since Nuxt only maps NUXT_* env onto
+    // runtimeConfig. A secret named AUTH_SERVICE_TOKEN is silently ignored.
     authServiceToken: '',
     resendApiKey: '',
     resendFromEmail: 'training@newtheatre.org.uk',

@@ -44,9 +44,22 @@ npx wrangler d1 ...    # production D1 — read docs/operations.md before touchi
 
 Drizzle schema in `server/db/schema/`, one file per domain area; migrations generated then hand-reviewed (D1 is SQLite — no `ALTER COLUMN`, column changes are table rebuilds). Zod on every request body/query. One route = one file under `server/api/`. Pages under `app/pages/`, `@nuxt/ui` components. Errors via `createError` — no internal detail. British English in UI copy and docs. Tests: every change to record creation, validity, sign-off gating, or eligibility evaluation needs a test that fails without the change.
 
+## Comments
+
+A comment carries what the code cannot: a constraint, a trap, a contract that is not obvious from the signature. It does not narrate, and it does not argue.
+
+- **State the rule, not the story.** The rule is a comment; the incident that taught it is an ADR.
+- **Reasoning goes to `docs/decisions/`.** If the *why* needs a paragraph, it needs an ADR; the comment cites it and stops.
+- **Do not restate the code.** `@param count — Number of rooms selected` says nothing the signature does not, and a "Features:" list in a component header is out of date by the next release.
+- **No unprovenanced figures.** A comment cannot honestly carry a row count, because nothing updates it. Put the number in the ADR, dated.
+- **Say plainly when something is not implemented**, at the thing that is not implemented.
+
+One to five lines is the usual size. Past about ten, ask whether you are writing an ADR.
+
 ## Things Claude Code should proactively flag
 
 - Any code path that computes validity without going through `server/utils/validity.ts`.
 - Any new mutation lacking an audit-log write where peers have one.
 - Drift between `docs/api-reference.md` and actual routes.
 - A schema change that would let a record exist without a traceable origin (`source` + `session_id`/`granted_by`).
+- A comment growing past ten lines — that is an ADR asking to be written.

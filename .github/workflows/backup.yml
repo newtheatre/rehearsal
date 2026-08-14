@@ -1,0 +1,40 @@
+# Weekly export of the training DB to R2 (docs/operations.md#backups).
+# Retention is enforced by R2 lifecycle rules on the bucket, not here:
+# weekly/ objects expire after 70 days, monthly/ after 400.
+#
+# Uses the same CLOUDFLARE_API_TOKEN repo secret as the auth service's backup
+# — the token needs D1:Edit and Workers R2 Storage:Edit.
+#
+# These are personal data (docs/gdpr-retention.md): the retention ceiling for
+# erased records living on in backups is the 12 months the monthly cycle
+# implies, which is the documented estate-wide figure.
+name: Backup training DB
+
+on:
+  schedule:
+    # Mondays 04:30 UTC — quiet, and after the auth service's 04:00 so the
+    # two aren't competing for the same API token's rate limit.
+    - cron: '30 4 * * 1'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: 3d250a94794003bd921b7f0379de7f00
+    steps:
+      - name: Export
+        run: npx wrangler@4 d1 export training --remote --output training-backup.sql
+
+      - name: Upload (weekly, plus monthly on the first Monday)
+        run: |
+          STAMP=$(date -u +%F)
+          npx wrangler@4 r2 object put "nnt-db-backups/weekly/training-$STAMP.sql" --file training-backup.sql --remote
+          if [ "$(date -u +%d)" -le 07 ]; then
+            npx wrangler@4 r2 object put "nnt-db-backups/monthly/training-$STAMP.sql" --file training-backup.sql --remote
+          fi
+
+      # An upload that silently produced nothing is worse than a failed one.
+      - name: Verify upload
+        run: npx wrangler@4 r2 object get "nnt-db-backups/weekly/training-$(date -u +%F).sql" --file check.sql --remote && test -s check.sql

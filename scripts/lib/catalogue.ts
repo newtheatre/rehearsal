@@ -55,10 +55,12 @@ export function parseCsv(text: string): string[][] {
         if (text[i + 1] === '"') {
           field += '"'
           i++
-        } else {
+        }
+        else {
           inQuotes = false
         }
-      } else {
+      }
+      else {
         field += char
       }
       continue
@@ -66,16 +68,19 @@ export function parseCsv(text: string): string[][] {
 
     if (char === '"') {
       inQuotes = true
-    } else if (char === ',') {
+    }
+    else if (char === ',') {
       row.push(field)
       field = ''
-    } else if (char === '\n' || char === '\r') {
+    }
+    else if (char === '\n' || char === '\r') {
       if (char === '\r' && text[i + 1] === '\n') i++
       row.push(field)
       rows.push(row)
       row = []
       field = ''
-    } else {
+    }
+    else {
       field += char
     }
   }

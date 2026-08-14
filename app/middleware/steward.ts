@@ -14,7 +14,8 @@ export default defineNuxtRouteMiddleware(async () => {
   try {
     const me = await request('/api/me')
     if (me.isAdmin || me.leadOf.length > 0) return
-  } catch {
+  }
+  catch {
     // Fall through to the redirect: an unreadable session is not a permit.
   }
 

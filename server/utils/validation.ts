@@ -25,27 +25,32 @@ const expiryFields = {
  * `expiry_months` is required exactly when the mode is MONTHS — a module
  * configured MONTHS with no interval would stamp a nonsense expiry, and one
  * configured NONE with a leftover interval invites a misreading later.
+ *
+ * Written as a refinement function applied to each schema rather than a
+ * wrapper helper: a helper taking `z.ZodType<T>` widens the schema and loses
+ * Zod's inference, which quietly turns every parsed field optional.
  */
-function refineExpiry<T extends { expiryMode?: string, expiryMonths?: number | null }>(schema: z.ZodType<T>) {
-  return schema.superRefine((value, ctx) => {
-    if (value.expiryMode === 'MONTHS' && !value.expiryMonths) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['expiryMonths'],
-        message: 'A months-based expiry needs a number of months',
-      })
-    }
-    if (value.expiryMode && value.expiryMode !== 'MONTHS' && value.expiryMonths) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['expiryMonths'],
-        message: 'Only a months-based expiry may set a number of months',
-      })
-    }
-  })
+function checkExpiry(
+  value: { expiryMode?: string, expiryMonths?: number | null },
+  ctx: z.RefinementCtx,
+): void {
+  if (value.expiryMode === 'MONTHS' && !value.expiryMonths) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['expiryMonths'],
+      message: 'A months-based expiry needs a number of months',
+    })
+  }
+  if (value.expiryMode && value.expiryMode !== 'MONTHS' && value.expiryMonths) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['expiryMonths'],
+      message: 'Only a months-based expiry may set a number of months',
+    })
+  }
 }
 
-export const moduleCreateSchema = refineExpiry(z.object({
+export const moduleCreateSchema = z.object({
   id: moduleIdSchema,
   department: departmentCodeSchema,
   kind: z.enum(['MODULE', 'CERTIFICATION', 'BRIEF']).default('MODULE'),
@@ -60,9 +65,9 @@ export const moduleCreateSchema = refineExpiry(z.object({
   status: z.enum(['DRAFT', 'ACTIVE', 'RETIRED']).default('DRAFT'),
   sort: z.number().int().min(0).max(9999).default(0),
   prerequisites: z.array(moduleIdSchema).max(20).default([]),
-}))
+}).superRefine(checkExpiry)
 
-export const moduleUpdateSchema = refineExpiry(z.object({
+export const moduleUpdateSchema = z.object({
   department: departmentCodeSchema.optional(),
   kind: z.enum(['MODULE', 'CERTIFICATION', 'BRIEF']).optional(),
   name: z.string().trim().min(1).max(120).optional(),
@@ -77,7 +82,7 @@ export const moduleUpdateSchema = refineExpiry(z.object({
   status: z.enum(['DRAFT', 'ACTIVE', 'RETIRED']).optional(),
   sort: z.number().int().min(0).max(9999).optional(),
   prerequisites: z.array(moduleIdSchema).max(20).optional(),
-}))
+}).superRefine(checkExpiry)
 
 export const moduleListQuerySchema = z.object({
   department: departmentCodeSchema.optional(),

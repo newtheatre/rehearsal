@@ -11,7 +11,7 @@ git clone https://github.com/newtheatre/rehearsal && cd rehearsal
 bun install
 cp .env.example .env
 bun run db:migrate
-bun run db:seed        # catalogue + sample users, trainer, records; credentials printed
+bun run db:seed        # catalogue + sample users covering every ability
 bun run dev            # http://localhost:3000
 ```
 
@@ -38,7 +38,11 @@ The route redirects to `/` once the session is sealed. It 404s in production bui
 
 ## Seeds
 
-`bun run db:seed` loads the full module catalogue (same parser as the production seed — [migration.md](migration.md)), a handful of users (member, trainer with valid LEAD-CERT, department lead, admin), and fixture records covering every state: VALID, EXPIRING, EXPIRED, revoked, BRIEF attendance, external cert. Random credentials printed, never committed; refuses to run in production.
+`bun run db:seed` loads the full module catalogue (same parser as the production seed — [migration.md](migration.md)) and a handful of users covering every ability: member, trainer, department lead, admin. It refuses to run in production or against a remote database.
+
+**There are no credentials to print** — this app has no passwords, ever. The seeded users share their ids with the ones `/dev-login` creates, so seeding and signing in agree. The trainer's standing is seeded as a real `SIGNOFF` record rather than a flag, because deriving it from a record is the whole point of [ADR-0004](decisions/0004-trainer-standing-from-records.md).
+
+Once Phase 2 lands, the seed will also carry fixture records covering every state: VALID, EXPIRING, EXPIRED, revoked, BRIEF attendance, external cert.
 
 > **Phase 1 caveat:** records/sessions land in Phase 2, so today's seed populates departments, the catalogue, users and leads only. `data/catalogue.csv` is a **placeholder** built from the modules named in the design docs — replace it with the subcommittee's export before anything real depends on it (see the file's header and [migration.md](migration.md#1-catalogue-seed)).
 

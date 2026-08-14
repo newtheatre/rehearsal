@@ -14,7 +14,7 @@
 
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { eq, inArray } from 'drizzle-orm'
+import { inArray } from 'drizzle-orm'
 import { parseCatalogue } from './lib/catalogue'
 import { openLocalDb, schema } from './lib/localDb'
 

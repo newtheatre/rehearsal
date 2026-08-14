@@ -110,6 +110,10 @@ const prerequisiteOptions = computed(() =>
     .map(m => ({ label: `${m.id} · ${m.name}`, value: m.id })),
 )
 
+function cancel() {
+  open.value = false
+}
+
 async function save() {
   saving.value = true
   error.value = null
@@ -134,7 +138,8 @@ async function save() {
   try {
     if (props.moduleId) {
       await $fetch(`/api/modules/${props.moduleId}`, { method: 'PUT', body: payload })
-    } else {
+    }
+    else {
       await $fetch('/api/modules', { method: 'POST', body: { ...payload, id: state.value.id } })
     }
     toast.add({
@@ -144,10 +149,12 @@ async function save() {
     })
     open.value = false
     emit('saved')
-  } catch (e) {
+  }
+  catch (e) {
     const err = e as { statusMessage?: string, data?: { message?: string, statusMessage?: string } }
     error.value = err.data?.message || err.data?.statusMessage || err.statusMessage || 'Could not save the module'
-  } finally {
+  }
+  finally {
     saving.value = false
   }
 }
@@ -363,7 +370,7 @@ async function save() {
           label="Cancel"
           color="neutral"
           variant="ghost"
-          @click="open = false"
+          @click="cancel"
         />
         <UButton
           :label="moduleId ? 'Save changes' : 'Create module'"

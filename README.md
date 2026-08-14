@@ -30,7 +30,7 @@ git clone https://github.com/newtheatre/rehearsal && cd rehearsal
 bun install
 cp .env.example .env      # fill in per docs/development.md
 bun run db:migrate        # local SQLite
-bun run db:seed           # seeds the module catalogue + dev users; credentials printed
+bun run db:seed           # module catalogue + dev users (no passwords — see /dev-login)
 bun run dev               # http://localhost:3000
 ```
 

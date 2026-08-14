@@ -45,7 +45,9 @@ Module ids are the human ids (`TECH-111`, `LD-CERT`) — they are the subcommitt
 
 ### `users`
 
-Thin mirror: `id` text PK (canonical auth id) · `email` unique · `name` · `updated_at`. Upserted by `ensureLocalUser` in the auth middleware. Email is for pickers and notifications only — never exposed via the API.
+Thin mirror: `id` text PK (canonical auth id) · `email` unique · `name` · `is_training_admin` · `updated_at`. Upserted by `ensureLocalUser` in the auth middleware. Email is for pickers and notifications only — never exposed via the API.
+
+`is_training_admin` is a **derived cache** of the auth-service role, refreshed on every upsert. It exists solely so the expiry cron can address the monthly digest — a cron has no session to read roles from. Never gate access on it; the session is the authority and this copy self-heals within the staleness window (the pattern `rooms` uses, sanctioned by stage-door's integrating-an-app guide). An admin who has never signed in here has no row and so gets no digest.
 
 ### `sessions` / `session_modules` / `session_attendees`
 

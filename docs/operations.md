@@ -67,7 +67,21 @@ Issue: `/admin` → API tokens → New (name = consumer app). Plaintext `nnt_trn
 
 ## Notifications <a name="notifications"></a>
 
-Daily cron 06:00 UTC. `site_config.notifications_mode`: ships `dry-run` (report generated + emailed to ITM, nothing sent to members); flip to `live` in `/admin` after reviewing the first report — and back to dry-run after any change to expiry config or the warning window. Idempotent per (record, type) via `notification_log`; running twice sends nothing new. Monthly digests (leads: own dept; TM+ITM: all) go out on the 1st. **The digest's absence is itself an alert** — if it doesn't arrive, check the cron.
+Daily cron 06:00 UTC (`expiry:sweep`). `site_config.notifications_mode`: ships `dry-run` (report emailed to admins, nothing sent to members); flip to `live` at `/admin/notifications` after reviewing the preview — and back to dry-run after any change to expiry config or the warning window. Idempotent per (record, type) via `notification_log`; running twice sends nothing new. Monthly digests (leads: own dept; TM+ITM: all) go out on the 1st. **The digest's absence is itself an alert** — if it doesn't arrive, check the cron.
+
+Members get two warnings per record: one on entering the warning window (`warning_window_days`, default 60) and a final one 14 days out. Expired training is not emailed to the member — the warnings already went out — but it appears in the digest until it is renewed.
+
+**A dry run records nothing as sent.** That is deliberate: flipping to live afterwards still delivers everything the dry run described, rather than silently swallowing a round of warnings. The same applies to a failed send — nothing is logged, so the next morning retries it.
+
+**Preview before switching.** `/admin/notifications` shows exactly what the next sweep would do and takes an "as of" date, so you can ask what happens on 1 October without waiting for it. The preview sends and records nothing at all.
+
+### Who receives the digest
+
+Department leads get their own departments; `training:ADMIN` holders get everything. A cron has no session to read roles from, so admin-ness comes from `users.is_training_admin`, a cache refreshed whenever that person loads a page. **An admin who has never signed in to this app has no mirror row and gets no digest** — if a new TM says the digest never arrives, have them sign in once.
+
+### Changing an expiry policy retroactively
+
+Editing a module's expiry affects future awards only ([ADR-0002](decisions/0002-expiry-stamped-at-award.md)). To apply it to existing records, use `/admin` → recalculation: it previews the exact diff (person, module, old date → new date), requires the change count to be echoed back before applying, and audit-logs every row it moved. It never touches `EXTERNAL` records — the issuing body's certificate date is not ours to rewrite — nor revoked or superseded ones.
 
 ## Annual handover checklist (add to the Archivist runbook)
 

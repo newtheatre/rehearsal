@@ -66,6 +66,18 @@ export default defineNuxtConfig({
 
   nitro: {
     preset: 'cloudflare_module',
+    experimental: {
+      tasks: true,
+    },
+    scheduledTasks: {
+      // Daily expiry sweep (docs/operations.md#notifications). Ships in
+      // dry-run mode — site_config.notifications_mode is the switch, not this.
+      //
+      // The name is derived from the FILE PATH (server/tasks/expiry-sweep.ts),
+      // not from the task's `meta.name`. Get it wrong and the cron fires into
+      // the void with no error anywhere.
+      '0 6 * * *': ['expiry-sweep'],
+    },
     rollupConfig: {
       plugins: [
         // Resend imports @react-email/render, which doesn't bundle on Workers.
@@ -135,6 +147,9 @@ export default defineNuxtConfig({
           logs: {
             enabled: true,
           },
+        },
+        triggers: {
+          crons: ['0 6 * * *'],
         },
       },
     },

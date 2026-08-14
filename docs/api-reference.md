@@ -64,6 +64,11 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `GET /api/sessions/:id` | session | one session; `canEdit` reflects owner + edit window |
 | `PUT /api/sessions/:id` | trainer (own session) or admin | re-derive records inside the edit window |
 | `POST /api/attendees/lookup` | trainer | resolve an email to a canonical id, creating a shadow account if needed |
+| `GET /api/admin/config` | admin | operator-tunable values, with defaults and whether each is stored |
+| `PUT /api/admin/config` | admin | change one value; per-key validation; audit-logged |
+| `GET /api/admin/expiry-preview` | admin | what the next sweep would do; optional `asOf` date; sends and records nothing |
+| `GET /api/admin/notifications` | admin | what has actually been sent |
+| `POST /api/admin/recalculate` | admin | preview an expiry recalculation, or apply it by echoing the change count |
 
 **Session-flow status codes.** `POST /api/sessions` answers `409` when attendees are missing
 ordinary prerequisites (retry with `acknowledgeWarnings: true`), and `422` when they are

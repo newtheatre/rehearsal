@@ -53,6 +53,22 @@ EXPIRING counts as valid everywhere. It exists purely to drive warnings — a pe
 - **`CERTIFICATION`** — `signoff_required`; created only via the sign-off flow (or bootstrap). May set `grants_supervisor` (dept supervisor standing, display + future use) or `grants_trainer` (LEAD-CERT: unlocks session logging). A valid cert whose *constituent* modules have lapsed stays valid but is flagged on the person page — deliberate v1 stance; auto-suspension is a committee decision for later ([roadmap](roadmap.md)).
 - **`BRIEF`** — recurring briefings (get-in/get-out briefs). Attendance is recorded per event (the sheet's "track get-in attendance" idea), display is *last received*, and BRIEF records never expire, never gate, and never appear in eligibility maths. They exist so the expiry machinery can't be abused to model something that recurs weekly.
 
+## What the sweep does with these states
+
+A daily cron (06:00 UTC) reads the states above and sends email. It never changes a record: expiry happens because the calendar moved, and the sweep merely notices (CLAUDE.md invariant 10).
+
+| Trigger | Who hears | Once per |
+|---|---|---|
+| A record becomes EXPIRING | the member | (record, `expiry.window`) |
+| A record falls inside 14 days | the member | (record, `expiry.14day`) |
+| The 1st of the month | leads (own departments), admins (all) | (person, month) |
+
+The two member warnings are independent: the gentle one having been sent never suppresses the urgent one. If the warning window is configured tighter than 14 days the first warning simply never fires, which is the correct reading of a 10-day window.
+
+EXPIRED records are not emailed to the member — the warnings already went out before it lapsed — but they stay in the monthly digest until renewed. Briefs are excluded entirely.
+
+Operational detail (dry-run semantics, who gets the digest, previewing a future date): [operations.md](operations.md#notifications).
+
 ## Worked examples
 
 - Induction (`ACADEMIC_YEAR`) taken 12 Oct 2026 → expires 30 Sep 2027; taken 15 Sep 2027 → expires 30 Sep 2027 (fifteen days later — correct: that's what an academic-year gate means; run inductions in October, not September).

@@ -82,6 +82,30 @@ export async function checkPrerequisites(
   return { met: missing.length === 0, missing }
 }
 
+/**
+ * Certifications whose constituent modules have since lapsed.
+ *
+ * The certification itself stays valid — it was genuinely earned, and v1
+ * deliberately does not auto-suspend (docs/records-and-expiry.md §kinds;
+ * roadmap R2 holds the committee decision). What it does is say so on the
+ * person's page, so a lead can see that someone's Lighting Designer standing
+ * rests on rigging training that ran out in March.
+ */
+export async function lapsedConstituents(
+  userId: string,
+  certificationIds: string[],
+  { warningWindowDays = 60 }: { warningWindowDays?: number } = {},
+): Promise<Map<string, PrerequisiteGap[]>> {
+  const flagged = new Map<string, PrerequisiteGap[]>()
+
+  for (const moduleId of certificationIds) {
+    const { met, missing } = await checkPrerequisites(userId, moduleId, { warningWindowDays })
+    if (!met) flagged.set(moduleId, missing)
+  }
+
+  return flagged
+}
+
 /** Human-readable gap list for an error message. */
 export function describeGaps(missing: PrerequisiteGap[]): string {
   return missing

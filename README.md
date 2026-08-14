@@ -42,7 +42,7 @@ First success in under five minutes: sign in at `/dev-login?trainer=1`, log a se
 |---|---|---|
 | 1 | Scaffold, auth wiring, catalogue seed, catalogue pages, admin module CRUD | **done** |
 | 2 | Sessions + records, sign-off, external certs, people directory | **done** |
-| 3 | Expiry states + notifications cron | not started |
+| 3 | Expiry states + notifications cron | **done** |
 | 4 | Read API + eligibility rules + rota integration | not started |
 | 5 | Legacy migration + Heroku shutdown | not started |
 | 6 | Docs + handover | not started |

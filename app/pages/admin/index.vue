@@ -18,6 +18,14 @@ const sections = computed(() => [
     available: true,
   },
   {
+    label: 'Notifications',
+    description: 'Expiry warnings and the monthly digest — mode, preview and what has been sent.',
+    icon: 'i-lucide-mail',
+    to: '/admin/notifications',
+    adminOnly: true,
+    available: true,
+  },
+  {
     label: 'Department leads',
     description: 'Who signs off certifications and stewards each department.',
     icon: 'i-lucide-users',

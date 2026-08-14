@@ -10,6 +10,9 @@ Base URL: `https://training.newtheatre.org.uk/api/v1`. Read-only, JSON, server-t
 
 ## Endpoints
 
+Paths in this section are relative to the base URL above — `GET /modules` is
+`GET /api/v1/modules`. The one exception is flagged where it appears.
+
 ### `GET /modules`
 
 Query: `status=ACTIVE` (default) | `all` (includes DRAFT/RETIRED — for admin tooling, not gating).
@@ -34,7 +37,7 @@ Query: `status=ACTIVE` (default) | `all` (includes DRAFT/RETIRED — for admin t
 
 **Rule evaluation:** `requires` JSON has `allOf` (every module must be VALID/EXPIRING) and `anyOf` (at least one, if the array is non-empty). Rules are data, edited in `/admin`, audit-logged. **This system answers; consumers enforce** ([ADR-0006](decisions/0006-eligibility-rules-as-data.md)) — the rota's DM restriction lives in Proscenium behind its `isDMEligible()` seam, pointed at this endpoint.
 
-### `GET /api/health` — public
+### `GET /api/health` — public, **not** under `/api/v1`
 
 `{ ok: true, version }`.
 
@@ -70,6 +73,10 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `GET /api/admin/service-tokens` | admin | issued consumer tokens (never the tokens themselves) |
 | `POST /api/admin/service-tokens` | admin | issue one; the plaintext is in the response and nowhere else |
 | `DELETE /api/admin/service-tokens/:id` | admin | revoke; the consumer starts getting 401s immediately |
+| `GET /api/admin/leads` | admin | who leads what, grouped by department **including the empty ones** — "COST has no lead" is the useful answer at handover |
+| `POST /api/admin/leads` | admin | make someone a lead of a department; audit-logged ([ADR-0005](decisions/0005-department-leads-as-data.md)) |
+| `DELETE /api/admin/leads/:id` | admin | stand a lead down; audit-logged |
+| `GET /api/admin/audit` | admin | the audit trail, filtered and paged. Read-only — the table is append-only and nothing writes to it here. A null actor is the cron or an import and reads as "system" |
 | `GET /api/admin/eligibility-rules` | admin | rules and what they require |
 | `PUT /api/admin/eligibility-rules` | admin | create or update a rule; audit-logged with before and after |
 

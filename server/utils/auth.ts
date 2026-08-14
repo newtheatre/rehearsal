@@ -8,7 +8,7 @@
 
 import type { H3Event } from 'h3'
 import type { User } from '#auth-utils'
-import { ROLE_NAMESPACE, useAbilities, canStewardDepartment, type Abilities } from './abilities'
+import { ROLE_NAMESPACE, useAbilities, type Abilities } from './abilities'
 
 /**
  * Requires a valid estate session.
@@ -90,5 +90,3 @@ export async function requireAnySteward(event: H3Event): Promise<Abilities> {
   await requireAdmin(event)
   return abilities
 }
-
-export { canStewardDepartment }

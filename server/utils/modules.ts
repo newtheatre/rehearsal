@@ -1,0 +1,106 @@
+/**
+ * Catalogue reads, with draft visibility applied in one place.
+ *
+ * DRAFT modules are lead/admin-only (docs/permissions.md). That rule lives
+ * here rather than in each handler so a new catalogue screen cannot leak
+ * half-written safety content by forgetting a filter.
+ */
+
+import { db, schema } from '@nuxthub/db'
+import { and, eq, inArray, like, or, ne, type SQL } from 'drizzle-orm'
+import type { Abilities } from './abilities'
+import { canSeeDrafts } from './abilities'
+
+export type ModuleRow = typeof schema.modules.$inferSelect
+
+export interface ModuleListFilters {
+  department?: string
+  status?: 'ACTIVE' | 'DRAFT' | 'RETIRED' | 'all'
+  kind?: 'MODULE' | 'CERTIFICATION' | 'BRIEF'
+  q?: string
+}
+
+/**
+ * The statuses this caller may see at all. Retired modules stay visible to
+ * everyone — a member whose record points at one still needs to read what it
+ * was — but they are never offerable.
+ */
+function visibleStatusCondition(abilities: Abilities): SQL | undefined {
+  return canSeeDrafts(abilities) ? undefined : ne(schema.modules.status, 'DRAFT')
+}
+
+export async function listModules(abilities: Abilities, filters: ModuleListFilters = {}) {
+  const conditions: (SQL | undefined)[] = [visibleStatusCondition(abilities)]
+
+  if (filters.department) conditions.push(eq(schema.modules.department, filters.department))
+  if (filters.kind) conditions.push(eq(schema.modules.kind, filters.kind))
+  if (filters.status && filters.status !== 'all') {
+    // A non-privileged caller asking for DRAFT gets an empty list, not drafts.
+    conditions.push(eq(schema.modules.status, filters.status))
+  }
+  if (filters.q) {
+    const pattern = `%${filters.q.toLowerCase()}%`
+    conditions.push(or(
+      like(schema.modules.id, pattern.toUpperCase()),
+      like(schema.modules.name, pattern),
+    ))
+  }
+
+  const rows = await db.select().from(schema.modules)
+    .where(and(...conditions.filter(Boolean) as SQL[]))
+    .all()
+
+  return rows
+    .map(row => presentModule(row, abilities))
+    .sort((a, b) => a.department.localeCompare(b.department) || a.sort - b.sort || a.id.localeCompare(b.id))
+}
+
+/** Module detail with prerequisites and the modules that depend on it. */
+export async function getModuleDetail(id: string, abilities: Abilities) {
+  const module = await db.select().from(schema.modules)
+    .where(eq(schema.modules.id, id)).get()
+
+  if (!module) return null
+  if (module.status === 'DRAFT' && !canSeeDrafts(abilities)) return null
+
+  const [prerequisiteRows, dependentRows] = await Promise.all([
+    db.select({ id: schema.modulePrerequisites.requiresModuleId })
+      .from(schema.modulePrerequisites)
+      .where(eq(schema.modulePrerequisites.moduleId, id)).all(),
+    db.select({ id: schema.modulePrerequisites.moduleId })
+      .from(schema.modulePrerequisites)
+      .where(eq(schema.modulePrerequisites.requiresModuleId, id)).all(),
+  ])
+
+  const referenced = [...prerequisiteRows, ...dependentRows].map(r => r.id)
+  const related = referenced.length
+    ? await db.select().from(schema.modules).where(inArray(schema.modules.id, referenced)).all()
+    : []
+
+  const byId = new Map(related.map(m => [m.id, m]))
+  const resolve = (ids: { id: string }[]) => ids
+    .map(({ id: relatedId }) => byId.get(relatedId))
+    .filter((m): m is ModuleRow => Boolean(m))
+    // A draft prerequisite is hidden from members like any other draft, but
+    // the dependency itself is still enforced server-side at sign-off.
+    .filter(m => m.status !== 'DRAFT' || canSeeDrafts(abilities))
+    .map(m => ({ id: m.id, name: m.name, kind: m.kind, status: m.status, department: m.department }))
+
+  return {
+    ...presentModule(module, abilities),
+    prerequisites: resolve(prerequisiteRows),
+    requiredBy: resolve(dependentRows),
+  }
+}
+
+/**
+ * Strip fields the caller may not see. `notes` are the subcommittee's working
+ * notes and are lead/admin-only.
+ */
+export function presentModule(module: ModuleRow, abilities: Abilities) {
+  const { notes, ...rest } = module
+  return {
+    ...rest,
+    notes: canSeeDrafts(abilities) ? notes : null,
+  }
+}

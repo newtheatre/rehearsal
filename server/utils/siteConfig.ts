@@ -11,8 +11,6 @@ import { db, schema } from '@nuxthub/db'
 import { eq } from 'drizzle-orm'
 import { CONFIG_DEFAULTS, type ConfigKey } from '../../shared/utils/configDefaults'
 
-export { CONFIG_DEFAULTS, type ConfigKey }
-
 export async function getConfig(key: ConfigKey): Promise<string> {
   const row = await db.select().from(schema.siteConfig)
     .where(eq(schema.siteConfig.key, key)).get()

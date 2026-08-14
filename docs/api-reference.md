@@ -2,8 +2,6 @@
 
 Base URL: `https://training.newtheatre.org.uk/api/v1`. Read-only, JSON, server-to-server. Errors: `{ statusCode, statusMessage }` — no internal detail.
 
-> **Status:** the `/api/v1` surface below lands in **Phase 4**. Phase 1 ships `/api/health` plus the session-authenticated internal routes the pages use (`/api/modules`, `/api/departments`) — those are *not* part of the versioned consumer contract and may change without notice.
-
 **Auth:** `Authorization: Bearer nnt_trn_…` — per-consumer tokens ([operations.md](operations.md#service-tokens)), SHA-256-hashed at rest, constant-time compared, scope `read`. 401 missing/unknown token; 403 scope mismatch. `last_used_at` updated per request.
 
 **Caching:** every response `Cache-Control: private, max-age=300`. Consumers must treat answers as advisory-fresh (≤5 min stale) — see [consuming-the-api.md](consuming-the-api.md#freshness).
@@ -69,6 +67,11 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `GET /api/admin/expiry-preview` | admin | what the next sweep would do; optional `asOf` date; sends and records nothing |
 | `GET /api/admin/notifications` | admin | what has actually been sent |
 | `POST /api/admin/recalculate` | admin | preview an expiry recalculation, or apply it by echoing the change count |
+| `GET /api/admin/service-tokens` | admin | issued consumer tokens (never the tokens themselves) |
+| `POST /api/admin/service-tokens` | admin | issue one; the plaintext is in the response and nowhere else |
+| `DELETE /api/admin/service-tokens/:id` | admin | revoke; the consumer starts getting 401s immediately |
+| `GET /api/admin/eligibility-rules` | admin | rules and what they require |
+| `PUT /api/admin/eligibility-rules` | admin | create or update a rule; audit-logged with before and after |
 
 **Session-flow status codes.** `POST /api/sessions` answers `409` when attendees are missing
 ordinary prerequisites (retry with `acknowledgeWarnings: true`), and `422` when they are

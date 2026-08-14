@@ -1,15 +1,11 @@
 /**
- * The expiry sweep's planner.
+ * The expiry sweep's planner. Pure: it takes today's date, the config, the
+ * current records and what has already been notified, and returns exactly what
+ * would be sent. Nothing here reads a database or sends an email, which is
+ * what makes the dry-run output testable.
  *
- * Deliberately pure: it takes today's date, the config, the current records
- * and what has already been notified, and returns exactly what would be sent.
- * Nothing here reads a database or sends an email, which is what makes
- * "the dry-run output for seeded test data is exactly as predicted" a claim a
- * test can actually check (plan §8, Phase 3).
- *
- * It plans notifications and nothing else. A cron in this system never
- * creates, expires or destroys a record (CLAUDE.md invariant 10) — records
- * change state because the calendar moved, and the sweep merely notices.
+ * It plans notifications and nothing else — a cron never creates, expires or
+ * destroys a record (CLAUDE.md invariant 10).
  */
 
 import { validityState } from './validity'

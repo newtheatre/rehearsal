@@ -1,18 +1,17 @@
 /**
- * The single implementation of "is this record currently valid?"
- * (CLAUDE.md invariant 4 — two implementations is how safety systems lie).
+ * The single implementation of "is this record currently valid?" (CLAUDE.md
+ * invariant 4 — two implementations is how safety systems lie).
  *
- * Validity is DERIVED from the record's stamped `expires_at` and today's
- * date. There is no state column and no transition job: a record's state
- * changes because the calendar moved, not because something ran.
+ * Validity is DERIVED from the record's stamped `expires_at` and today's date.
+ * There is no state column and no transition job: a record's state changes
+ * because the calendar moved.
  *
- * Semantics — docs/records-and-expiry.md:
  *   VALID     expires_at IS NULL, or expires_at > today
  *   EXPIRING  subset of VALID: expires_at within warning_window_days
  *   EXPIRED   expires_at <= today
  *
- * EXPIRING counts as valid everywhere it is gated on; it exists only to
- * drive warnings, so a person's ability never flickers off early.
+ * EXPIRING counts as valid everywhere it is gated on; it exists only to drive
+ * warnings, so an ability never flickers off early.
  */
 
 import { sql, and, type SQL } from 'drizzle-orm'

@@ -1,16 +1,13 @@
 /**
- * Prerequisite evaluation.
+ * Prerequisite evaluation. The same question is asked in two places with two
+ * different consequences:
  *
- * The same question — "does this person currently hold everything this module
- * requires?" — is asked in two places with two different consequences:
+ * · certification sign-off — HARD. Unmet means refused server-side, whatever
+ *   the UI offered (CLAUDE.md invariant 5).
+ * · logging a session      — advisory, except for safety-critical modules,
+ *   which block.
  *
- *   · certification sign-off  → HARD. Unmet means refused, server-side,
- *                               whatever the UI offered (CLAUDE.md invariant 5).
- *   · logging a session       → advisory. Trainers know why they are teaching
- *                               someone; the exception is safety-critical
- *                               modules, which block.
- *
- * Both count VALID and EXPIRING as held, per docs/records-and-expiry.md.
+ * Both count VALID and EXPIRING as held (docs/records-and-expiry.md).
  */
 
 import { db, schema } from '@nuxthub/db'
@@ -42,12 +39,10 @@ export async function prerequisiteIdsOf(moduleId: string): Promise<string[]> {
 /**
  * Evaluate one person against one module's prerequisites.
  *
- * Deliberately direct prerequisites only, not the transitive closure: the
- * catalogue already chains them (a certification requires the modules, which
- * require the induction), and checking transitively would refuse a sign-off
- * over a lapsed induction two levels down without saying anything useful
- * about the skill being certified. If the committee wants the deeper rule it
- * is a policy change with an ADR, not a quiet default.
+ * Direct prerequisites only, not the transitive closure: the catalogue already
+ * chains them, and checking transitively would refuse a sign-off over a lapsed
+ * induction two levels down without saying anything useful about the skill
+ * being certified. Deepening the rule is a policy change with an ADR.
  */
 export async function checkPrerequisites(
   userId: string,

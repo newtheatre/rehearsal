@@ -1,23 +1,18 @@
 /**
  * POST /api/_hooks/auth/anonymise — GDPR erasure, this app's share
- * (docs/gdpr-retention.md).
+ * (docs/gdpr-retention.md). Idempotent.
  *
- * **Records survive.** Training and safety history outlives the person as
- * anonymous rows: who was trained to do what is exactly the record a safety
- * incident review needs, and the same stance the estate takes on bookings.
- * What goes is the identity and the free text written *about* them.
+ * **Records survive**, as anonymous rows: who was trained to do what is what a
+ * safety incident review needs. What goes is the identity and the free text
+ * written about them:
  *
- * Scrub list:
- *   · the mirror row (email, name, admin cache)
- *   · `revoke_reason` on their own records — it explains why a person's
- *     record was withdrawn and routinely names them
- *   · `notes` on sessions they ran — free text they authored
+ * · the mirror row (email, name, admin cache)
+ * · `revoke_reason` on their own records — it routinely names them
+ * · `notes` on sessions they ran
  *
- * Honest limitation: free text elsewhere that happens to name them (another
- * trainer's session notes) is not detectable and is not scrubbed. That is
- * why both fields are flagged to their authors as visible-on-review.
- *
- * Idempotent — running it twice changes nothing the second time.
+ * Free text elsewhere that happens to name them is not detectable and is not
+ * scrubbed, which is why both of those fields are flagged to their authors as
+ * visible on review.
  */
 
 import { db, schema } from '@nuxthub/db'

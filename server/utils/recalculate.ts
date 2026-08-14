@@ -1,17 +1,10 @@
 /**
  * Recalculating stored expiries — the single retroactive path in the system
- * (ADR-0002).
+ * (ADR-0002). Previewed as a diff, confirmed by typing, audit-logged.
  *
- * Normally `expires_at` is stamped once and never recomputed: a quiet config
- * edit must not silently strip or extend qualifications estate-wide. When the
- * committee genuinely does want a policy change applied to existing records,
- * this is how — previewed as a diff, confirmed by typing, and audit-logged.
- *
- * Two categories are deliberately never touched:
- *
- *   · EXTERNAL records, whose expiry came from the certificate itself. The SU
- *     does not reissue a first-aid certificate because we changed a dropdown.
- *   · Revoked records, which are history.
+ * Two categories are never touched:
+ * · EXTERNAL records, whose expiry came from the certificate itself
+ * · revoked records, which are history
  */
 
 import { db, schema } from '@nuxthub/db'

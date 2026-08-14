@@ -125,10 +125,9 @@ export default defineNuxtConfig({
             database_id: '5c8fa8bf-74b3-4e56-bb01-5c34f45fc600',
           },
         ],
-        // Estate-wide secrets live in the account Secrets Store so a rotation
-        // is one write rather than four worker secrets updated in lockstep
-        // (docs/operations.md#secrets). server/plugins/secrets-store.ts turns
-        // the binding into runtimeConfig.session.password — read its header
+        // Estate-wide secrets live in the account Secrets Store (stage-door
+        // ADR-0016; docs/operations.md#secrets). server/plugins/0.secrets-store.ts
+        // turns the binding into runtimeConfig.session.password — read its header
         // before adding another entry here, the binding name matters.
         //
         // Cast: `secrets_store_secrets` is valid wrangler config but missing

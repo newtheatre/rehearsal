@@ -1,13 +1,10 @@
 /**
- * POST /api/_hooks/auth/merge — account merge, this app's share
- * (stage-door ADR-0015).
+ * POST /api/_hooks/auth/merge — account merge, this app's share (stage-door
+ * ADR-0015). The winner absorbs the loser; `dryRun: true` returns the counts
+ * without writing. Idempotent.
  *
- * The winner absorbs the loser: every column referencing the losing id is
- * re-pointed, then the losing mirror row goes. `dryRun: true` returns the
- * counts without writing, which stage-door shows in its pre-merge report.
- *
- * **Missing a column is the classic bug here**, so all ten are listed
- * explicitly rather than discovered:
+ * **Missing a column is the classic bug here**, so all ten are listed rather
+ * than discovered:
  *
  *   records.user_id · records.granted_by · records.revoked_by
  *   sessions.trainer_user_id · sessions.created_by
@@ -16,14 +13,10 @@
  *   eligibility_rules.updated_by
  *   notification_log.user_id
  *
- * Two of those sit under unique indexes — `session_attendees(session_id,
- * user_id)` and `department_leads(department, user_id)`. If both accounts
- * attended the same session, or led the same department, a blind update
- * violates the index and the whole merge fails. Those rows are dropped
- * rather than moved: the winner is already there, and two attendance rows
- * for one person at one session is not a thing we want to represent.
- *
- * Idempotent: a re-run re-points whatever is left, possibly nothing.
+ * Two sit under unique indexes — `session_attendees(session_id, user_id)` and
+ * `department_leads(department, user_id)` — so if both accounts attended the
+ * same session or led the same department, a blind update violates the index
+ * and the whole merge fails. Those rows are dropped rather than moved.
  */
 
 import { db, schema } from '@nuxthub/db'

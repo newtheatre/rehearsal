@@ -3,11 +3,11 @@
  *
  * Powerful and quiet: changing what `duty-manager` requires changes who may
  * claim a shift in another app, with no deploy anywhere. That is the point
- * (ADR-0006), and the mitigations are that every change is audit-logged and
- * the runbook says to tell the consuming app's owner.
+ * (ADR-0006); the mitigations are the audit log and the runbook step telling
+ * the consuming app's owner.
  *
- * Keys are never renamed. A consumer hardcodes the key, so renaming one
- * breaks it with a 404 — create the new rule and retire the old one instead.
+ * Keys are never renamed — a consumer hardcodes the key. Create the new rule
+ * and retire the old one.
  */
 
 import { db, schema } from '@nuxthub/db'

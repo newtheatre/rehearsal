@@ -36,10 +36,18 @@ Weekly `wrangler d1 export` to the R2 backups bucket (GitHub Actions cron), reta
 
 | Secret | Where set | Where recorded |
 |---|---|---|
-| `NUXT_SESSION_PASSWORD` | This worker (shared estate secret — the auth service's runbook owns rotation) | Password manager → "NNT session seal" |
+| `NUXT_SESSION_PASSWORD` | Account **Secrets Store**, bound into this worker as `SESSION_PASSWORD` (shared estate secret — the auth service's runbook owns rotation) | Password manager → "NNT session seal" |
 | `NUXT_RESEND_API_KEY` | This worker | Password manager |
 | `NUXT_AUTH_SERVICE_TOKEN` | This worker (issued by the auth service) | Password manager |
 | Training API tokens (one per consumer) | Consumer workers | Password manager, one entry per consumer |
+
+The session seal is the one secret not set on this worker. It is shared estate-wide,
+so it lives in the account Secrets Store (`fdfe08b6b01f498fbddbc08c2891cadb`) and is
+bound in via `secrets_store_secrets` in `nuxt.config.ts`, then hydrated into
+`runtimeConfig.session.password` by `server/plugins/secrets-store.ts` — read that
+file's header before adding another binding, the binding name matters. Rotation is
+central: stage-door `docs/operations.md`, ADR-0016. `wrangler secret list` will not
+show it; `wrangler versions view <version-id> --name rehearsal` will.
 
 ## Service tokens <a name="service-tokens"></a>
 

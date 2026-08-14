@@ -1,0 +1,85 @@
+# Operations Runbook
+
+Procedures for whoever holds `training:ADMIN` — the Theatre Manager and the ITM. Written so a competent successor can operate from this document alone. Access needed: Cloudflare account (worker + D1), committee password manager, GitHub `newtheatre` org, the auth service admin (for role grants).
+
+## First-time infrastructure setup
+
+Not yet done — the repo ships with `REPLACE_WITH_D1_DATABASE_ID` placeholders in `nuxt.config.ts` and `wrangler.d1.jsonc`.
+
+```bash
+npx wrangler d1 create training      # note the returned database_id
+```
+
+Then: paste the id into both files, set the worker secrets below, connect the repo to Cloudflare Workers Builds (deploys `main`), and point `training.newtheatre.org.uk` at the worker once the legacy Heroku app is ready to retire ([migration.md](migration.md#4-cutover)).
+
+## Deployments
+
+CI on merge to `main` (Workers Builds). Migrations explicit, never automatic:
+
+```bash
+npx wrangler d1 migrations list training --remote -c wrangler.d1.jsonc
+npx wrangler d1 migrations apply training --remote -c wrangler.d1.jsonc     # quiet window
+```
+
+Rollback = redeploy previous commit; migrations roll **forward** only. Before any migration touching `records`: `npx wrangler d1 export training --remote --output backup-$(date +%F).sql`.
+
+## Backups
+
+Weekly `wrangler d1 export` to the R2 backups bucket (GitHub Actions cron), retained 8 weeks; monthly snapshots 12 months (personal data — retention applies to backups too). Annual restore drill at handover, logged in the estate tracker.
+
+## Secrets inventory
+
+| Secret | Where set | Where recorded |
+|---|---|---|
+| `NUXT_SESSION_PASSWORD` | This worker (shared estate secret — the auth service's runbook owns rotation) | Password manager → "NNT session seal" |
+| `NUXT_RESEND_API_KEY` | This worker | Password manager |
+| `NUXT_AUTH_SERVICE_TOKEN` | This worker (issued by the auth service) | Password manager |
+| Training API tokens (one per consumer) | Consumer workers | Password manager, one entry per consumer |
+
+## Service tokens <a name="service-tokens"></a>
+
+Issue: `/admin` → API tokens → New (name = consumer app). Plaintext `nnt_trn_…` shown **once** → password manager + consumer's worker secret. Revoke the old row after the consumer redeploys. Rotate at handover and on suspicion. A stale `last_used_at` on an active consumer means misconfiguration — chase it.
+
+## Content operations (no deploys involved)
+
+| Task | How |
+|---|---|
+| New module / edit / activate / retire | Lead or admin → `/admin` → Modules. Retire, never delete — history FKs it. |
+| Change expiry policy | Edit module → choose whether to run the recalc (default no — future awards only; recalc previews the diff and is audit-logged) |
+| Attach materials | Module → Materials link (Drive URL; check the Drive file's own sharing is members-visible) |
+| Change an eligibility rule | `/admin` → Rules → edit; audit-logged. **Tell the consuming app's owner** — semantics may matter to their UX copy. |
+| Swap department leads | `/admin` → Leads (see handover) |
+| Correct a record | Revoke with reason + re-grant. Never edit the DB by hand — records are append-only. |
+| Record an external cert | Person page → Record external (lead/admin); type the certificate's own expiry |
+
+## Notifications <a name="notifications"></a>
+
+Daily cron 06:00 UTC. `site_config.notifications_mode`: ships `dry-run` (report generated + emailed to ITM, nothing sent to members); flip to `live` in `/admin` after reviewing the first report — and back to dry-run after any change to expiry config or the warning window. Idempotent per (record, type) via `notification_log`; running twice sends nothing new. Monthly digests (leads: own dept; TM+ITM: all) go out on the 1st. **The digest's absence is itself an alert** — if it doesn't arrive, check the cron.
+
+## Annual handover checklist (add to the Archivist runbook)
+
+1. Auth service: `training:ADMIN` to incoming TM + ITM; outgoing revoked after a two-week overlap.
+2. `/admin` → Leads: swap `department_leads` rows to the new CTD/CWM/CSM/etc.
+3. Trainer list: LEAD-CERT AY expiry (if ratified) forces the annual re-approval conversation — sign off the new-year trainers.
+4. Confirm the `duty-manager` rule still matches committee policy; confirm expiry policies survived any summer catalogue changes.
+5. Rotate: all training API tokens, `NUXT_AUTH_SERVICE_TOKEN`, Resend key.
+6. Backup-restore drill; review a month of `audit_log`; read this doc top to bottom and fix drift.
+7. Expect the 1 October induction rollover: everyone's induction expires 30 Sep **by design**. September's digest is the schedule-inductions warning shot.
+
+## Incidents
+
+**App down** — members can't view records; consumers degrade per their documented failure direction (rota: manager-confirmation fallback). Check Cloudflare status, `npx wrangler tail rehearsal`, recent deploys; roll back first, diagnose second. Nothing here is show-stopping within hours.
+
+**Auth service down** — nobody logs in estate-wide (existing sessions keep working); the API keeps answering (token auth is local). See the auth runbook.
+
+**Bad import / bad bulk grant** — records carry `source` and the import's batch id in `detail`; `/admin` → Imports → bulk-revoke by batch (revocation, not deletion — reversible by re-grant).
+
+**Suspected token leak** — revoke the token row (consumer goes 401, which is its tested failure mode), issue a fresh one, review `audit_log` and worker logs. Read-only scope bounds the damage to disclosure of names/training states.
+
+**A wrong safety record** (someone marked trained who wasn't) — revoke immediately with reason; the department lead informs whoever relied on it (supervision lists, rota); check whether sibling records from the same session are also wrong.
+
+**Escalation:** ITM → Theatre Manager → alumni IT admins (see estate tracker contacts). No on-call; the estate fails soft.
+
+## Monitoring
+
+`GET /api/health` on the uptime monitor. Termly glance: `audit_log` anomalies, token `last_used_at`, Resend bounces, digest arrival. The cron self-reports failures to the ITM by email.

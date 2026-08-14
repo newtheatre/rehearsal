@@ -27,7 +27,7 @@ console.info(`Seeded ${modules.length} modules from ${csvPath}`)
 // Activate a slice of the catalogue so an ordinary member has something to
 // look at. The real status comes from the subcommittee's CSV; this is a dev
 // convenience and says so.
-const ACTIVATE_FOR_DEV = ['NNT-001', 'NNT-002', 'SFTY-002', 'TECH-111', 'TECH-112', 'TECH-211', 'ADMN-101', 'LEAD-301', 'LEAD-CERT']
+const ACTIVATE_FOR_DEV = ['NNT-001', 'NNT-002', 'NNT-003', 'SFTY-002', 'SFTY-021', 'TECH-111', 'TECH-112', 'TECH-211', 'ADMN-101', 'ADMN-103', 'LEAD-301', 'LEAD-CERT']
 for (const id of ACTIVATE_FOR_DEV) {
   await db.update(schema.modules).set({ status: 'ACTIVE' }).where(eq(schema.modules.id, id))
 }

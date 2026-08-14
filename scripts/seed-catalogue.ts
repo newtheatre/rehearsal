@@ -17,20 +17,7 @@ import { join } from 'node:path'
 import { inArray } from 'drizzle-orm'
 import { parseCatalogue } from './lib/catalogue'
 import { openLocalDb, schema } from './lib/localDb'
-
-// Structural, not content: the nine departments are the DEPT half of the
-// subcommittee's id scheme.
-const DEPARTMENTS = [
-  { code: 'NNT', name: 'All-member', sort: 1 },
-  { code: 'SFTY', name: 'Safety', sort: 2 },
-  { code: 'TECH', name: 'Technical', sort: 3 },
-  { code: 'STGE', name: 'Stage Management', sort: 4 },
-  { code: 'MGMT', name: 'Management', sort: 5 },
-  { code: 'COST', name: 'Costume', sort: 6 },
-  { code: 'PROD', name: 'Producing', sort: 7 },
-  { code: 'ADMN', name: 'Administration', sort: 8 },
-  { code: 'LEAD', name: 'Leadership & Training', sort: 9 },
-]
+import { DEPARTMENTS } from './lib/departments'
 
 export async function seedCatalogue(csvPath: string, db: ReturnType<typeof openLocalDb>) {
   const text = readFileSync(csvPath, 'utf8')

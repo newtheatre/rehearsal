@@ -2,6 +2,8 @@
 
 Same conventions as the auth roadmap: each item states problem, sketch, and touches; picked-up items graduate via ADR into the main docs. Parking rules at the end.
 
+> **Tracked work now lives in [GitHub issues](https://github.com/newtheatre/rehearsal/issues).** This document keeps the reasoning — why something is parked, what it would touch, what was rejected and why — which an issue title can't carry. The issues say what to do; this says why it is or isn't worth doing.
+
 ## Remaining build phases (committed)
 
 Phases 2–6 of the project plan are committed work, not roadmap candidates — sessions and records, expiry and notifications, the read API and rota integration, the legacy migration, and handover docs. They are listed in the README's build-status table; their acceptance criteria live in the plan (§8) and the test list in [development.md](development.md#testing).

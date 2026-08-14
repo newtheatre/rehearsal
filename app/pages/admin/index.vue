@@ -45,8 +45,9 @@ const sections = computed(() => [
     label: 'Audit log',
     description: 'Every privileged change, who made it and when.',
     icon: 'i-lucide-scroll-text',
+    to: '/admin/audit',
     adminOnly: true,
-    available: false,
+    available: true,
   },
 ].filter(section => !section.adminOnly || me.value?.isAdmin))
 </script>

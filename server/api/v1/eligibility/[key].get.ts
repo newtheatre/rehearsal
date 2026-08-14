@@ -1,14 +1,6 @@
 /**
- * GET /api/v1/eligibility/:key           → everyone currently eligible
- * GET /api/v1/eligibility/:key?userId=…  → is this one person eligible
- *
- * The endpoint the rota exists to call. This app answers; the consumer
- * enforces (ADR-0006) — we never learn what the rule is for, which is why
- * changing its contents is a committee decision made in the admin UI with no
- * deploy on either side.
- *
- * An unknown key is a loud 404 by design: it means a rule was renamed or
- * removed under a consumer, which is a configuration break, not a transient.
+ * GET /api/v1/eligibility/:key — everyone eligible, or with `?userId=`,
+ * whether one person is.
  */
 
 import { db, schema } from '@nuxthub/db'

@@ -11,9 +11,8 @@ export const departments = sqliteTable('departments', {
   sort: integer('sort').notNull().default(0),
 })
 
-// Per-department authority: sign-off + catalogue stewardship (ADR-0005).
-// Deliberately app data, not auth-service roles — the annual committee
-// changeover is a row swap, not nine role grants.
+// Per-department authority (ADR-0005). App data, not auth-service roles, so
+// the annual changeover is a row swap rather than nine grants.
 export const departmentLeads = sqliteTable('department_leads', {
   id: text('id').primaryKey().$defaultFn(() => nanoid()),
   department: text('department').notNull().references(() => departments.code),
@@ -25,10 +24,8 @@ export const departmentLeads = sqliteTable('department_leads', {
   index('department_leads_user_idx').on(table.userId),
 ])
 
-// Modules, certifications and briefs share one table (ADR-0003): the
-// subcommittee models them identically and the behavioural differences are
-// three flags. The human id IS the primary key — it is published, appears in
-// URLs and API payloads, and members quote it.
+// Modules, certifications and briefs share one table (ADR-0003). The human id
+// IS the primary key — it is published and members quote it.
 export const modules = sqliteTable('modules', {
   id: text('id').primaryKey().$defaultFn(() => nanoid()), // 'TECH-111', 'LD-CERT'
   department: text('department').notNull().references(() => departments.code),

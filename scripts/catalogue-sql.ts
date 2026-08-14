@@ -1,18 +1,6 @@
 /**
- * Emit the catalogue as SQL, for applying to production D1.
- *
- *   bun run scripts/catalogue-sql.ts > work/catalogue.sql
- *   npx wrangler d1 execute training --remote -c wrangler.d1.jsonc --file work/catalogue.sql
- *
- * The local seed (`bun run seed:catalogue`) talks to the local SQLite file and
- * refuses remote credentials by design, so production goes through wrangler
- * instead — but through the SAME parser, so the two paths cannot describe the
- * catalogue differently.
- *
- * The output is idempotent: re-running it updates existing rows rather than
- * failing, and replaces each module's prerequisite set so a removal in the CSV
- * is actually a removal. It never deletes a module — modules are retired, not
- * dropped, because records reference them.
+ * Emit the catalogue as SQL for production D1, through the same parser the
+ * local seed uses. Idempotent; never deletes a module. docs/migration.md §1
  */
 
 import { readFileSync } from 'node:fs'

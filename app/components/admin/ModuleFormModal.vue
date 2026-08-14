@@ -90,10 +90,8 @@ const isCertification = computed(() => state.value.kind === 'CERTIFICATION')
 const isBrief = computed(() => state.value.kind === 'BRIEF')
 
 /**
- * For ordinary modules the id carries the department (`TECH-111` is TECH), so
- * follow the prefix as it's typed. The server rejects a mismatch either way;
- * this just means nobody has to be told twice. Certifications are exempt —
- * `LD-CERT` sits in TECH — so their department stays whatever is picked.
+ * An ordinary module's id carries its department, so follow the prefix as it
+ * is typed. Certifications are exempt — `LD-CERT` sits in TECH.
  */
 watch(() => state.value.id, (id) => {
   if (props.moduleId) return // editing: the id is fixed

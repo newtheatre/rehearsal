@@ -1,7 +1,6 @@
 /**
- * Validity derivation and expiry stamping — the semantics every other part of
- * the system (and every API consumer) depends on.
- * docs/records-and-expiry.md
+ * Validity derivation and expiry stamping — the semantics everything else,
+ * and every API consumer, depends on. docs/records-and-expiry.md
  */
 
 import { describe, it, expect } from 'vitest'

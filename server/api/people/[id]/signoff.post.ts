@@ -1,11 +1,5 @@
 /**
  * POST /api/people/:id/signoff — sign off a certification.
- *
- * The prerequisite check here is a HARD gate, re-evaluated server-side
- * (CLAUDE.md invariant 5). The UI disabling a button is not the check: this
- * is the moment someone becomes allowed to supervise a get-in or run a
- * training session, and the only thing standing between "trained" and
- * "believed trained" is this handler.
  */
 
 import { db, schema } from '@nuxthub/db'

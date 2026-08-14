@@ -1,7 +1,6 @@
 /**
- * The catalogue parser. The behaviour that matters most is what it does with
- * bad input: a silently skipped row in a safety catalogue is a module nobody
- * notices is missing (docs/migration.md §1).
+ * The catalogue parser, and mostly what it does with bad input: a silently
+ * skipped row is a module nobody notices is missing.
  */
 
 import { describe, it, expect } from 'vitest'

@@ -1,10 +1,6 @@
 /**
- * GET /api/sessions/:id — one session, with its modules, attendees and
- * record count.
- *
- * The payload is listed field by field rather than spreading the row: a
- * session carries free-text notes and staff attribution, and spreading a
- * table into a response is how a column added later leaks by default.
+ * GET /api/sessions/:id — one session, with its modules, attendees and record
+ * count.
  */
 
 import { getSessionDetail, withinEditWindow } from '../../utils/sessions'

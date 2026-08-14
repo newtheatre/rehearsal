@@ -1,9 +1,6 @@
 /**
- * Logging a training session, and the records that derive from it.
- *
- * A session is the evidence; the records are the consequence. They are
- * written together in one `db.batch()` (ADR-0009) so a half-logged session
- * can never credit some attendees and silently miss others.
+ * A session is the evidence; the records are the consequence. Written
+ * together in one db.batch() so neither can land without the other.
  */
 
 import { db, schema } from '@nuxthub/db'
@@ -15,9 +12,8 @@ import type { ModuleRow } from './modules'
 import { checkPrerequisites, type PrerequisiteGap } from './prerequisites'
 
 /**
- * `db.batch()` wants a non-empty tuple of runnable queries. Drizzle's builder
- * types don't narrow to that on their own, so this is the one place the cast
- * lives — rather than at every call site.
+ * db.batch() wants a non-empty tuple, which Drizzle's builder types do not
+ * narrow to — the cast lives here rather than at every call site.
  */
 type Batch = [BatchItem<'sqlite'>, ...BatchItem<'sqlite'>[]]
 
@@ -39,11 +35,8 @@ export interface AttendeeWarning {
 }
 
 /**
- * Prerequisite gaps across every attendee × module.
- *
- * Safety-critical modules produce a hard failure; everything else produces a
- * warning the trainer confirms past. Computed before the batch is assembled
- * because a batch cannot branch mid-flight.
+ * Safety-critical modules produce a hard failure, everything else a warning.
+ * Computed before the batch, because a batch cannot branch mid-flight.
  */
 export async function checkSessionPrerequisites(
   modules: ModuleRow[],
@@ -78,10 +71,8 @@ export async function checkSessionPrerequisites(
 }
 
 /**
- * Create a session and its records atomically.
- *
- * Returns the new session id. `academicYearEnd` is threaded through so expiry
- * stamping honours site config rather than the module default.
+ * Create a session and its records atomically. `academicYearEnd` is threaded
+ * through so stamping honours site config.
  */
 export async function createSession(options: {
   input: SessionInput
@@ -144,11 +135,8 @@ export async function createSession(options: {
 }
 
 /**
- * Re-derive a session's records after an edit.
- *
- * Records from this session are revoked rather than deleted (ADR-0008) and
- * replaced with a fresh set — so an edit that removes an attendee leaves a
- * visible "this was withdrawn, and why" rather than a gap in history.
+ * Records from the session are revoked, not deleted (ADR-0008), so removing
+ * an attendee leaves a visible withdrawal rather than a gap.
  */
 export async function applySessionEdit(options: {
   sessionId: string

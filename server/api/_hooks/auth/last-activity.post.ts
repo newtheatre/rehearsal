@@ -1,11 +1,6 @@
 /**
  * POST /api/_hooks/auth/last-activity — feeds the auth service's inactivity
  * sweep (docs/gdpr-retention.md).
- *
- * "Activity" here is anything that shows the person is still involved in
- * training: a record awarded to them, a session they attended, or one they
- * delivered. Answering conservatively matters — a low answer gets an active
- * member swept towards erasure.
  */
 
 import { db, schema } from '@nuxthub/db'

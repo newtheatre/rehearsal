@@ -1,13 +1,6 @@
 /**
- * Admin-only pages: the estate session plus `training:ADMIN`.
- *
- * Roles ride in the sealed cookie, so a privileged surface needs a fresh
- * session (≤15 min) before honouring one; stale sessions bounce through the
- * auth service's refresh endpoint.
- *
- * Admin pages only. Department-lead surfaces are guarded server-side against
- * `department_leads`, which is app data rather than session state, so they
- * need no staleness dance (docs/permissions.md).
+ * Admin pages: estate session plus `training:ADMIN`, which needs a fresh
+ * session. Lead surfaces use steward.ts and need no staleness dance.
  */
 export default defineNuxtRouteMiddleware((to) => {
   const { loggedIn, user, session } = useUserSession()

@@ -1,9 +1,6 @@
 /**
- * Gathering the sweep's inputs and carrying out its plan.
- *
- * The decisions all live in the pure planner (expiryPlan.ts); this module
- * does the database reads, the sending, and the bookkeeping that makes a
- * re-run send nothing new.
+ * Gathering the sweep's inputs and carrying out its plan. The decisions all
+ * live in the pure planner.
  */
 
 import { db, schema } from '@nuxthub/db'
@@ -35,11 +32,8 @@ function startOfMonth(asOf: string): Date {
 }
 
 /**
- * Everything the planner needs: the current, non-revoked, expiring-capable
- * records, plus who can be written to.
- *
- * Briefs are excluded at the source — they recur per event, never expire and
- * never gate, so warning anybody about one would be nonsense (ADR-0003).
+ * Briefs are excluded at the source: they recur per event, never expire and
+ * never gate (ADR-0003).
  */
 export async function gatherSweepInputs(asOf: string, warningWindowDays: number) {
   const recordRows = await db.select({
@@ -106,11 +100,8 @@ export async function gatherSweepInputs(asOf: string, warningWindowDays: number)
 }
 
 /**
- * What the sweep would do, without doing any of it.
- *
- * Backs the admin screen's preview. Unlike a dry run this sends nothing at
- * all — not even the report to admins — and writes no audit entry, so an
- * operator can look as often as they like.
+ * What the sweep would do, without doing any of it — no sends, no audit
+ * entry, so an operator can look as often as they like.
  */
 export async function previewExpirySweep(asOf: string = today()): Promise<ExpiryPlan> {
   const warningWindowDays = await getConfigNumber('warning_window_days')
@@ -118,11 +109,8 @@ export async function previewExpirySweep(asOf: string = today()): Promise<Expiry
 }
 
 /**
- * Run the sweep.
- *
- * In dry-run mode a report goes to the admins and **nothing is written to
- * `notification_log`** — so flipping to live later still delivers everything
- * the dry run described, rather than silently swallowing a round of warnings.
+ * In dry-run mode nothing is written to `notification_log`, so flipping to
+ * live still delivers everything the dry run described.
  */
 export async function runExpirySweep({
   asOf = today(),

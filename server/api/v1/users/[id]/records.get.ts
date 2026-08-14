@@ -1,9 +1,5 @@
 /**
  * GET /api/v1/users/:id/records — one person's current training.
- *
- * Ids in and ids out are canonical auth ids, so a consumer joins against its
- * own mirror with no mapping table. Names are included; **emails never are**
- * (CLAUDE.md invariant 8).
  */
 
 import { db, schema } from '@nuxthub/db'

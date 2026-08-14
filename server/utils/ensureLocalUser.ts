@@ -1,10 +1,6 @@
 /**
- * Mirror upsert (stage-door docs/integrating-an-app.md §4).
- *
- * Records, sessions and leads FK a local `users` row; identity itself lives
- * centrally. On each authenticated request the session user is upserted into
- * the thin local mirror. Ids are the auth service's canonical ids and are
- * never minted here (CLAUDE.md invariant 7).
+ * Upserts the session user into the thin local mirror that records, sessions
+ * and leads FK against. Ids are never minted here (invariant 7).
  */
 
 import { db, schema } from '@nuxthub/db'

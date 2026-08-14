@@ -1,9 +1,5 @@
 /**
  * POST /api/admin/service-tokens — issue a token for a consumer app.
- *
- * The plaintext is in this response and nowhere else, ever again: only its
- * SHA-256 is stored. The operator puts it straight into the password manager
- * and the consumer's worker secret (docs/operations.md#service-tokens).
  */
 
 import { db, schema } from '@nuxthub/db'

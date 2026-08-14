@@ -1,11 +1,5 @@
 /**
  * PUT /api/sessions/:id — correct a recently-logged session.
- *
- * Editing re-derives the records: the old ones are revoked (never deleted —
- * ADR-0008) and a fresh set created, all in one batch. Outside the edit
- * window the answer is no; corrections then go through revoke + re-grant,
- * which is a deliberate, individually-reasoned act rather than a quiet
- * rewrite of what a session recorded.
  */
 
 import { db, schema } from '@nuxthub/db'

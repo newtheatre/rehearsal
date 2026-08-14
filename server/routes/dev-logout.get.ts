@@ -1,7 +1,6 @@
 /**
- * DEV ONLY — clears the locally-sealed dev session (see dev-login.get.ts).
- * In production, logout is a redirect to the auth service and this route
- * does not exist.
+ * DEV ONLY — clears the locally-sealed dev session. In production logout is a
+ * redirect to the auth service and this route does not exist.
  */
 export default defineEventHandler(async (event) => {
   if (!import.meta.dev) {

@@ -1,10 +1,5 @@
 /**
- * GET /api/admin/audit — the audit trail. Read-only; the table is append-only
- * and nothing here writes to it.
- *
- * Actor ids resolve to names where the person is still mirrored. A null actor
- * is the cron or an import and is shown as "system" — a meaningful answer,
- * where blank is not.
+ * GET /api/admin/audit — the audit trail.
  */
 
 import { db, schema } from '@nuxthub/db'

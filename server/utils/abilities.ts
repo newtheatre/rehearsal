@@ -1,16 +1,6 @@
 /**
- * The ability layer — docs/permissions.md.
- *
- * Three independent sources of authority, deliberately not collapsed into
- * one role list:
- *
- *   1. `training:ADMIN`  — the only auth-service role this app uses (TM + ITM)
- *   2. department leads  — app data, swapped at handover (ADR-0005)
- *   3. trainer standing  — DERIVED from a valid grants_trainer record,
- *                          re-read every request, never cached (ADR-0004)
- *
- * Everything here is evaluated server-side. The UI reflecting an ability is
- * a courtesy, never the check.
+ * The ability layer. Three independent sources of authority, deliberately not
+ * collapsed into one role list — docs/permissions.md.
  */
 
 import { db, schema } from '@nuxthub/db'
@@ -41,9 +31,8 @@ export async function leadDepartments(userId: string): Promise<string[]> {
 }
 
 /**
- * Trainer standing is a training outcome, not a role: the trainer list is
- * definitionally the list of people holding a valid Trainer certification.
- * Expiry of the cert removes the ability with no admin action (ADR-0004).
+ * Trainer standing is a training outcome, not a role: expiry of the
+ * certification removes the ability with no admin action (ADR-0004).
  */
 export async function holdsTrainerCertification(userId: string): Promise<boolean> {
   const row = await db.select({ id: schema.records.id })

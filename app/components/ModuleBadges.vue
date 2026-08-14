@@ -1,8 +1,7 @@
 <script lang="ts" setup>
 /**
- * The badges that describe a module at a glance: kind, status, expiry policy
- * and safety flag. One component so the catalogue, the detail page and the
- * admin table can never describe the same module differently.
+ * Kind, status, expiry policy and safety flag. One component, so no two
+ * screens describe the same module differently.
  */
 defineProps<{
   module: {

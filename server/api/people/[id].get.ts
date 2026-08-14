@@ -1,10 +1,5 @@
 /**
  * GET /api/people/:id — one person's training.
- *
- * Members see records and their states. Leads and admins additionally see
- * revoked history and the sign-off actions available to them, which is why
- * the payload says explicitly what the caller may do rather than leaving the
- * UI to guess.
  */
 
 import { db, schema } from '@nuxthub/db'

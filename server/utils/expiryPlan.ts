@@ -1,20 +1,13 @@
 /**
- * The expiry sweep's planner. Pure: it takes today's date, the config, the
- * current records and what has already been notified, and returns exactly what
- * would be sent. Nothing here reads a database or sends an email, which is
- * what makes the dry-run output testable.
- *
- * It plans notifications and nothing else — a cron never creates, expires or
- * destroys a record (CLAUDE.md invariant 10).
+ * The sweep's planner. Pure and clock-injected, which is what makes the
+ * dry-run output testable. It plans notifications and nothing else.
  */
 
 import { validityState } from './validity'
 
 /**
- * The second warning fires this many days out. A constant rather than config:
- * the warning *window* is the operator's dial (site_config), and a second
- * knob whose only job is to be smaller than the first invites the two being
- * set inconsistently.
+ * A constant rather than config: the warning window is the operator's dial,
+ * and a second knob invites the two being set inconsistently.
  */
 export const FINAL_WARNING_DAYS = 14
 
@@ -171,12 +164,8 @@ export function planExpirySweep(input: SweepInputs): ExpiryPlan {
 }
 
 /**
- * Monthly digests: department leads get their own departments, admins get
- * everything.
- *
- * An empty digest is still sent. Its absence is the alert
- * (docs/operations.md#monitoring) — a silent month must mean "nothing is
- * expiring", not "the cron died three weeks ago".
+ * An empty digest is still sent. Its absence is the alert — a silent month
+ * must mean nothing is expiring, not that the cron died.
  */
 function planDigests(
   input: SweepInputs,

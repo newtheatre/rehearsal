@@ -1,10 +1,5 @@
 /**
  * POST /api/people/:id/external — record an externally-awarded qualification.
- *
- * First aid through the SU, for example. The certificate's own expiry date is
- * typed in and always wins over the module's configured policy: the issuing
- * body knows when its certificate runs out and we do not
- * (docs/records-and-expiry.md).
  */
 
 import { db, schema } from '@nuxthub/db'

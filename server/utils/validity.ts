@@ -1,17 +1,6 @@
 /**
- * The single implementation of "is this record currently valid?" (CLAUDE.md
- * invariant 4 — two implementations is how safety systems lie).
- *
- * Validity is DERIVED from the record's stamped `expires_at` and today's date.
- * There is no state column and no transition job: a record's state changes
- * because the calendar moved.
- *
- *   VALID     expires_at IS NULL, or expires_at > today
- *   EXPIRING  subset of VALID: expires_at within warning_window_days
- *   EXPIRED   expires_at <= today
- *
- * EXPIRING counts as valid everywhere it is gated on; it exists only to drive
- * warnings, so an ability never flickers off early.
+ * The single implementation of "is this record valid?" (invariant 4).
+ * Derived, never stored. States: docs/records-and-expiry.md
  */
 
 import { sql, and, type SQL } from 'drizzle-orm'
@@ -32,11 +21,8 @@ export function addDays(isoDate: string, days: number): string {
 }
 
 /**
- * The state of a single record.
- *
- * ISO date strings compare correctly as strings, which is why they are
- * stored as text and why this function and the SQL fragment below cannot
- * disagree.
+ * ISO date strings compare correctly as strings, which is why they are stored
+ * as text and why this and the SQL fragment below cannot disagree.
  */
 export function validityState(
   expiresAt: string | null | undefined,
@@ -62,9 +48,8 @@ export function isCurrentlyValid(
 }
 
 /**
- * SQL counterpart of `countsAsValid(validityState(...))` — VALID or EXPIRING.
- * Keep in lockstep with the functions above; tests assert they agree on the
- * same fixtures (docs/development.md#testing).
+ * SQL counterpart of countsAsValid(validityState(...)). Keep in lockstep;
+ * tests assert they agree on the same fixtures.
  */
 export function validRecordCondition(asOf: string = today()): SQL {
   return sql`(${records.expiresAt} is null or ${records.expiresAt} > ${asOf})`

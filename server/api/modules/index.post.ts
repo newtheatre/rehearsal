@@ -1,8 +1,5 @@
 /**
  * POST /api/modules — create a catalogue entry.
- *
- * Department leads may create in their own department; admins anywhere
- * (docs/permissions.md). Audit-logged like every privileged mutation.
  */
 
 import { db, schema } from '@nuxthub/db'

@@ -1,13 +1,6 @@
 /**
- * Add-by-email: attaching a record to someone who has not signed in yet.
- *
- * The auth service mints a shadow account for the address and returns its
- * canonical id, which we mirror — so training logged today is already attached
- * to the identity that person later claims (CLAUDE.md invariant 7).
- *
- * Local ids are NEVER invented here. If the auth service is unreachable the
- * operation fails with a retry message rather than creating a user whose id
- * nothing else in the estate recognises.
+ * Attaching a record to someone who has not signed in yet. Local ids are
+ * NEVER invented here (CLAUDE.md invariant 7).
  */
 
 import { db, schema } from '@nuxthub/db'

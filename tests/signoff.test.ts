@@ -1,9 +1,6 @@
 /**
- * Certification sign-off, external certificates and revocation.
- *
- * Phase 2's other acceptance criterion: "a cert sign-off hard-blocks on an
- * unmet prerequisite". The block is server-side, whatever the UI offered
- * (CLAUDE.md invariant 5).
+ * Certification sign-off, external certificates and revocation. The
+ * prerequisite block is server-side, whatever the UI offered.
  */
 
 import { describe, it, expect } from 'vitest'

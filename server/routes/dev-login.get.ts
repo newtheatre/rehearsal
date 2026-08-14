@@ -1,19 +1,6 @@
 /**
- * DEV ONLY — the single sanctioned exception to "apps never write the
- * session" (CLAUDE.md invariant 1; stage-door docs/development.md).
- *
- * Local development without the auth service running: GET /dev-login seals a
- * session for a fake user. Guarded by import.meta.dev — this route does not
- * exist in production builds.
- *
- *   /dev-login                ordinary member
- *   /dev-login?admin=1        training:ADMIN
- *   /dev-login?lead=TECH      department lead for TECH
- *   /dev-login?trainer=1      holds a valid LEAD-CERT record
- *
- * The lead and trainer flavours write real rows, because both abilities are
- * app data by design — there is no way to fake them from the session, which
- * is exactly the property ADR-0004 and ADR-0005 were after.
+ * DEV ONLY — the one sanctioned exception to "apps never write the session".
+ * Flags and personas: docs/development.md#dev-login
  */
 
 import { db, schema } from '@nuxthub/db'
@@ -85,11 +72,8 @@ export default defineEventHandler(async (event) => {
 
   const now = Date.now()
 
-  // replaceUserSession, NOT setUserSession: the latter merges into whatever
-  // session already exists, and defu concatenates arrays — so signing in as
-  // a plain member on top of an admin session kept `roles: ['training:ADMIN']`
-  // while swapping the id to dev-member. Switching persona has to be a clean
-  // replacement, or dev testing quietly proves the wrong thing.
+  // replaceUserSession, NOT setUserSession: set merges with defu, which
+  // concatenates arrays, so switching persona would keep the old roles.
   await replaceUserSession(event, {
     user,
     loggedInAt: now,

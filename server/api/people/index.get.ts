@@ -1,9 +1,5 @@
 /**
  * GET /api/people — the member directory.
- *
- * Any logged-in member can see who holds what: the "who can supervise me on
- * this get-in" lookup is half the point of the system. Nothing is public,
- * and emails are never included — the directory shows names and training.
  */
 
 import { db, schema } from '@nuxthub/db'

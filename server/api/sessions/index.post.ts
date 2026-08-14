@@ -1,10 +1,5 @@
 /**
  * POST /api/sessions — log a delivered training session.
- *
- * This is the endpoint that awards training, so it is the strictest one in
- * the app: trainer standing is re-derived from records here (never trusted
- * from the session), prerequisite gaps on safety-critical modules refuse
- * outright, and everything lands in a single atomic batch.
  */
 
 import { sessionInputSchema } from '../../utils/validation'

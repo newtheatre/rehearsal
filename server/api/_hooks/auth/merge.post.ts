@@ -1,22 +1,6 @@
 /**
  * POST /api/_hooks/auth/merge — account merge, this app's share (stage-door
- * ADR-0015). The winner absorbs the loser; `dryRun: true` returns the counts
- * without writing. Idempotent.
- *
- * **Missing a column is the classic bug here**, so all ten are listed rather
- * than discovered:
- *
- *   records.user_id · records.granted_by · records.revoked_by
- *   sessions.trainer_user_id · sessions.created_by
- *   session_attendees.user_id
- *   department_leads.user_id · department_leads.granted_by
- *   eligibility_rules.updated_by
- *   notification_log.user_id
- *
- * Two sit under unique indexes — `session_attendees(session_id, user_id)` and
- * `department_leads(department, user_id)` — so if both accounts attended the
- * same session or led the same department, a blind update violates the index
- * and the whole merge fails. Those rows are dropped rather than moved.
+ * ADR-0015).
  */
 
 import { db, schema } from '@nuxthub/db'
@@ -66,9 +50,7 @@ export default defineEventHandler(async (event) => {
     return { ok: true, notMirrored: !loser, counts }
   }
 
-  // The winner needs a mirror row before anything points at it. A minimal
-  // one is fine — ensureLocalUser overwrites it with the canonical identity
-  // on the winner's next request.
+  // The winner needs a mirror row before anything points at it.
   await db.insert(schema.users)
     .values({
       id: toUserId,

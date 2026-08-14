@@ -1,10 +1,6 @@
 /**
- * Test stand-in for the `@nuxthub/db` virtual module: the same Drizzle
- * schema, backed by in-memory SQLite, with the real generated migration
- * applied so tests exercise the production DDL.
- *
- * libsql rather than better-sqlite3 — the native module doesn't load under
- * Bun, and the driver is already a dependency of the seed scripts.
+ * The same schema on in-memory sqlite with the real migration applied, so
+ * tests exercise the production DDL. libsql: Bun cannot load the native one.
  */
 
 import { readFileSync, readdirSync } from 'node:fs'

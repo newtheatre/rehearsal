@@ -1,9 +1,6 @@
 /**
- * Managing department leads.
- *
- * Lead standing confers real authority — signing off certifications, seeing
- * drafts, stewarding a catalogue — so what matters here is that it starts and
- * stops exactly when the row does.
+ * Managing department leads: that the authority starts and stops exactly when
+ * the row does.
  */
 
 import { describe, it, expect } from 'vitest'

@@ -1,8 +1,5 @@
 /**
  * GET /api/admin/leads — who leads what.
- *
- * Grouped by department including the empty ones: "COST has no lead" is the
- * useful answer at handover, and an absent row is easy to miss in a flat list.
  */
 
 import { db, schema } from '@nuxthub/db'

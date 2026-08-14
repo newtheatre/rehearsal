@@ -1,12 +1,6 @@
 /**
- * Per-consumer tokens for the read API (docs/api-reference.md).
- *
- * Plaintext `nnt_trn_…` is shown once at creation; only the SHA-256 is stored.
- * Same shape as stage-door's `nnt_svc_` tokens — different prefix so a token
- * pasted into the wrong app's secret fails loudly rather than subtly.
- *
- * Scope is `read` and only `read`: this API answers questions about training,
- * it never accepts changes (CLAUDE.md invariant 8).
+ * Per-consumer tokens for the read API, `read` scope only. A different prefix
+ * from stage-door's so a token in the wrong secret fails loudly.
  */
 
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
@@ -36,14 +30,8 @@ export async function createServiceToken(name: string): Promise<{ id: string, to
 type ServiceTokenRow = typeof schema.serviceTokens.$inferSelect
 
 /**
- * Authenticate a consumer request by its `Authorization: Bearer` token.
- *
- * The table holds a handful of rows (one per consumer), so this compares
- * against each in constant time rather than looking the hash up directly —
- * cheap here, and it keeps the comparison off the query planner.
- *
- * Stamps `last_used_at`, which the runbook says to watch: a stale stamp on a
- * consumer that should be calling means someone's secret is wrong.
+ * Compared against each row in constant time; the table holds one per
+ * consumer. Stamps `last_used_at`, which the runbook says to watch.
  */
 export async function requireServiceToken(event: H3Event, scope = 'read'): Promise<ServiceTokenRow> {
   const authorization = getRequestHeader(event, 'authorization')
@@ -73,9 +61,8 @@ export async function requireServiceToken(event: H3Event, scope = 'read'): Promi
 }
 
 /**
- * Consumers may cache for five minutes; the guide tells them to treat
- * eligibility as advisory-fresh rather than transactional
- * (docs/consuming-the-api.md#freshness).
+ * Consumers may cache for five minutes and are told to treat eligibility as
+ * advisory-fresh (docs/consuming-the-api.md#freshness).
  */
 export function setConsumerCacheHeaders(event: H3Event): void {
   setHeader(event, 'Cache-Control', 'private, max-age=300')

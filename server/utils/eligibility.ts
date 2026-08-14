@@ -1,14 +1,6 @@
 /**
- * Eligibility rules: named questions other apps ask about a person's training
- * (ADR-0006).
- *
- * A rule is data — `allOf` and `anyOf` lists of module ids, edited in the
- * admin UI. This app answers the question; it never knows what the answer is
- * *for*. The rota decides what "not eligible to duty-manage" means in its own
- * UX; we only say whether the training is there.
- *
- * VALID and EXPIRING both count as held, exactly as everywhere else
- * (docs/records-and-expiry.md).
+ * Eligibility rules: named questions other apps ask (ADR-0006). This app
+ * answers; it never knows what the answer is for.
  */
 
 import { db, schema } from '@nuxthub/db'
@@ -44,10 +36,8 @@ export function parseRequires(raw: string): Requires {
 }
 
 /**
- * Evaluate one person against one rule.
- *
- * `anyOf` only constrains when it is non-empty: a rule with an empty `anyOf`
- * is an all-of rule, not an unsatisfiable one.
+ * `anyOf` only constrains when non-empty: an empty one means an all-of rule,
+ * not an unsatisfiable one.
  */
 export async function evaluateRule(
   requires: Requires,
@@ -93,11 +83,8 @@ export async function loadRule(key: string) {
 }
 
 /**
- * Everyone who currently satisfies a rule.
- *
  * Evaluated per person rather than as one clever query: the membership is
- * tens of people, and one implementation of the rule semantics is worth more
- * than the round trips saved.
+ * tens of people, and one implementation of the semantics is worth more.
  */
 export async function eligibleUserIds(
   requires: Requires,

@@ -1,10 +1,5 @@
 /**
  * GET /api/v1/records?module=TECH-112&state=VALID — who currently holds X.
- *
- * The find-a-supervisor query, and the one that lets a consumer badge its own
- * UI ("valid supervisors in the building tonight"). Expired holders are
- * included by default only if asked for: held-but-expired is visible, never
- * hidden, but the useful default is the people who actually count.
  */
 
 import { db, schema } from '@nuxthub/db'

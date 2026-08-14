@@ -1,9 +1,6 @@
 /**
- * The expiry sweep planner.
- *
- * Phase 3's acceptance criterion is that "the dry-run output for seeded test
- * data is exactly as predicted" — so these assert the whole plan, not just
- * that something was produced.
+ * The expiry sweep planner. These assert the whole plan, not just that
+ * something was produced.
  */
 
 import { describe, it, expect } from 'vitest'

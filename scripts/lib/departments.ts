@@ -1,10 +1,6 @@
 /**
- * The nine departments.
- *
- * Structural rather than content: these are the DEPT half of the
- * subcommittee's `DEPT-LCT` id scheme, so they live in code while the modules
- * themselves live in the CSV. Shared by the local seed and the production SQL
- * generator so the two cannot disagree.
+ * The nine departments — the DEPT half of the `DEPT-LCT` id scheme, so they
+ * live in code while the modules live in the CSV.
  */
 export const DEPARTMENTS = [
   { code: 'NNT', name: 'Whole Theatre', sort: 1 },

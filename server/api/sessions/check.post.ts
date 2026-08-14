@@ -1,9 +1,5 @@
 /**
  * POST /api/sessions/check — what would this session actually record?
- *
- * Backs the confirm screen: the trainer sees the exact list of records that
- * will be created, plus any prerequisite gaps, before anything is written.
- * Read-only; the real endpoint re-checks everything anyway.
  */
 
 import { sessionInputSchema } from '../../utils/validation'

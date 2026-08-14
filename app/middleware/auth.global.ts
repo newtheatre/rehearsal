@@ -1,11 +1,6 @@
 /**
- * Every page requires a session — nothing in this app is public
- * (docs/permissions.md §pages). Global so protection is opt-OUT: a new page
- * is protected the moment it exists, without anyone remembering to add
- * middleware.
- *
- * Login is hosted by the auth service; unauthenticated visitors bounce to it
- * with the way back preserved. In dev use /dev-login instead.
+ * Every page needs a session — nothing here is public. Global, so a new page
+ * is protected the moment it exists (docs/permissions.md §pages).
  */
 export default defineNuxtRouteMiddleware((to) => {
   const { loggedIn } = useUserSession()

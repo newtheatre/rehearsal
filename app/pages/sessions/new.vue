@@ -1,11 +1,7 @@
 <script lang="ts" setup>
 /**
- * Log a session — the flow that awards training.
- *
- * Two steps on purpose: the trainer never submits straight into record
- * creation. The review step shows the exact records that will exist and any
- * prerequisite gaps, because "I didn't realise it would credit all of them"
- * is not a mistake a safety record should allow.
+ * Log a session. Two steps on purpose: the review step shows the exact
+ * records that will exist before any are created.
  */
 definePageMeta({ title: 'Log a session', middleware: 'trainer' })
 

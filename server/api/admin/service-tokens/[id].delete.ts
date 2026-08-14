@@ -1,9 +1,5 @@
 /**
  * DELETE /api/admin/service-tokens/:id — revoke a token.
- *
- * The consumer starts getting 401s immediately, which is its tested failure
- * mode (docs/consuming-the-api.md#freshness). Unlike records, a token row is
- * genuinely deleted: it is a credential, not evidence.
  */
 
 import { db, schema } from '@nuxthub/db'

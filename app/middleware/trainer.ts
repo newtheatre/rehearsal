@@ -1,10 +1,6 @@
 /**
- * Guards the session-logging screens: a currently-valid Trainer
- * certification, a department lead, or an admin (ADR-0004).
- *
- * Trainer standing is app data derived from records, not a session role, so
- * this asks the server. Rendering-level only — POST /api/sessions re-derives
- * the same check before writing anything.
+ * Session-logging screens: a valid Trainer certification, a lead, or an admin
+ * (ADR-0004). Rendering-level only; POST /api/sessions re-derives it.
  */
 export default defineNuxtRouteMiddleware(async () => {
   const request = useRequestFetch()

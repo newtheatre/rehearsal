@@ -1,7 +1,6 @@
 /**
- * Append-only audit trail. Every privileged mutation writes here
- * (CLAUDE.md invariant 9) — if you are adding a mutation and its peers call
- * this, yours must too.
+ * Append-only audit trail. If you are adding a mutation and its peers call
+ * this, yours must too (CLAUDE.md invariant 9).
  */
 
 import { db, schema } from '@nuxthub/db'

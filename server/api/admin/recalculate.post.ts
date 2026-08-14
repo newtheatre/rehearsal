@@ -1,11 +1,5 @@
 /**
  * POST /api/admin/recalculate — preview or apply an expiry recalculation.
- *
- * The one deliberate retroactive path (ADR-0002). Applying requires echoing
- * back the exact number of records the preview reported: a diff that has
- * moved under the operator's feet is refused rather than applied, because
- * "confirm" on a stale preview is how people accidentally re-date a whole
- * department's safety training.
  */
 
 import { z } from 'zod'

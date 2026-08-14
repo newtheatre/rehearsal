@@ -1,18 +1,6 @@
 /**
- * POST /api/_hooks/auth/anonymise — GDPR erasure, this app's share
- * (docs/gdpr-retention.md). Idempotent.
- *
- * **Records survive**, as anonymous rows: who was trained to do what is what a
- * safety incident review needs. What goes is the identity and the free text
- * written about them:
- *
- * · the mirror row (email, name, admin cache)
- * · `revoke_reason` on their own records — it routinely names them
- * · `notes` on sessions they ran
- *
- * Free text elsewhere that happens to name them is not detectable and is not
- * scrubbed, which is why both of those fields are flagged to their authors as
- * visible on review.
+ * POST /api/_hooks/auth/anonymise — GDPR erasure, this app's share (docs/gdpr-
+ * retention.md).
  */
 
 import { db, schema } from '@nuxthub/db'

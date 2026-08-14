@@ -1,9 +1,6 @@
 /**
- * Outgoing email: expiry warnings to members, monthly digests to leads and
- * admins. Without `NUXT_RESEND_API_KEY` these are logged rather than sent.
- *
- * Copy is a nudge, not a disciplinary notice: say what expired, when, and what
- * to do, and never imply the person has done something wrong.
+ * Expiry warnings and monthly digests. Copy is a nudge, not a disciplinary
+ * notice — never imply the person has done something wrong.
  */
 
 import { getResend } from './resend'

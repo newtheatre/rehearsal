@@ -1,11 +1,6 @@
 /**
  * POST /api/_hooks/auth/export — this app's contribution to a subject-access
  * bundle (stage-door docs/gdpr-retention.md).
- *
- * Everything held about the person: their mirror row, every record including
- * revoked and superseded ones, and the sessions they attended or delivered.
- * History in full, not just what currently counts — a subject-access request
- * asks what we hold, not what we act on.
  */
 
 import { db, schema } from '@nuxthub/db'

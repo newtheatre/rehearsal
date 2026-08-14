@@ -1,15 +1,6 @@
 /**
- * Catalogue import: `data/catalogue.csv` → departments, modules,
- * prerequisites and the legacy code map (docs/migration.md §1).
- *
- * The same parser backs the dev seed, so fixtures can't drift from the real
- * import path. Unparseable cells are hard failures naming the cell.
- *
- *   bun run seed:catalogue [path/to/catalogue.csv]
- *
- * Re-running is idempotent and treats the CSV as the source of truth for the
- * fields it carries: catalogue rows are overwritten. Once the catalogue is
- * live, ordinary content edits belong in the admin UI, not here.
+ * Catalogue import: data/catalogue.csv → departments, modules, prerequisites
+ * and the legacy code map. Idempotent. docs/migration.md §1
  */
 
 import { readFileSync } from 'node:fs'

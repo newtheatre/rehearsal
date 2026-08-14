@@ -1,13 +1,5 @@
 /**
  * DELETE /api/admin/leads/:id — stand someone down as lead.
- *
- * Deleted, not soft-deleted: this is a current-authority table, not evidence.
- * What they signed off while they held it stays attributed to them in
- * `records.granted_by` and in the audit log, which is where the history
- * belongs.
- *
- * Authority ends immediately — abilities are resolved per request, never
- * cached in the session.
  */
 
 import { db, schema } from '@nuxthub/db'

@@ -1,9 +1,6 @@
 /**
- * Request guards — stage-door integration (docs/permissions.md).
- *
- * The session is the estate-wide `nnt-session` cookie sealed by
- * auth.newtheatre.org.uk. This app reads it and NEVER writes it
- * (CLAUDE.md invariant 1). Authorisation is entirely local.
+ * Request guards. The session is read, never written (CLAUDE.md invariant 1);
+ * authorisation is entirely local. docs/permissions.md
  */
 
 import type { H3Event } from 'h3'
@@ -11,9 +8,7 @@ import type { User } from '#auth-utils'
 import { ROLE_NAMESPACE, useAbilities, type Abilities } from './abilities'
 
 /**
- * Requires a valid estate session.
- *
- * @throws 401 if there is no session
+ * 401 if there is no valid estate session.
  */
 export async function requireAuth(event: H3Event): Promise<User> {
   const { user } = await getUserSession(event)
@@ -28,15 +23,8 @@ export async function requireAuth(event: H3Event): Promise<User> {
 }
 
 /**
- * Requires `training:ADMIN`.
- *
- * Privileged surfaces must not honour stale roles (session contract §rules):
- * if the session's last DB re-read is older than 15 minutes this rejects with
- * 401 and a `stale: true` hint, and the client middleware bounces the browser
- * through the auth service's refresh endpoint — which re-reads roles and
- * rejects disabled users and revoked sessions.
- *
- * @throws 401 unauthenticated or needs refresh · 403 not an admin
+ * Requires `training:ADMIN`. A session whose roles are over 15 minutes old
+ * gets 401 with `stale: true`, which the client turns into a refresh.
  */
 export async function requireAdmin(event: H3Event): Promise<User> {
   const session = await getUserSession(event)
@@ -65,13 +53,8 @@ export async function requireAdmin(event: H3Event): Promise<User> {
 }
 
 /**
- * Requires authority over `department`: its lead, or an admin.
- *
- * Lead authority is app data, so it needs no staleness check — it isn't
- * carried in the session at all. Only the admin fallback does, which is why
- * leads never get bounced through a refresh for their own department.
- *
- * @throws 401/403 as above
+ * Requires authority over `department`: its lead, or an admin. Lead authority
+ * is app data, so only the admin fallback needs a staleness check.
  */
 export async function requireDepartmentSteward(event: H3Event, department: string): Promise<Abilities> {
   const abilities = await useAbilities(event)
@@ -84,13 +67,8 @@ export async function requireDepartmentSteward(event: H3Event, department: strin
 }
 
 /**
- * Requires the ability to deliver training: a currently-valid Trainer
- * certification, or `training:ADMIN` (ADR-0004).
- *
- * Derived from the record at request time — never cached in the session,
- * never a role — so a lapsed certification removes the ability with no admin
- * action at all. Department leads carry more authority than trainers, not
- * less, so they qualify too (docs/permissions.md).
+ * Requires the ability to deliver training, derived from the record at
+ * request time (ADR-0004). Leads qualify too — they carry more authority.
  */
 export async function requireTrainer(event: H3Event): Promise<Abilities> {
   const abilities = await useAbilities(event)

@@ -1,31 +1,40 @@
 # Catalogue data
 
-## ⚠️ `catalogue.csv` is a placeholder
+## `catalogue.csv` is the subcommittee's draft catalogue
 
-The committed file is **not** the backstage subcommittee's catalogue. It was
-reconstructed from the module ids named across the design documents so that
-Phase 1 has something real to render, seed and test against.
+Loaded from *NNT Training Module Catalogue — Complete Draft* (10 Aug 2026): 57 modules
+across the nine departments, including the eight certifications.
 
-- Every row is `DRAFT`, so nothing in it is visible to ordinary members.
-- Every row's *Notes* column says `PLACEHOLDER` and why.
-- Names, descriptions, prerequisites and expiry policies are provisional.
-  Only two things in it are stated in the source documents: that `TECH-211`
-  requires `TECH-111` + `TECH-112`, and that `LEAD-CERT` confers trainer
-  standing. Everything else is a guess with a plausible shape.
-- `AV-CERT` and `SM-CERT` have no agreed names yet — the ones here are invented.
-- The `STGE`, `COST` and `PROD` sheets were unfinished when this was written;
-  they have one token module each.
+**Every row is `DRAFT`**, so nothing is visible to ordinary members and nothing gates
+anything. That matches the source document, which is explicitly a draft for
+subcommittee review with open decisions listed at the end. Publishing is per-module in
+`/admin` → Modules once each is ratified.
 
-**Replace the whole file** with the subcommittee's export, then:
+Faithful to the document, deliberately:
+
+- `safety_critical` is set only on the rows the draft marks ⚠ (`SFTY-012`, `SFTY-021`,
+  `SFTY-022`, `TECH-201`, `STGE-201`, `MGMT-201`). The flag hard-blocks a session when
+  prerequisites are missing, so it is not somewhere to be generous.
+- `SFTY-012` is **not** a prerequisite of `TECH-111` — the draft flags that as a
+  subcommittee call, so it stays unmade here.
+- The 13 TECH modules have no `description`: the draft says their text is unchanged in
+  the subcommittee's own spreadsheet and does not reproduce it. Their notes say so.
+  Everything else carries the draft's own wording.
+- Open questions from the draft (new modules to confirm, `AV-CERT`/`SM-CERT` naming,
+  `LEAD-CERT` expiry, COST and PROD sign-off leads) are recorded in each module's
+  `notes`, which are visible to leads and admins only.
+
+Re-run after editing:
 
 ```bash
-bun run seed:catalogue
+bun run seed:catalogue                                  # local
+bun run scripts/catalogue-sql.ts > work/catalogue.sql   # production
+npx wrangler d1 execute training --remote -c wrangler.d1.jsonc --file work/catalogue.sql
 ```
 
-Re-running overwrites catalogue fields from the CSV, so treat the CSV as the
-source of truth for a bulk import — but once the catalogue is live, ordinary
-content changes belong in the admin UI, not here
-([docs/operations.md](../docs/operations.md#content-operations-no-deploys-involved)).
+Both paths use the same parser, so they cannot describe the catalogue differently. The
+SQL is idempotent and never deletes a module — modules are retired, not dropped, because
+records reference them.
 
 ## Format
 

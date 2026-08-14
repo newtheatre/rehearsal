@@ -143,26 +143,48 @@ describe('parseCatalogue — derivation', () => {
 })
 
 describe('the committed catalogue', () => {
-  it('parses, and is entirely DRAFT placeholder content', async () => {
+  it('parses, and is entirely DRAFT pending subcommittee ratification', () => {
     const path = join(import.meta.dirname, '../data/catalogue.csv')
     const modules = parseCatalogue(readFileSync(path, 'utf8'), path)
 
-    expect(modules.length).toBeGreaterThan(20)
-    // If this ever fails it is good news: someone replaced the placeholder
-    // with the subcommittee's catalogue. Update the expectation then.
+    expect(modules).toHaveLength(57)
+    // The source document is a draft for review; nothing is member-visible
+    // until the subcommittee ratifies it module by module.
     expect(modules.every(m => m.status === 'DRAFT')).toBe(true)
-    expect(modules.every(m => m.notes?.startsWith('PLACEHOLDER'))).toBe(true)
   })
 
-  it('carries the two relationships the design documents actually state', () => {
+  it('marks only the modules the draft marks safety-critical', () => {
     const path = join(import.meta.dirname, '../data/catalogue.csv')
     const modules = parseCatalogue(readFileSync(path, 'utf8'), path)
 
-    const design = modules.find(m => m.id === 'TECH-211')!
-    expect(design.prerequisites.sort()).toEqual(['TECH-111', 'TECH-112'])
+    // This flag turns a prerequisite warning into a hard block, so it must
+    // mirror the ⚠ markers in the document and nothing else.
+    expect(modules.filter(m => m.safetyCritical).map(m => m.id).sort()).toEqual([
+      'MGMT-201', 'SFTY-012', 'SFTY-021', 'SFTY-022', 'STGE-201', 'TECH-201',
+    ])
+  })
 
-    const trainer = modules.find(m => m.id === 'LEAD-CERT')!
-    expect(trainer.grantsTrainer).toBe(true)
-    expect(trainer.kind).toBe('CERTIFICATION')
+  it('has exactly one certification that confers trainer standing', () => {
+    const path = join(import.meta.dirname, '../data/catalogue.csv')
+    const modules = parseCatalogue(readFileSync(path, 'utf8'), path)
+
+    const trainers = modules.filter(m => m.grantsTrainer)
+    expect(trainers.map(m => m.id)).toEqual(['LEAD-CERT'])
+    expect(trainers[0]!.kind).toBe('CERTIFICATION')
+
+    // The other seven confer supervisor standing in their own department.
+    expect(modules.filter(m => m.grantsSupervisor).map(m => m.id).sort()).toEqual([
+      'AV-CERT', 'COST-CERT', 'LD-CERT', 'PROD-CERT', 'SET-CERT', 'SM-CERT', 'SND-CERT',
+    ])
+  })
+
+  it('leaves the subcommittee open questions unanswered', () => {
+    const path = join(import.meta.dirname, '../data/catalogue.csv')
+    const modules = parseCatalogue(readFileSync(path, 'utf8'), path)
+
+    // The draft flags this as a call for the subcommittee because it lengthens
+    // the path to lighting — so it must not be quietly made here.
+    const lighting = modules.find(m => m.id === 'TECH-111')!
+    expect(lighting.prerequisites).not.toContain('SFTY-012')
   })
 })

@@ -40,5 +40,8 @@
     "vitest": "^3.2.4",
     "vue-tsc": "^3.3.9",
     "wrangler": "^4.67.0"
-  }
+  },
+  "trustedDependencies": [
+    "unrs-resolver"
+  ]
 }

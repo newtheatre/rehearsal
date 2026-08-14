@@ -1,0 +1,27 @@
+Department,ID,Name,Description,Prerequisites,Old Module(s),Proposed Expiry,Materials Link,Safety Critical,Grants,Status,Notes
+NNT,NNT-001,Theatre Induction,"Introduction to the theatre, its spaces, rules and who to ask. Required of every member before working in the building.",,,Academic year,,yes,,DRAFT,PLACEHOLDER — awaiting subcommittee catalogue
+NNT,NNT-002,Get-In Brief,"Pre-get-in safety and plan briefing. Delivered at every get-in; attendance recorded for the audit trail.",,,Brief (recurring),,yes,,DRAFT,PLACEHOLDER — awaiting subcommittee catalogue
+NNT,NNT-003,Get-Out Brief,"Pre-get-out safety and plan briefing. Delivered at every get-out.",,,Brief (recurring),,yes,,DRAFT,PLACEHOLDER — awaiting subcommittee catalogue
+SFTY,SFTY-002,Fire Procedure and Evacuation,"Fire procedure for the building: alarms, routes, assembly, and the duty manager's responsibilities.",NNT-001,,Academic year,,yes,,DRAFT,PLACEHOLDER — named in the duty-manager rule proposal
+SFTY,SFTY-022,Manual Handling,"Safe lifting and moving of set, flight cases and staging.",NNT-001,,Never,,yes,,DRAFT,PLACEHOLDER — subcommittee to confirm this module exists
+SFTY,SFTY-031,Working at Height,"Ladders, tallescope and access equipment.",NNT-001,,24 months,,yes,,DRAFT,PLACEHOLDER — subcommittee to confirm this module exists
+SFTY,SFTY-101,Emergency First Aid at Work,"External qualification held through the SU or an external provider. Recorded with the certificate's own expiry date.",,,External cert date,,yes,,DRAFT,PLACEHOLDER — external certificate; the cert's own date always wins
+TECH,TECH-111,Lighting Rigging and Focusing,"Rigging, cabling and focusing lanterns safely.",NNT-001,,Never,,yes,,DRAFT,PLACEHOLDER — prerequisite of TECH-211 per the plan
+TECH,TECH-112,Lighting Desk Operation,"Programming and operating the lighting desk.",NNT-001,,Never,,,,DRAFT,PLACEHOLDER — prerequisite of TECH-211 per the plan
+TECH,TECH-121,Powered Tools,"Safe use of the workshop's powered tools.",NNT-001,,12 months,,yes,,DRAFT,PLACEHOLDER — 12-month expiry is the worked example in the docs
+TECH,TECH-131,Sound System Setup,"Rigging and patching the sound system.",NNT-001,,Never,,,,DRAFT,PLACEHOLDER — awaiting subcommittee catalogue
+TECH,TECH-141,AV and Projection,"Projection and video playback setup.",NNT-001,,Never,,,,DRAFT,PLACEHOLDER — awaiting subcommittee catalogue
+TECH,TECH-211,Lighting Design,"Designing a lighting rig for a show, from concept to plan.","TECH-111, TECH-112",,Never,,,,DRAFT,PLACEHOLDER — prerequisites are the one example the plan states explicitly
+STGE,STGE-101,Stage Management Basics,"The stage manager's role in rehearsal and performance.",NNT-001,,Never,,,,DRAFT,PLACEHOLDER — STGE sheet unfinished; content owed by the subcommittee
+STGE,STGE-211,Intimacy and Fight Coordination,"Staging intimacy and violence safely.",STGE-101,,24 months,,yes,,DRAFT,PLACEHOLDER — 24-month expiry is the worked example in the docs
+MGMT,MGMT-201,Production Management,"Running a production team, budget and schedule.",NNT-001,,Never,,,,DRAFT,PLACEHOLDER — subcommittee to confirm this module exists
+COST,COST-101,Costume Basics,"Sourcing, fitting and caring for costume.",NNT-001,,Never,,,,DRAFT,PLACEHOLDER — COST sheet unfinished; content owed by the subcommittee
+PROD,PROD-101,Producing Basics,"Producing a show at the NNT.",NNT-001,,Never,,,,DRAFT,PLACEHOLDER — PROD sheet unfinished; content owed by the subcommittee
+ADMN,ADMN-101,Front of House Management,"Running front of house as duty manager.","NNT-001, SFTY-002",,Academic year,,,,DRAFT,PLACEHOLDER — named in the duty-manager rule proposal
+ADMN,ADMN-103,Box Office Operation,"Selling and refunding tickets on the box office system.",NNT-001,,Academic year,,,,DRAFT,PLACEHOLDER — subcommittee to confirm this module exists
+LEAD,LEAD-301,Training Delivery,"How to plan and deliver a training session at the NNT.",NNT-001,,Never,,,,DRAFT,PLACEHOLDER — the taught half of the Trainer certification
+TECH,LD-CERT,Lighting Designer,"Certification: may design and supervise lighting unsupervised. Signed off by the CTD after a supervised design.","TECH-111, TECH-112, TECH-211",,Never,,,supervisor,DRAFT,PLACEHOLDER — awaiting subcommittee catalogue
+TECH,SND-CERT,Sound Designer,"Certification: may design and supervise sound unsupervised.",TECH-131,,Never,,,supervisor,DRAFT,PLACEHOLDER — awaiting subcommittee catalogue
+TECH,AV-CERT,AV Supervisor,"Certification: may supervise AV and projection work.",TECH-141,,Never,,,supervisor,DRAFT,PLACEHOLDER — cert has no agreed name yet; this one is invented
+STGE,SM-CERT,Stage Manager,"Certification: may stage-manage a show unsupervised.",STGE-101,,Never,,,supervisor,DRAFT,PLACEHOLDER — cert has no agreed name yet; this one is invented
+LEAD,LEAD-CERT,Trainer,"Certification: may deliver training sessions and record them. Awarded after LEAD-301 plus a supervised delivery, signed off by a department lead.",LEAD-301,,Academic year,,,trainer,DRAFT,PLACEHOLDER — expiry policy not yet ratified; academic year assumed

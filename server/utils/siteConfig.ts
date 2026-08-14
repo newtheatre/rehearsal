@@ -2,22 +2,16 @@
  * Operator-tunable values that must not require a deploy
  * (docs/data-model.md §site_config).
  *
- * Reads fall back to these defaults when the row is absent, so a fresh or
- * partially-seeded database behaves identically to a configured one — a
+ * Reads fall back to the shared defaults when the row is absent, so a fresh
+ * or partially-seeded database behaves identically to a configured one — a
  * missing config row must never change safety semantics.
  */
 
 import { db, schema } from '@nuxthub/db'
 import { eq } from 'drizzle-orm'
+import { CONFIG_DEFAULTS, type ConfigKey } from '../../shared/utils/configDefaults'
 
-export const CONFIG_DEFAULTS = {
-  warning_window_days: '60',
-  academic_year_end: '09-30',
-  session_edit_window_days: '14',
-  notifications_mode: 'dry-run',
-} as const
-
-export type ConfigKey = keyof typeof CONFIG_DEFAULTS
+export { CONFIG_DEFAULTS, type ConfigKey }
 
 export async function getConfig(key: ConfigKey): Promise<string> {
   const row = await db.select().from(schema.siteConfig)

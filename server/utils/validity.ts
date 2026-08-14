@@ -15,7 +15,7 @@
  * drive warnings, so a person's ability never flickers off early.
  */
 
-import { sql, isNull, and, type SQL } from 'drizzle-orm'
+import { sql, and, type SQL } from 'drizzle-orm'
 import { records } from '../db/schema/training'
 
 export type ValidityState = 'VALID' | 'EXPIRING' | 'EXPIRED'
@@ -80,5 +80,3 @@ export function notRevokedCondition(): SQL {
 export function heldRecordCondition(asOf: string = today()): SQL {
   return and(notRevokedCondition(), validRecordCondition(asOf))!
 }
-
-export { isNull }

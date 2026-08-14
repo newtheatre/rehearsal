@@ -29,8 +29,9 @@ const sections = computed(() => [
     label: 'Department leads',
     description: 'Who signs off certifications and stewards each department.',
     icon: 'i-lucide-users',
+    to: '/admin/leads',
     adminOnly: true,
-    available: false,
+    available: true,
   },
   {
     label: 'API',

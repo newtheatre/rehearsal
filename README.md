@@ -34,14 +34,14 @@ bun run db:seed           # module catalogue + dev users (no passwords — see /
 bun run dev               # http://localhost:3000
 ```
 
-First success in under five minutes: sign in at `/dev-login`, browse the seeded catalogue at `/modules`, open a module to see its prerequisites and expiry policy. (Session logging arrives in Phase 2 — see [docs/roadmap.md](docs/roadmap.md).) Full local-dev story: [docs/development.md](docs/development.md).
+First success in under five minutes: sign in at `/dev-login?trainer=1`, log a session at `/sessions/new`, and watch the records appear on the attendees' pages. Full local-dev story: [docs/development.md](docs/development.md).
 
 ## Build status
 
 | Phase | Scope | State |
 |---|---|---|
-| 1 | Scaffold, auth wiring, catalogue seed, catalogue pages, admin module CRUD | **in progress** |
-| 2 | Sessions + records, sign-off, external certs, people directory | not started |
+| 1 | Scaffold, auth wiring, catalogue seed, catalogue pages, admin module CRUD | **done** |
+| 2 | Sessions + records, sign-off, external certs, people directory | **done** |
 | 3 | Expiry states + notifications cron | not started |
 | 4 | Read API + eligibility rules + rota integration | not started |
 | 5 | Legacy migration + Heroku shutdown | not started |

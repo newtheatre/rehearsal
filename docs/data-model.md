@@ -82,6 +82,14 @@ Index `(user_id, module_id, awarded_at)`. Never hard-deleted, including by migra
 
 `notification_log`: `user_id` · `type` · `record_id`/`module_id` · `sent_at` — idempotency for the cron ([operations.md](operations.md#notifications)).
 
+## Writing atomically
+
+D1 rejects `BEGIN`, so `db.transaction()` is unusable here even though it type-checks and
+works locally — anything that must be all-or-nothing uses `db.batch()` instead
+([ADR-0009](decisions/0009-atomic-writes-use-batch-not-transactions.md)). Practical
+consequence when adding a multi-row write: build the statement array first and generate any
+ids you need in application code, because nothing can be read back mid-batch.
+
 ## Schema-change checklist
 
 1. Edit `server/db/schema/*`, `bun run db:generate`, **read the generated SQL** (SQLite rebuilds can drop data).

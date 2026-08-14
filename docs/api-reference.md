@@ -40,17 +40,36 @@ Query: `status=ACTIVE` (default) | `all` (includes DRAFT/RETIRED — for admin t
 
 `{ ok: true, version }`.
 
-## Internal routes (Phase 1, session-authenticated)
+## Internal routes (session-authenticated)
 
 Used by this app's own pages; not a consumer contract, no version guarantee.
 
 | Route | Guard | Returns |
 |---|---|---|
+| `GET /api/me` | session | the caller's abilities (admin, lead departments, trainer standing) |
+| `GET /api/me/records` | session | own records, expiring/expired splits, and prerequisite-met suggestions |
 | `GET /api/departments` | session | departments with module counts (visible-to-caller counts only) |
 | `GET /api/modules` | session | catalogue list; `DRAFT` included only for leads/admins |
 | `GET /api/modules/:id` | session | module detail incl. prerequisites and dependents; `notes` only for leads/admins |
 | `POST /api/modules` | lead (own dept) or admin | create; Zod-validated; audit-logged |
 | `PUT /api/modules/:id` | lead (own dept) or admin | update incl. status transitions and prerequisites; audit-logged |
+| `GET /api/people` | session | directory with per-person valid/expiring/expired counts and certifications |
+| `GET /api/people/:id` | session | one person's records; revoked history and actions for leads/admins |
+| `POST /api/people/:id/signoff` | lead (module's dept) or admin | certification sign-off; **422 with the gaps named** if prerequisites are unmet |
+| `POST /api/people/:id/external` | lead (module's dept) or admin | external certificate; its own expiry wins over module config |
+| `POST /api/records/:id/revoke` | admin | revoke with a mandatory reason; idempotent |
+| `GET /api/sessions` | session | delivery log, newest first |
+| `POST /api/sessions/check` | trainer | dry run: the exact records that would be created, plus warnings |
+| `POST /api/sessions` | trainer | log a session; creates records atomically |
+| `GET /api/sessions/:id` | session | one session; `canEdit` reflects owner + edit window |
+| `PUT /api/sessions/:id` | trainer (own session) or admin | re-derive records inside the edit window |
+| `POST /api/attendees/lookup` | trainer | resolve an email to a canonical id, creating a shadow account if needed |
+
+**Session-flow status codes.** `POST /api/sessions` answers `409` when attendees are missing
+ordinary prerequisites (retry with `acknowledgeWarnings: true`), and `422` when they are
+missing prerequisites for a **safety-critical** module — which no acknowledgement overrides.
+`POST /api/people/:id/signoff` answers `422` for any unmet prerequisite; certification
+sign-off has no override at all.
 
 ## Inbound GDPR hooks (called by the auth service)
 

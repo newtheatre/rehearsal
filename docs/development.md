@@ -36,6 +36,12 @@ Auth in dev follows the estate pattern (stage-door `docs/development.md`): host-
 
 The route redirects to `/` once the session is sealed. It 404s in production builds.
 
+It uses `replaceUserSession`, not `setUserSession` — the latter merges into the existing
+session and concatenates arrays, so switching from admin to member kept the admin role
+while swapping the id. If you add a persona here, keep the replacement semantics: dev
+testing that quietly runs with more authority than you asked for is worse than no dev
+login at all.
+
 ## Seeds
 
 `bun run db:seed` loads the full module catalogue (same parser as the production seed — [migration.md](migration.md)) and a handful of users covering every ability: member, trainer, department lead, admin. It refuses to run in production or against a remote database.
@@ -44,7 +50,7 @@ The route redirects to `/` once the session is sealed. It 404s in production bui
 
 Once Phase 2 lands, the seed will also carry fixture records covering every state: VALID, EXPIRING, EXPIRED, revoked, BRIEF attendance, external cert.
 
-> **Phase 1 caveat:** records/sessions land in Phase 2, so today's seed populates departments, the catalogue, users and leads only. `data/catalogue.csv` is a **placeholder** built from the modules named in the design docs — replace it with the subcommittee's export before anything real depends on it (see the file's header and [migration.md](migration.md#1-catalogue-seed)).
+> **Caveat:** `data/catalogue.csv` is a **placeholder** built from the modules named in the design docs — replace it with the subcommittee's export before anything real depends on it (see [data/README.md](../data/README.md) and [migration.md](migration.md#1-catalogue-seed)). The seed activates a slice of it so an ordinary member has something to look at; the real statuses come from the subcommittee's own Status column.
 
 ## Testing
 

@@ -83,6 +83,27 @@ export async function requireDepartmentSteward(event: H3Event, department: strin
   return abilities
 }
 
+/**
+ * Requires the ability to deliver training: a currently-valid Trainer
+ * certification, or `training:ADMIN` (ADR-0004).
+ *
+ * Derived from the record at request time — never cached in the session,
+ * never a role — so a lapsed certification removes the ability with no admin
+ * action at all. Department leads carry more authority than trainers, not
+ * less, so they qualify too (docs/permissions.md).
+ */
+export async function requireTrainer(event: H3Event): Promise<Abilities> {
+  const abilities = await useAbilities(event)
+
+  if (abilities.isTrainer || abilities.leadOf.length > 0) return abilities
+
+  throw createError({
+    statusCode: 403,
+    statusMessage: 'Forbidden',
+    message: 'Logging a session needs a current Trainer certification',
+  })
+}
+
 /** Requires stewardship of at least one department (for list/create screens). */
 export async function requireAnySteward(event: H3Event): Promise<Abilities> {
   const abilities = await useAbilities(event)

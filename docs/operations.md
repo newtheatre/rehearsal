@@ -44,7 +44,7 @@ Weekly `wrangler d1 export` to the R2 backups bucket (GitHub Actions cron), reta
 The session seal is the one secret not set on this worker. It is shared estate-wide,
 so it lives in the account Secrets Store (`fdfe08b6b01f498fbddbc08c2891cadb`) and is
 bound in via `secrets_store_secrets` in `nuxt.config.ts`, then hydrated into
-`runtimeConfig.session.password` by `server/plugins/secrets-store.ts` — read that
+`runtimeConfig.session.password` by `server/plugins/0.secrets-store.ts` — read that
 file's header before adding another binding, the binding name matters. Rotation is
 central: stage-door `docs/operations.md`, ADR-0016. `wrangler secret list` will not
 show it; `wrangler versions view <version-id> --name rehearsal` will.

@@ -2,8 +2,6 @@
 
 You're wiring an estate app to training data. Proscenium's rota (duty-manager eligibility) is the reference consumer; this is the complete checklist.
 
-> **Available from Phase 4.** Until then there is no consumer API — don't build against it yet.
-
 **Prerequisites:** your app is a Cloudflare Worker in the NNT estate and you can set worker secrets. The API is read-only — if you think you need to *write* training data from another app, you don't; talk to the ITM.
 
 ## Step 1 — Get a token
@@ -36,9 +34,9 @@ Wrap your usage behind a single function (the rota's `isDMEligible(userId)` is t
 
 ## Consumers (current)
 
-| Consumer | Uses | Seam |
-|---|---|---|
-| Proscenium (rota) | `GET /eligibility/duty-manager?userId=` (+ list form for UI badges) | `isDMEligible()` per its access/staffing design §3.3 |
+| Consumer | Uses | Seam | Status |
+|---|---|---|---|
+| Proscenium (rota) | `GET /eligibility/duty-manager?userId=` (+ list form for UI badges) | `isDMEligible()` per its access/staffing design §3.3 | **not yet integrated** — the rota isn't built. A token can be issued the day it is. |
 
 Update this table when you integrate — and tell the ITM so rule changes reach you.
 

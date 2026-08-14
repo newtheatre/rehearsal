@@ -33,18 +33,12 @@ const sections = computed(() => [
     available: false,
   },
   {
-    label: 'Eligibility rules',
-    description: 'What other apps mean by "duty-manager eligible".',
-    icon: 'i-lucide-list-checks',
+    label: 'API',
+    description: 'Eligibility rules other apps ask about, and the tokens that let them ask.',
+    icon: 'i-lucide-plug',
+    to: '/admin/api',
     adminOnly: true,
-    available: false,
-  },
-  {
-    label: 'API tokens',
-    description: 'Per-consumer tokens for the read API.',
-    icon: 'i-lucide-key-round',
-    adminOnly: true,
-    available: false,
+    available: true,
   },
   {
     label: 'Audit log',

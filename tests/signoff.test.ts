@@ -181,7 +181,7 @@ describe('sign-off authority', () => {
 })
 
 describe('external certificates', () => {
-  it("stamps the certificate's own expiry, overriding module config", async () => {
+  it('stamps the certificate\'s own expiry, overriding module config', async () => {
     await setup()
     const event = makeEvent({
       method: 'POST',

@@ -84,7 +84,13 @@ export default defineEventHandler(async (event) => {
   }
 
   const now = Date.now()
-  await setUserSession(event, {
+
+  // replaceUserSession, NOT setUserSession: the latter merges into whatever
+  // session already exists, and defu concatenates arrays — so signing in as
+  // a plain member on top of an admin session kept `roles: ['training:ADMIN']`
+  // while swapping the id to dev-member. Switching persona has to be a clean
+  // replacement, or dev testing quietly proves the wrong thing.
+  await replaceUserSession(event, {
     user,
     loggedInAt: now,
     refreshedAt: now,

@@ -26,6 +26,8 @@ function logout() {
 const links = computed(() => [
   { label: 'Dashboard', to: '/', icon: 'i-lucide-layout-dashboard' },
   { label: 'Catalogue', to: '/modules', icon: 'i-lucide-book-open' },
+  { label: 'People', to: '/people', icon: 'i-lucide-users' },
+  { label: 'Sessions', to: '/sessions', icon: 'i-lucide-calendar-check' },
 ])
 </script>
 

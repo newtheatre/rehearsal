@@ -16,7 +16,8 @@ import { runExpirySweep } from '../utils/expirySweep'
  */
 export default defineTask({
   meta: {
-    name: 'expiry:sweep',
+    // Must match the file path — that is what Nitro registers it as.
+    name: 'expiry-sweep',
     description: 'Warn members about expiring training; monthly digest to leads and admins',
   },
   async run() {

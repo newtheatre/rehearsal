@@ -259,6 +259,19 @@ function formatDate(iso: string) {
             <p class="text-xs text-muted mt-0.5">
               Awarded {{ formatDate(record.awardedAt) }}
             </p>
+            <p
+              v-if="record.lapsedConstituents?.length"
+              class="text-xs text-warning mt-1 flex items-start gap-1"
+            >
+              <UIcon
+                name="i-lucide-triangle-alert"
+                class="mt-0.5 shrink-0"
+              />
+              <span>
+                Still valid, but rests on training that has lapsed:
+                {{ record.lapsedConstituents.map(g => g.moduleId).join(', ') }}
+              </span>
+            </p>
           </div>
 
           <div class="flex items-center gap-2 shrink-0">

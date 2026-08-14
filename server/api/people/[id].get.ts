@@ -12,6 +12,7 @@ import { and, desc, eq, isNotNull } from 'drizzle-orm'
 import { useAbilities, canSeeDrafts } from '../../utils/abilities'
 import { getConfigNumber } from '../../utils/siteConfig'
 import { currentRecordsFor } from '../../utils/records'
+import { lapsedConstituents } from '../../utils/prerequisites'
 
 export default defineEventHandler(async (event) => {
   const abilities = await useAbilities(event)
@@ -28,6 +29,14 @@ export default defineEventHandler(async (event) => {
 
   const warningWindowDays = await getConfigNumber('warning_window_days')
   const records = await currentRecordsFor(person.id, { warningWindowDays })
+
+  // A certification stays valid even if the modules behind it have lapsed —
+  // but the page says so, which is the whole v1 stance (roadmap R2).
+  const lapsed = await lapsedConstituents(
+    person.id,
+    records.filter(r => r.kind === 'CERTIFICATION' && r.state !== 'EXPIRED').map(r => r.moduleId),
+    { warningWindowDays },
+  )
 
   const [leadOf, sessionsDelivered] = await Promise.all([
     db.select({ department: schema.departmentLeads.department })
@@ -57,7 +66,11 @@ export default defineEventHandler(async (event) => {
   return {
     person,
     leadOf: leadOf.map(l => l.department),
-    records: records.filter(r => r.kind !== 'BRIEF'),
+    records: records.filter(r => r.kind !== 'BRIEF').map(record => ({
+      ...record,
+      // Present only on certifications that need the caveat.
+      lapsedConstituents: lapsed.get(record.moduleId) ?? null,
+    })),
     briefs: records.filter(r => r.kind === 'BRIEF'),
     sessionsDelivered,
     revoked: revoked.map(r => ({

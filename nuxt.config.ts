@@ -72,7 +72,11 @@ export default defineNuxtConfig({
     scheduledTasks: {
       // Daily expiry sweep (docs/operations.md#notifications). Ships in
       // dry-run mode — site_config.notifications_mode is the switch, not this.
-      '0 6 * * *': ['expiry:sweep'],
+      //
+      // The name is derived from the FILE PATH (server/tasks/expiry-sweep.ts),
+      // not from the task's `meta.name`. Get it wrong and the cron fires into
+      // the void with no error anywhere.
+      '0 6 * * *': ['expiry-sweep'],
     },
     rollupConfig: {
       plugins: [

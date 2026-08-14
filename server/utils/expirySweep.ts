@@ -106,6 +106,18 @@ export async function gatherSweepInputs(asOf: string, warningWindowDays: number)
 }
 
 /**
+ * What the sweep would do, without doing any of it.
+ *
+ * Backs the admin screen's preview. Unlike a dry run this sends nothing at
+ * all — not even the report to admins — and writes no audit entry, so an
+ * operator can look as often as they like.
+ */
+export async function previewExpirySweep(asOf: string = today()): Promise<ExpiryPlan> {
+  const warningWindowDays = await getConfigNumber('warning_window_days')
+  return planExpirySweep(await gatherSweepInputs(asOf, warningWindowDays))
+}
+
+/**
  * Run the sweep.
  *
  * In dry-run mode a report goes to the admins and **nothing is written to

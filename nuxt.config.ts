@@ -31,7 +31,7 @@ export default defineNuxtConfig({
       db: {
         dialect: 'sqlite',
         driver: 'd1', // FIXME: https://github.com/nuxt-hub/core/pull/775 (same as Proscenium/stage-door)
-        connection: { databaseId: 'REPLACE_WITH_D1_DATABASE_ID' },
+        connection: { databaseId: '5c8fa8bf-74b3-4e56-bb01-5c34f45fc600' },
       },
       kv: false,
       blob: false,
@@ -87,20 +87,30 @@ export default defineNuxtConfig({
       nodeCompat: true,
       wrangler: {
         name: 'rehearsal',
-        routes: [
-          {
-            // The repo is `rehearsal`; the domain stays `training` because
-            // that is what it already means to members (ADR-0001) — same
-            // split as stage-door → auth.newtheatre.org.uk.
-            pattern: 'training.newtheatre.org.uk',
-            custom_domain: true,
-          },
-        ],
+
+        // ⚠️ The custom domain is intentionally NOT attached yet.
+        //
+        // `training.newtheatre.org.uk` still serves the legacy Heroku app.
+        // Attaching it here IS the Phase 5 cutover: the next build would
+        // repoint the domain the moment it finished, skipping the legacy
+        // import, the smoke test and the two-week grace period that
+        // docs/migration.md §4 exists to provide.
+        //
+        // Uncomment when cutting over, not before. The repo is `rehearsal`
+        // and the domain stays `training` because that is what it already
+        // means to members (ADR-0001) — same split as stage-door → auth.
+        //
+        // routes: [
+        //   {
+        //     pattern: 'training.newtheatre.org.uk',
+        //     custom_domain: true,
+        //   },
+        // ],
         d1_databases: [
           {
             binding: 'DB',
             database_name: 'training',
-            database_id: 'REPLACE_WITH_D1_DATABASE_ID',
+            database_id: '5c8fa8bf-74b3-4e56-bb01-5c34f45fc600',
           },
         ],
         observability: {

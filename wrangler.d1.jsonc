@@ -12,7 +12,7 @@
     {
       "binding": "DB",
       "database_name": "training",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "database_id": "5c8fa8bf-74b3-4e56-bb01-5c34f45fc600",
       "migrations_table": "_hub_migrations",
       "migrations_dir": "server/db/migrations/sqlite"
     }

@@ -2,15 +2,20 @@
 
 Procedures for whoever holds `training:ADMIN` — the Theatre Manager and the ITM. Written so a competent successor can operate from this document alone. Access needed: Cloudflare account (worker + D1), committee password manager, GitHub `newtheatre` org, the auth service admin (for role grants).
 
-## First-time infrastructure setup
+## Infrastructure
 
-Not yet done — the repo ships with `REPLACE_WITH_D1_DATABASE_ID` placeholders in `nuxt.config.ts` and `wrangler.d1.jsonc`.
+| Thing | Value |
+|---|---|
+| Cloudflare account | New Theatre — `3d250a94794003bd921b7f0379de7f00` |
+| Worker | `rehearsal` |
+| D1 database | `training` — `5c8fa8bf-74b3-4e56-bb01-5c34f45fc600` (WEUR), created 2026-08-14 |
+| Repo | `newtheatre/rehearsal`, `main` deploys via Workers Builds |
 
-```bash
-npx wrangler d1 create training      # note the returned database_id
-```
+### The custom domain is deliberately NOT configured yet
 
-Then: paste the id into both files, set the worker secrets below, connect the repo to Cloudflare Workers Builds (deploys `main`), and point `training.newtheatre.org.uk` at the worker once the legacy Heroku app is ready to retire ([migration.md](migration.md#4-cutover)).
+`training.newtheatre.org.uk` still points at the legacy Heroku app. Attaching it to this worker **is** the Phase 5 cutover, so the route is commented out in `nuxt.config.ts` and the worker serves its `workers.dev` URL until then. Uncomment it only when [migration.md](migration.md#4-cutover) says so — deploying with that route live would repoint the domain the moment the build finished, with no legacy grace period and no import done.
+
+Until cutover the worker is reachable at `https://rehearsal.<account-subdomain>.workers.dev`, which is fine for smoke-testing but is **not** a login-capable environment: the session cookie is scoped to `.newtheatre.org.uk`, so SSO only works on the real domain.
 
 ## Deployments
 

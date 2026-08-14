@@ -93,3 +93,60 @@ export const moduleListQuerySchema = z.object({
 
 export type ModuleCreateInput = z.infer<typeof moduleCreateSchema>
 export type ModuleUpdateInput = z.infer<typeof moduleUpdateSchema>
+
+// ── Records and sessions ────────────────────────────────────────────────────
+
+/** ISO calendar date. Stored as text so string comparison is date comparison. */
+export const isoDateSchema = z.string().trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date in YYYY-MM-DD form')
+  .refine((value) => {
+    const parsed = new Date(`${value}T00:00:00Z`)
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value
+  }, 'Not a real date')
+
+/**
+ * `awarded_at` is when the training happened, so it may be backdated but
+ * never postdated — a record for training that has not occurred yet would be
+ * valid in the eyes of every gate in the system.
+ */
+export const awardedAtSchema = isoDateSchema.refine(
+  value => value <= new Date().toISOString().slice(0, 10),
+  'Training cannot be recorded for a future date',
+)
+
+export const sessionInputSchema = z.object({
+  heldOn: awardedAtSchema,
+  moduleIds: z.array(moduleIdSchema).min(1, 'A session must cover at least one module').max(20),
+  attendeeIds: z.array(z.string().trim().min(1)).max(100).default([]),
+  location: z.string().trim().max(120).nullable().optional(),
+  notes: z.string().trim().max(4000).nullable().optional(),
+  /** Set once the trainer has seen and accepted the prerequisite warnings. */
+  acknowledgeWarnings: z.boolean().default(false),
+})
+
+export const signoffSchema = z.object({
+  moduleId: moduleIdSchema,
+  awardedAt: awardedAtSchema,
+  note: z.string().trim().max(500).nullable().optional(),
+})
+
+export const externalRecordSchema = z.object({
+  moduleId: moduleIdSchema,
+  awardedAt: awardedAtSchema,
+  /** The certificate's own expiry — always wins over module config. */
+  expiresAt: isoDateSchema.nullable().optional(),
+  externalRef: z.string().trim().min(1, 'Record what the certificate is').max(200),
+})
+
+export const revokeSchema = z.object({
+  // Mandatory: a revocation without a reason is indistinguishable from a
+  // mistake, and the reason is what makes history reviewable (ADR-0008).
+  reason: z.string().trim().min(3, 'Give a reason — it stays in the record').max(500),
+})
+
+export const attendeeLookupSchema = z.object({
+  email: z.string().trim().toLowerCase().email(),
+  name: z.string().trim().min(1).max(120).optional(),
+})
+
+export type SessionInputPayload = z.infer<typeof sessionInputSchema>

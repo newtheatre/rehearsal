@@ -57,6 +57,16 @@ g.sendRedirect = (event: FakeEvent, url: string, status = 302) => {
 }
 g.$fetch = vi.fn()
 
+/** Runtime config fake — dev-shaped: no auth service token, no Resend key. */
+export const runtimeConfig = {
+  session: { name: 'nnt-session', password: '', maxAge: 0 },
+  authServiceToken: '',
+  resendApiKey: '',
+  resendFromEmail: 'training@newtheatre.org.uk',
+  public: { baseURL: 'http://localhost:3000', authBaseURL: 'https://auth.newtheatre.org.uk' },
+}
+g.useRuntimeConfig = () => runtimeConfig
+
 // ── Session store fake (nuxt-auth-utils) ────────────────────────────────────
 
 const sessions = new WeakMap<object, Record<string, unknown>>()

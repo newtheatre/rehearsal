@@ -1,0 +1,55 @@
+/**
+ * POST /api/_hooks/auth/last-activity — feeds the auth service's inactivity
+ * sweep (docs/gdpr-retention.md).
+ *
+ * "Activity" here is anything that shows the person is still involved in
+ * training: a record awarded to them, a session they attended, or one they
+ * delivered. Answering conservatively matters — a low answer gets an active
+ * member swept towards erasure.
+ */
+
+import { db, schema } from '@nuxthub/db'
+import { inArray, eq } from 'drizzle-orm'
+import { z } from 'zod'
+import { requireHookAuth, chunk } from '../../../utils/hookAuth'
+
+const bodySchema = z.object({ userIds: z.array(z.string().min(1)).max(500) })
+
+/** `awarded_at` is an ISO date; the contract wants epoch ms. */
+function isoDateToEpoch(date: string): number {
+  return Date.parse(`${date}T00:00:00Z`)
+}
+
+export default defineEventHandler(async (event) => {
+  requireHookAuth(event)
+  const { userIds } = await readValidatedBody(event, bodySchema.parse)
+
+  const latest = new Map<string, number | null>()
+  const note = (userId: string, at: number | null) => {
+    if (at === null) return
+    const current = latest.get(userId)
+    if (current === undefined || current === null || at > current) latest.set(userId, at)
+  }
+
+  // D1 caps bound parameters at 100 — chunk regardless of the caller's batch
+  // size (hookAuth.ts). This is the endpoint that gets a big list.
+  for (const batch of chunk(userIds)) {
+    const [records, attended, delivered] = await Promise.all([
+      db.select({ userId: schema.records.userId, awardedAt: schema.records.awardedAt })
+        .from(schema.records).where(inArray(schema.records.userId, batch)).all(),
+      db.select({ userId: schema.sessionAttendees.userId, heldOn: schema.sessions.heldOn })
+        .from(schema.sessionAttendees)
+        .innerJoin(schema.sessions, eq(schema.sessionAttendees.sessionId, schema.sessions.id))
+        .where(inArray(schema.sessionAttendees.userId, batch)).all(),
+      db.select({ userId: schema.sessions.trainerUserId, heldOn: schema.sessions.heldOn })
+        .from(schema.sessions)
+        .where(inArray(schema.sessions.trainerUserId, batch)).all(),
+    ])
+
+    for (const row of records) note(row.userId, isoDateToEpoch(row.awardedAt))
+    for (const row of attended) note(row.userId, isoDateToEpoch(row.heldOn))
+    for (const row of delivered) note(row.userId, isoDateToEpoch(row.heldOn))
+  }
+
+  return Object.fromEntries(userIds.map(id => [id, latest.get(id) ?? null]))
+})

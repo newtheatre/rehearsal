@@ -4,10 +4,8 @@ const { data: me } = useMe()
 const config = useRuntimeConfig()
 
 /**
- * Logout is a same-site form POST to the auth service's redirecting route —
- * a cross-origin fetch would need CORS the service deliberately doesn't
- * have, while a form POST carries the cookie and bounces back
- * (stage-door docs/integrating-an-app.md §2).
+ * A same-site form POST, not a fetch: the auth service deliberately has no
+ * CORS, and a form POST carries the cookie and bounces back.
  */
 function logout() {
   if (import.meta.dev) {

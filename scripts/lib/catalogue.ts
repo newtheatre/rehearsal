@@ -1,12 +1,6 @@
 /**
- * The catalogue parser — turns the backstage subcommittee's spreadsheet into
- * catalogue rows (docs/migration.md §1).
- *
- * The same parser backs the dev seed and the production catalogue import, so
- * fixture drift is impossible.
- *
- * **Unparseable cells are hard failures naming the cell.** A silently skipped
- * row in a safety catalogue is a module nobody notices is missing.
+ * The catalogue parser, shared by the dev seed and the production import.
+ * Unparseable cells are hard failures naming the cell.
  */
 
 export interface ParsedModule {
@@ -115,11 +109,8 @@ interface ExpiryResult {
 }
 
 /**
- * Map the spreadsheet's "Proposed Expiry" column onto config.
- *
- * "External cert date" maps to NONE: the module itself imposes no expiry
- * because each EXTERNAL record carries the certificate's own date, typed in
- * at recording time and always winning (docs/records-and-expiry.md).
+ * "External cert date" maps to NONE: the module imposes no expiry because
+ * each EXTERNAL record carries the certificate's own date.
  */
 export function parseExpiry(raw: string): ExpiryResult | null {
   const value = raw.trim()
@@ -148,20 +139,14 @@ export function parseExpiry(raw: string): ExpiryResult | null {
   return null
 }
 
-// `TECH-111` (DEPT-LCT) or `LD-CERT`. Certification prefixes are the
-// subcommittee's own shorthand (LD, SND, AV, SM, LEAD) and deliberately do
-// NOT have to match a department code — a certification names its department
-// in its own column instead.
+// Certification prefixes are the subcommittee's shorthand and deliberately
+// need not match a department code — the column names the department.
 const MODULE_ID = /^[A-Z]{2,4}-([0-9]{3}|CERT)$/
 const REQUIRED_COLUMNS = ['Department', 'ID', 'Name']
 
 /**
- * Parse the catalogue CSV. `source` is used only in error messages.
- *
- * Recognised columns (case-insensitive, order-independent; unknown columns
- * are ignored so the subcommittee can keep their working columns):
- *   Department · ID · Name · Description · Prerequisites · Old Module(s)
- *   Proposed Expiry · Materials Link · Notes · Status · Safety Critical · Grants
+ * Parse the catalogue CSV; `source` is used only in error messages.
+ * Recognised columns: docs/migration.md §1
  */
 export function parseCatalogue(text: string, source = 'catalogue.csv'): ParsedModule[] {
   const rows = parseCsv(text).filter(row => row.some(cell => cell.trim() !== ''))
@@ -205,9 +190,8 @@ export function parseCatalogue(text: string, source = 'catalogue.csv'): ParsedMo
     if (department === '') {
       throw new CatalogueParseError(source, line, id, 'Department', 'is empty')
     }
-    // Ordinary modules carry their department in the id (DEPT-LCT), so a
-    // mismatch is a typo worth catching. Certifications don't (LD-CERT sits
-    // in TECH), so their department is taken from the column as given.
+    // An ordinary module's id carries its department, so a mismatch is a typo.
+    // Certifications take theirs from the column as given.
     if (!isCertification && !id.startsWith(`${department}-`)) {
       throw new CatalogueParseError(source, line, id, 'Department', `"${department}" does not match the id prefix`)
     }

@@ -1,8 +1,6 @@
 /**
- * Reading the audit log.
- *
- * Read-only by construction — the interesting assertions are that it filters
- * and pages correctly, and that it never becomes a way to change anything.
+ * Reading the audit log: that it filters and pages correctly, and never
+ * becomes a way to change anything.
  */
 
 import { describe, it, expect } from 'vitest'

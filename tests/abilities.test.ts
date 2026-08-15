@@ -1,7 +1,6 @@
 /**
- * The ability layer: the three sources of authority and, in particular, that
- * trainer standing is derived from a record rather than stored anywhere
- * (ADR-0004).
+ * The ability layer, and in particular that trainer standing is derived from
+ * a record rather than stored (ADR-0004).
  */
 
 import { describe, it, expect } from 'vitest'

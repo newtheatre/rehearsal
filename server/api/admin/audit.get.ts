@@ -1,13 +1,5 @@
 /**
  * GET /api/admin/audit — the audit trail.
- *
- * The runbook tells the ITM to review a month of this at handover and after
- * any suspected token leak; until now that meant opening wrangler. Read-only:
- * the table is append-only and nothing here writes to it.
- *
- * Actor ids are resolved to names where the person is still mirrored. A null
- * actor is the cron or an import, which is shown as such rather than blank —
- * "system" is a meaningful answer, "unknown" is not.
  */
 
 import { db, schema } from '@nuxthub/db'

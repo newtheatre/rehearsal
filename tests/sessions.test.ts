@@ -1,9 +1,6 @@
 /**
- * The session flow — Phase 2's acceptance criterion: "a logged session
- * produces correct records end-to-end".
- *
- * These run the real handlers, so trainer derivation, prerequisite gating
- * and the atomic batch are all exercised as deployed.
+ * The session flow, run through the real handlers — trainer derivation,
+ * prerequisite gating and the atomic batch as deployed.
  */
 
 import { describe, it, expect } from 'vitest'

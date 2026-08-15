@@ -1,11 +1,6 @@
 /**
- * Dev-only seed: the module catalogue plus a handful of users covering every
- * ability (docs/development.md#seeds). Refuses to run in production or
- * against a remote database.
- *
- * There are no credentials to print: this app has no passwords, ever. Sign
- * in locally through /dev-login (see below) — the seeded users share their
- * ids with the ones that route creates.
+ * Dev-only seed: the catalogue plus users covering every ability. There are
+ * no credentials to print — sign in through /dev-login.
  */
 
 import { join } from 'node:path'
@@ -24,9 +19,8 @@ const csvPath = join(import.meta.dirname, '../data/catalogue.csv')
 const { modules } = await seedCatalogue(csvPath, db)
 console.info(`Seeded ${modules.length} modules from ${csvPath}`)
 
-// Activate a slice of the catalogue so an ordinary member has something to
-// look at. The real status comes from the subcommittee's CSV; this is a dev
-// convenience and says so.
+// Activate a slice of the catalogue so an ordinary member sees something.
+// The real status comes from the subcommittee's CSV.
 const ACTIVATE_FOR_DEV = ['NNT-001', 'NNT-002', 'NNT-003', 'SFTY-002', 'SFTY-021', 'TECH-111', 'TECH-112', 'TECH-211', 'ADMN-101', 'ADMN-103', 'LEAD-301', 'LEAD-CERT']
 for (const id of ACTIVATE_FOR_DEV) {
   await db.update(schema.modules).set({ status: 'ACTIVE' }).where(eq(schema.modules.id, id))

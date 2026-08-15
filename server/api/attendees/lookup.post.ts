@@ -1,9 +1,6 @@
 /**
  * POST /api/attendees/lookup — resolve an email to a canonical user id,
  * creating a shadow account through the auth service if needed.
- *
- * Trainer-gated: this is a write on the estate's identity store, not a
- * search. See server/utils/shadowUser.ts for why no id is ever minted here.
  */
 
 import { attendeeLookupSchema } from '../../utils/validation'

@@ -5,10 +5,8 @@ import { users } from './user'
 import { modules } from './catalogue'
 
 /**
- * Training sessions: the who-trained-whom audit trail. Completion records
- * derive from these (docs/architecture.md §key-flows). Editable by their
- * trainer/admin for site_config.session_edit_window_days; after that,
- * corrections are revoke + re-grant.
+ * Training sessions: the who-trained-whom audit trail. Editable by their
+ * trainer for site_config.session_edit_window_days, then revoke + re-grant.
  */
 export const sessions = sqliteTable('sessions', {
   id: text('id').primaryKey().$defaultFn(() => nanoid()),
@@ -42,16 +40,8 @@ export const sessionAttendees = sqliteTable('session_attendees', {
 ])
 
 /**
- * A record says: this person completed this module on this date, and here is
- * the evidence chain (docs/records-and-expiry.md).
- *
- * Append-only (ADR-0008): corrections are revocations plus new grants. No
- * handler, migration or script may hard-delete a row here.
- *
- * `expires_at` is stamped once at creation from the module's policy at that
- * moment (ADR-0002) and never recomputed implicitly. Validity state is
- * always derived from it at read time — there is deliberately no state
- * column (CLAUDE.md invariant 4).
+ * Append-only (ADR-0008); `expires_at` is stamped once at creation and never
+ * recomputed (ADR-0002). Validity is derived. docs/records-and-expiry.md
  */
 export const records = sqliteTable('records', {
   id: text('id').primaryKey().$defaultFn(() => nanoid()),

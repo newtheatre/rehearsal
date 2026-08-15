@@ -1,10 +1,5 @@
 /**
  * GET /api/v1/modules — the catalogue, for consumers.
- *
- * ACTIVE only by default. `status=all` exists for admin tooling and is
- * explicitly not for gating: a DRAFT module is unratified content, and a
- * consumer treating it as real would be acting on something the subcommittee
- * hasn't agreed yet.
  */
 
 import { db, schema } from '@nuxthub/db'

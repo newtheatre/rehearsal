@@ -1,12 +1,6 @@
 /**
- * Guards the catalogue-stewardship screens: department leads (for their own
- * departments) or admins (docs/permissions.md §pages).
- *
- * Lead authority is app data, not a session role, so unlike `admin.ts` this
- * has to ask the server — and unlike `admin.ts` it needs no staleness dance,
- * because nothing it checks rides in the cookie.
- *
- * Rendering-level only: every write re-checks stewardship server-side.
+ * Catalogue-stewardship screens: department leads or admins. Lead authority
+ * is app data, so this asks the server. Rendering-level only.
  */
 export default defineNuxtRouteMiddleware(async () => {
   const request = useRequestFetch()

@@ -1,10 +1,6 @@
 /**
- * Operator-tunable values that must not require a deploy
- * (docs/data-model.md §site_config).
- *
- * Reads fall back to the shared defaults when the row is absent, so a fresh
- * or partially-seeded database behaves identically to a configured one — a
- * missing config row must never change safety semantics.
+ * Operator-tunable values. Reads fall back to the shared defaults, so a
+ * missing config row can never change safety semantics.
  */
 
 import { db, schema } from '@nuxthub/db'

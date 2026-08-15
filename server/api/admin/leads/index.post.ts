@@ -1,10 +1,5 @@
 /**
  * POST /api/admin/leads — make someone a lead of a department.
- *
- * Lead standing is app data precisely so this is a row swap at handover
- * rather than nine role grants in the auth service (ADR-0005). It confers
- * real authority — signing off certifications, stewarding a catalogue,
- * seeing drafts — so it is admin-only and audit-logged.
  */
 
 import { db, schema } from '@nuxthub/db'

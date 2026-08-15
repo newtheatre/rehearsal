@@ -1,9 +1,5 @@
 /**
  * PUT /api/admin/config — change an operator-tunable value.
- *
- * Each key is validated for the shape it actually needs; a malformed
- * `academic_year_end` would silently move every future induction expiry, so
- * "it's just a config table" is not a reason to skip validation.
  */
 
 import { db, schema } from '@nuxthub/db'

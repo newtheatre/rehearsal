@@ -1,18 +1,8 @@
 import { runExpirySweep } from '../utils/expirySweep'
 
 /**
- * The daily expiry sweep (docs/operations.md#notifications).
- *
- * Runs at 06:00 UTC. Warns members whose training is entering the warning
- * window or falling inside the final fortnight, and on the 1st sends the
- * monthly digest to department leads and admins.
- *
- * Ships in dry-run mode: `site_config.notifications_mode` decides, and the
- * runbook says to put it back to dry-run after any change to expiry config
- * or the warning window.
- *
- * This task cannot change a record. It reads state, sends email, and writes
- * `notification_log` — nothing else (CLAUDE.md invariant 10).
+ * The daily expiry sweep, 06:00 UTC. Dry-run by default —
+ * `site_config.notifications_mode` is the switch. docs/operations.md
  */
 export default defineTask({
   meta: {

@@ -1,17 +1,6 @@
 /**
- * Recalculating stored expiries — the single retroactive path in the system
- * (ADR-0002).
- *
- * Normally `expires_at` is stamped once and never recomputed: a quiet config
- * edit must not silently strip or extend qualifications estate-wide. When the
- * committee genuinely does want a policy change applied to existing records,
- * this is how — previewed as a diff, confirmed by typing, and audit-logged.
- *
- * Two categories are deliberately never touched:
- *
- *   · EXTERNAL records, whose expiry came from the certificate itself. The SU
- *     does not reissue a first-aid certificate because we changed a dropdown.
- *   · Revoked records, which are history.
+ * The single retroactive path (ADR-0002): previewed as a diff, confirmed by
+ * typing, audit-logged. EXTERNAL and revoked records are never touched.
  */
 
 import { db, schema } from '@nuxthub/db'
@@ -37,11 +26,8 @@ export interface RecalculationPlan {
 }
 
 /**
- * Work out which current records would have a different expiry under each
- * module's present policy.
- *
- * Scoped to one module when given — the usual case is "I just changed
- * TECH-121 from never to 12 months", not a whole-catalogue sweep.
+ * Which current records would have a different expiry under each module's
+ * present policy. Scoped to one module when given.
  */
 export async function planRecalculation(
   { moduleId, academicYearEnd }: { moduleId?: string, academicYearEnd: string },
@@ -102,7 +88,9 @@ export async function planRecalculation(
   return { changes, unchanged, skippedExternal }
 }
 
-/** Apply a previously previewed plan. Returns how many rows moved. */
+/**
+ * Apply a previewed plan. Returns how many rows moved.
+ */
 export async function applyRecalculation(changes: ExpiryChange[]): Promise<number> {
   for (const change of changes) {
     await db.update(schema.records)

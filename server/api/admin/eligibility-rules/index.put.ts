@@ -1,13 +1,5 @@
 /**
  * PUT /api/admin/eligibility-rules — create or update a rule.
- *
- * Powerful and quiet: changing what `duty-manager` requires changes who may
- * claim a shift in another app, with no deploy anywhere. That is the point
- * (ADR-0006), and the mitigations are that every change is audit-logged and
- * the runbook says to tell the consuming app's owner.
- *
- * Keys are never renamed. A consumer hardcodes the key, so renaming one
- * breaks it with a 404 — create the new rule and retire the old one instead.
  */
 
 import { db, schema } from '@nuxthub/db'

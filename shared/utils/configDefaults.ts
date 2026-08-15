@@ -1,12 +1,6 @@
 /**
- * Defaults for the operator-tunable `site_config` values
- * (docs/data-model.md §site_config).
- *
- * Kept apart from the server-only accessor in `server/utils/siteConfig.ts` so
- * scripts and tests can read them without pulling in a database binding.
- *
- * A read falls back to these when the row is absent: a missing config row
- * must never change safety semantics.
+ * Defaults for site_config, kept apart from the server-only accessor so
+ * scripts and tests can read them without a database binding.
  */
 export const CONFIG_DEFAULTS = {
   warning_window_days: '60',

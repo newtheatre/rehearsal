@@ -1,8 +1,5 @@
 /**
  * GET /api/modules/:id — module detail with prerequisites and dependents.
- *
- * A draft the caller may not see is a 404, not a 403: the existence of an
- * unpublished module isn't theirs to know.
  */
 
 import { moduleIdSchema } from '../../utils/validation'

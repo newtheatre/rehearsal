@@ -22,13 +22,8 @@ const expiryFields = {
 }
 
 /**
- * `expiry_months` is required exactly when the mode is MONTHS — a module
- * configured MONTHS with no interval would stamp a nonsense expiry, and one
- * configured NONE with a leftover interval invites a misreading later.
- *
- * Written as a refinement function applied to each schema rather than a
- * wrapper helper: a helper taking `z.ZodType<T>` widens the schema and loses
- * Zod's inference, which quietly turns every parsed field optional.
+ * `expiry_months` is required exactly when the mode is MONTHS. A refinement
+ * rather than a wrapper: a wrapper widens the schema and loses inference.
  */
 function checkExpiry(
   value: { expiryMode?: string, expiryMonths?: number | null },
@@ -105,9 +100,8 @@ export const isoDateSchema = z.string().trim()
   }, 'Not a real date')
 
 /**
- * `awarded_at` is when the training happened, so it may be backdated but
- * never postdated — a record for training that has not occurred yet would be
- * valid in the eyes of every gate in the system.
+ * `awarded_at` may be backdated but never postdated — a record for training
+ * that has not happened would be valid to every gate in the system.
  */
 export const awardedAtSchema = isoDateSchema.refine(
   value => value <= new Date().toISOString().slice(0, 10),

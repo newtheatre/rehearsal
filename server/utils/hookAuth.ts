@@ -1,14 +1,6 @@
 /**
- * Auth for the hooks the central auth service calls
- * (stage-door docs/api-reference.md#app-hooks).
- *
- * The bearer is the SHA-256 of this app's own service token: the auth
- * service sends the hash it stores, we derive the same hash from our
- * NUXT_AUTH_SERVICE_TOKEN secret and compare constant-time. No plaintext
- * ever travels, and the hash can't be replayed inbound against the auth
- * service.
- *
- * Copied from rooms — change it there and re-copy.
+ * The bearer is the SHA-256 of this app's service token, compared
+ * constant-time. No plaintext travels.
  */
 
 import { createHash, timingSafeEqual } from 'node:crypto'
@@ -31,8 +23,7 @@ export function requireHookAuth(event: H3Event): void {
 
 /**
  * D1 caps bound parameters at 100 per statement — chunk any `in (…)` list
- * regardless of the caller's batch size. Ignoring this is what took
- * Proscenium down once.
+ * regardless of the caller's batch size.
  */
 export const D1_PARAM_CHUNK = 90
 

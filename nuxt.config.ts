@@ -10,12 +10,8 @@ export default defineNuxtConfig({
 
   $production: {
     runtimeConfig: {
-      // Estate SSO: this app READS the nnt-session cookie sealed by
-      // auth.newtheatre.org.uk and never writes it (stage-door
-      // docs/session-contract.md). The cookie domain is production-only —
-      // localhost has no subdomains, and a domain'd cookie breaks dev.
-      // name/password/maxAge repeat the base values: env overrides must be
-      // complete SessionConfig objects, they don't deep-merge in types.
+      // Production only — localhost has no subdomains. name/password/maxAge repeat
+      // the base values: env overrides must be complete SessionConfig objects.
       session: {
         name: 'nnt-session',
         password: '',
@@ -50,8 +46,8 @@ export default defineNuxtConfig({
       password: '',
       maxAge: 60 * 60 * 24 * 30, // 30 days
     },
-    // Server-to-server calls to the auth service (shadow users, Phase 2) and
-    // the inbound GDPR hook bearer. Worker secret AUTH_SERVICE_TOKEN.
+    // Worker secret NUXT_AUTH_SERVICE_TOKEN. The NUXT_ prefix is load-bearing —
+    // a secret named AUTH_SERVICE_TOKEN is silently ignored.
     authServiceToken: '',
     resendApiKey: '',
     resendFromEmail: 'training@newtheatre.org.uk',
@@ -70,19 +66,14 @@ export default defineNuxtConfig({
       tasks: true,
     },
     scheduledTasks: {
-      // Daily expiry sweep (docs/operations.md#notifications). Ships in
-      // dry-run mode — site_config.notifications_mode is the switch, not this.
-      //
-      // The name is derived from the FILE PATH (server/tasks/expiry-sweep.ts),
-      // not from the task's `meta.name`. Get it wrong and the cron fires into
-      // the void with no error anywhere.
+      // The task name comes from the FILE PATH, not `meta.name`. Get it wrong and
+      // the cron fires into the void with no error anywhere.
       '0 6 * * *': ['expiry-sweep'],
     },
     rollupConfig: {
       plugins: [
         // Resend imports @react-email/render, which doesn't bundle on Workers.
-        // Same stub workaround as Proscenium and stage-door. In place from the
-        // start so the Phase 3 notification work doesn't rediscover it.
+        // Same stub as Proscenium and stage-door.
         {
           name: 'stub-react-email',
           resolveId(id: string) {
@@ -100,24 +91,8 @@ export default defineNuxtConfig({
       wrangler: {
         name: 'rehearsal',
 
-        // ⚠️ The custom domain is intentionally NOT attached yet.
-        //
-        // `training.newtheatre.org.uk` still serves the legacy Heroku app.
-        // Attaching it here IS the Phase 5 cutover: the next build would
-        // repoint the domain the moment it finished, skipping the legacy
-        // import, the smoke test and the two-week grace period that
-        // docs/migration.md §4 exists to provide.
-        //
-        // Uncomment when cutting over, not before. The repo is `rehearsal`
-        // and the domain stays `training` because that is what it already
-        // means to members (ADR-0001) — same split as stage-door → auth.
-        //
-        // routes: [
-        //   {
-        //     pattern: 'training.newtheatre.org.uk',
-        //     custom_domain: true,
-        //   },
-        // ],
+        // ⚠️ Attaching the custom domain here IS the Phase 5 cutover — the next build
+        // would repoint it. See docs/migration.md §4 before uncommenting.
         d1_databases: [
           {
             binding: 'DB',
@@ -125,15 +100,8 @@ export default defineNuxtConfig({
             database_id: '5c8fa8bf-74b3-4e56-bb01-5c34f45fc600',
           },
         ],
-        // Estate-wide secrets live in the account Secrets Store so a rotation
-        // is one write rather than four worker secrets updated in lockstep
-        // (docs/operations.md#secrets). server/plugins/secrets-store.ts turns
-        // the binding into runtimeConfig.session.password — read its header
-        // before adding another entry here, the binding name matters.
-        //
-        // Cast: `secrets_store_secrets` is valid wrangler config but missing
-        // from the wrangler types Nitro 2.13 bundles. Drop it once Nitro
-        // catches up.
+        // Estate secrets come from the Secrets Store (stage-door ADR-0016); the
+        // binding name matters — read server/plugins/0.secrets-store.ts first.
         ...({
           secrets_store_secrets: [
             {

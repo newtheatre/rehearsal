@@ -1,14 +1,6 @@
 /**
- * Outgoing email: expiry warnings to members, monthly digests to leads and
- * admins.
- *
- * Dev mode (no `NUXT_RESEND_API_KEY`): emails are logged to the console
- * instead of sent — docs/development.md.
- *
- * The copy matters more than it looks. These emails tell someone their
- * training is lapsing, which for a student society is a nudge, not a
- * disciplinary notice — so they say what expired, when, and what to do, and
- * they never imply the person has done something wrong.
+ * Expiry warnings and monthly digests. Copy is a nudge, not a disciplinary
+ * notice — never imply the person has done something wrong.
  */
 
 import { getResend } from './resend'

@@ -1,10 +1,5 @@
 /**
  * GET /api/me/records — your own training, for the dashboard.
- *
- * Also answers "what's next": modules whose prerequisites you now meet and
- * which you don't already hold. That list is the one piece of gentle
- * encouragement the system offers, so it only ever suggests ACTIVE modules
- * a person could actually be trained in.
  */
 
 import { db, schema } from '@nuxthub/db'

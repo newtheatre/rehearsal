@@ -5,9 +5,8 @@ const toast = useToast()
 
 const { data: config, refresh: refreshConfig } = await useFetch('/api/admin/config')
 const previewDate = ref('')
-// Omit the parameter entirely when no date is chosen: sending `asOf=` fails
-// the endpoint's date validation, and a 400 here renders as a blank card
-// rather than an error anyone would notice.
+// Omit the parameter entirely when no date is chosen: `asOf=` fails date
+// validation, and the 400 renders as a blank card.
 const previewQuery = computed(() => previewDate.value ? { asOf: previewDate.value } : {})
 const {
   data: preview,

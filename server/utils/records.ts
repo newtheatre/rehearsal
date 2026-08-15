@@ -1,14 +1,6 @@
 /**
- * The record engine: creating records, and resolving which of a person's
- * records currently count.
- *
- * Everything that awards training goes through `buildRecordInserts` so that
- * expiry is stamped exactly once, from the module's policy at that moment
- * (ADR-0002). Nothing here recomputes an existing record's expiry, and
- * nothing here deletes a record (ADR-0008).
- *
- * Atomicity is `db.batch()`, never `db.transaction()` — D1 rejects BEGIN
- * (ADR-0009).
+ * The record engine. Expiry is stamped exactly once (ADR-0002); nothing here
+ * deletes a record (ADR-0008). Atomicity is db.batch() (ADR-0009).
  */
 
 import { db, schema } from '@nuxthub/db'
@@ -36,12 +28,8 @@ export interface RecordInsert {
 }
 
 /**
- * Build the rows for awarding `moduleIds` to `userIds` on `awardedAt`.
- *
- * Returns inserts rather than performing them: the caller batches these with
- * whatever else must land atomically (the session and its junction rows), and
- * ids are generated here so later statements in that batch can reference them
- * without reading anything back.
+ * Returns inserts rather than performing them, so the caller can batch them
+ * with the session rows. Ids are generated here for that reason.
  */
 export function buildRecordInserts(options: {
   users: string[]
@@ -80,11 +68,8 @@ export function buildRecordInserts(options: {
 }
 
 /**
- * The current record for each (user, module): the latest non-revoked row by
- * `awardedAt`, ties broken by `created_at`.
- *
- * Superseded rows stay in the table as history — re-training doesn't erase
- * the fact that the earlier session happened.
+ * The latest non-revoked row per (user, module). Superseded rows stay as
+ * history — re-training does not erase the earlier session.
  */
 function currentRecordIdsSql(userIds?: string[]) {
   const scope = userIds?.length

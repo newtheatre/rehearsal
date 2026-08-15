@@ -1,10 +1,6 @@
 /**
- * Local-database connection for the seed/import scripts, with the guards
- * that keep them away from anything real.
- *
- * Scripts talk to the same local SQLite file `nuxt db migrate` writes; they
- * never touch production D1 (that is `wrangler d1`, deliberately a different
- * tool with a different runbook — docs/operations.md).
+ * Local-database connection for the seed and import scripts. These never
+ * touch production D1 — that is `wrangler d1`, a different runbook.
  */
 
 import { existsSync } from 'node:fs'

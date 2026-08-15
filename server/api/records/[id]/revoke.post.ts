@@ -1,11 +1,5 @@
 /**
  * POST /api/records/:id/revoke — withdraw a record.
- *
- * The correction mechanism, and the only one: records are never deleted
- * (ADR-0008). A revoked record stops counting everywhere immediately, stays
- * visible in the person's history, and carries the reason that makes it
- * reviewable. Admin-only — a lead who believes a record is wrong asks the
- * TM or ITM, which keeps a second pair of eyes on withdrawing evidence.
  */
 
 import { db, schema } from '@nuxthub/db'

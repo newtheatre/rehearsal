@@ -1,9 +1,6 @@
 /**
- * The consumer read API: token auth, payload discipline, and eligibility.
- *
- * Phase 4's acceptance is that granting or revoking a required module flips a
- * person's eligibility — the rota's claim gating rests entirely on that, so
- * it is asserted directly against the endpoint.
+ * The consumer read API: token auth, payload discipline, and that granting or
+ * revoking a required module flips eligibility.
  */
 
 import { describe, it, expect } from 'vitest'

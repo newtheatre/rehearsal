@@ -1,9 +1,5 @@
 /**
  * GET /api/modules — the catalogue.
- *
- * Session-authenticated (global middleware). DRAFT modules appear only for
- * department leads and admins; the filter lives in listModules so no screen
- * can forget it.
  */
 
 import { moduleListQuerySchema } from '../../utils/validation'

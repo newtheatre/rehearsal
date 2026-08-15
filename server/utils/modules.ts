@@ -1,9 +1,6 @@
 /**
- * Catalogue reads, with draft visibility applied in one place.
- *
- * DRAFT modules are lead/admin-only (docs/permissions.md). That rule lives
- * here rather than in each handler so a new catalogue screen cannot leak
- * half-written safety content by forgetting a filter.
+ * Catalogue reads, with draft visibility applied in one place so a new screen
+ * cannot leak half-written safety content by forgetting a filter.
  */
 
 import { db, schema } from '@nuxthub/db'
@@ -21,9 +18,8 @@ export interface ModuleListFilters {
 }
 
 /**
- * The statuses this caller may see at all. Retired modules stay visible to
- * everyone — a member whose record points at one still needs to read what it
- * was — but they are never offerable.
+ * Retired modules stay visible to everyone — a member whose record points at
+ * one still needs to read it — but are never offerable.
  */
 function visibleStatusCondition(abilities: Abilities): SQL | undefined {
   return canSeeDrafts(abilities) ? undefined : ne(schema.modules.status, 'DRAFT')

@@ -1,9 +1,6 @@
 /**
- * Expiry stamping — computed ONCE, at record creation, from the module's
- * policy at that moment (ADR-0002). Nothing recomputes this implicitly;
- * changing a module's policy affects future awards only.
- *
- * docs/records-and-expiry.md §expiry-modes.
+ * Expiry stamping — computed ONCE, at record creation (ADR-0002). Changing a
+ * module's policy affects future awards only.
  */
 
 export interface ExpiryPolicy {
@@ -16,10 +13,8 @@ export interface ExpiryPolicy {
 export const ACADEMIC_YEAR_END = '09-30'
 
 /**
- * The next occurrence of the academic-year boundary strictly after
- * `awardedAt`. A fixed date, not a duration — which is why a mid-September
- * completion expires a fortnight later, and why the 1 October mass rollover
- * of inductions is emergent rather than special-cased.
+ * The next academic-year boundary strictly after `awardedAt`. A fixed date,
+ * not a duration, so the October mass rollover is emergent.
  */
 export function nextAcademicYearEnd(awardedAt: string, boundary: string = ACADEMIC_YEAR_END): string {
   const year = Number(awardedAt.slice(0, 4))
@@ -38,11 +33,8 @@ export function addMonths(isoDate: string, months: number): string {
 }
 
 /**
- * The `expires_at` to stamp on a new record, or null for "never expires".
- *
- * `externalExpiresAt` (an EXTERNAL record's own certificate date) always
- * wins over the module's configured policy — the SU's certificate knows its
- * own expiry better than our config does.
+ * An EXTERNAL record's own certificate date always wins over the module's
+ * configured policy.
  */
 export function computeExpiresAt(
   module: ExpiryPolicy,

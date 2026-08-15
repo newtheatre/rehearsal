@@ -1,9 +1,6 @@
 /**
- * The hooks the auth service calls: export, anonymise, last-activity, merge.
- *
- * The stance these encode is that training history outlives the person
- * (docs/gdpr-retention.md) — erasure removes the identity, not the record of
- * who was trained to do what.
+ * The hooks the auth service calls. Training history outlives the person:
+ * erasure removes the identity, not the record of who was trained.
  */
 
 import { describe, it, expect } from 'vitest'

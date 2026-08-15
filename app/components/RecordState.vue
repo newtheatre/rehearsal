@@ -1,12 +1,7 @@
 <script lang="ts" setup>
 /**
- * How a record's validity is shown, everywhere. One component so the
- * dashboard, the directory and a person's page can never disagree about what
- * "expiring" looks like.
- *
- * EXPIRING is deliberately amber-but-not-alarming: it still counts as held
- * (docs/records-and-expiry.md), and dressing it as a failure would tell
- * people their training has lapsed when it hasn't.
+ * How validity is shown, everywhere. EXPIRING is amber but not alarming: it
+ * still counts as held (docs/records-and-expiry.md).
  */
 const props = defineProps<{
   state: 'VALID' | 'EXPIRING' | 'EXPIRED' | null

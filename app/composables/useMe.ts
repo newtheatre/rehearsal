@@ -1,8 +1,6 @@
 /**
- * The caller's abilities, fetched once per page load and shared.
- *
- * For rendering only — hiding a button is a courtesy, not a permission check
- * (docs/permissions.md). The server re-checks everything.
+ * The caller's abilities, fetched once per page load. For rendering only —
+ * the server re-checks everything (docs/permissions.md).
  */
 export function useMe() {
   return useFetch('/api/me', {

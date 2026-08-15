@@ -2,10 +2,8 @@ import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core'
 import { nanoid } from 'nanoid'
 
 /**
- * Append-only. Every privileged mutation writes here (CLAUDE.md invariant 9):
- * sign-offs, revocations, module changes, lead changes, rule changes, token
- * issuance, imports, recalculations. Import batches put their batch id in
- * `detail` so a bad import can be bulk-revoked.
+ * Append-only; every privileged mutation writes here (CLAUDE.md invariant 9).
+ * Import batches carry their batch id so a bad import can be bulk-revoked.
  */
 export const auditLog = sqliteTable('audit_log', {
   id: text('id').primaryKey().$defaultFn(() => nanoid()),
@@ -21,9 +19,8 @@ export const auditLog = sqliteTable('audit_log', {
 ])
 
 /**
- * Idempotency ledger for the expiry cron (Phase 3): one row per
- * (record, type) actually sent, so re-running the sweep sends nothing new.
- * Operational metadata only — pruned after 24 months.
+ * Idempotency ledger for the expiry cron: one row per (record, type) sent, so
+ * a re-run sends nothing new. Pruned after 24 months.
  */
 export const notificationLog = sqliteTable('notification_log', {
   id: text('id').primaryKey().$defaultFn(() => nanoid()),

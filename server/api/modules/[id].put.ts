@@ -1,13 +1,5 @@
 /**
  * PUT /api/modules/:id — edit a catalogue entry (including status changes).
- *
- * Stewardship is checked against the module's CURRENT department and, if the
- * edit moves it, the target department too — otherwise a lead could walk a
- * module out of someone else's department or into their own.
- *
- * Note what this endpoint deliberately cannot do: change any existing
- * record's expiry. Editing a module's policy affects future awards only
- * (ADR-0002); the retroactive path is the explicit admin recalculation.
  */
 
 import { db, schema } from '@nuxthub/db'

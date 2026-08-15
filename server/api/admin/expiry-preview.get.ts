@@ -1,9 +1,5 @@
 /**
  * GET /api/admin/expiry-preview — what tonight's sweep would do.
- *
- * Sends nothing, logs nothing, changes nothing. This is the screen an
- * operator checks before flipping notifications to live, and the one they
- * come back to when a member asks why they got an email.
  */
 
 import { z } from 'zod'

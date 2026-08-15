@@ -1,16 +1,6 @@
 /**
- * Prerequisite evaluation.
- *
- * The same question — "does this person currently hold everything this module
- * requires?" — is asked in two places with two different consequences:
- *
- *   · certification sign-off  → HARD. Unmet means refused, server-side,
- *                               whatever the UI offered (CLAUDE.md invariant 5).
- *   · logging a session       → advisory. Trainers know why they are teaching
- *                               someone; the exception is safety-critical
- *                               modules, which block.
- *
- * Both count VALID and EXPIRING as held, per docs/records-and-expiry.md.
+ * Prerequisite evaluation. Hard at certification sign-off (invariant 5),
+ * advisory when logging a session except for safety-critical modules.
  */
 
 import { db, schema } from '@nuxthub/db'
@@ -40,14 +30,8 @@ export async function prerequisiteIdsOf(moduleId: string): Promise<string[]> {
 }
 
 /**
- * Evaluate one person against one module's prerequisites.
- *
- * Deliberately direct prerequisites only, not the transitive closure: the
- * catalogue already chains them (a certification requires the modules, which
- * require the induction), and checking transitively would refuse a sign-off
- * over a lapsed induction two levels down without saying anything useful
- * about the skill being certified. If the committee wants the deeper rule it
- * is a policy change with an ADR, not a quiet default.
+ * Direct prerequisites only, not the transitive closure — the catalogue
+ * already chains them. Deepening the rule is a policy change with an ADR.
  */
 export async function checkPrerequisites(
   userId: string,
@@ -83,13 +67,8 @@ export async function checkPrerequisites(
 }
 
 /**
- * Certifications whose constituent modules have since lapsed.
- *
- * The certification itself stays valid — it was genuinely earned, and v1
- * deliberately does not auto-suspend (docs/records-and-expiry.md §kinds;
- * roadmap R2 holds the committee decision). What it does is say so on the
- * person's page, so a lead can see that someone's Lighting Designer standing
- * rests on rigging training that ran out in March.
+ * A certification whose constituent modules have lapsed stays valid — v1 does
+ * not auto-suspend — but says so on the person's page.
  */
 export async function lapsedConstituents(
   userId: string,

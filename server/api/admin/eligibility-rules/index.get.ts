@@ -1,11 +1,11 @@
 /** GET /api/admin/eligibility-rules — the rules and what they currently require. */
 
 import { db, schema } from '@nuxthub/db'
-import { requireAdmin } from '../../../utils/auth'
+import { requirePermission } from '../../../utils/auth'
 import { parseRequires } from '../../../utils/eligibility'
 
 export default defineEventHandler(async (event) => {
-  await requireAdmin(event)
+  await requirePermission(event, 'config.manage')
 
   const rows = await db.select().from(schema.eligibilityRules).all()
 

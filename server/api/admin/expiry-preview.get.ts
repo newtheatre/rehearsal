@@ -3,7 +3,7 @@
  */
 
 import { z } from 'zod'
-import { requireAdmin } from '../../utils/auth'
+import { requirePermission } from '../../utils/auth'
 import { previewExpirySweep } from '../../utils/expirySweep'
 import { getConfig } from '../../utils/siteConfig'
 import { today } from '../../utils/validity'
@@ -14,7 +14,7 @@ const querySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  await requireAdmin(event)
+  await requirePermission(event, 'record.manage')
   const { asOf } = await getValidatedQuery(event, querySchema.parse)
 
   const [plan, mode] = await Promise.all([

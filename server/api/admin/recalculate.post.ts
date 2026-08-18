@@ -3,7 +3,7 @@
  */
 
 import { z } from 'zod'
-import { requireAdmin } from '../../utils/auth'
+import { requirePermission } from '../../utils/auth'
 import { getConfig } from '../../utils/siteConfig'
 import { applyRecalculation, planRecalculation } from '../../utils/recalculate'
 import { writeAudit } from '../../utils/audit'
@@ -16,7 +16,7 @@ const bodySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  const admin = await requireAdmin(event)
+  const admin = await requirePermission(event, 'record.manage')
   const { moduleId, confirmChangeCount } = await readValidatedBody(event, bodySchema.parse)
 
   const academicYearEnd = await getConfig('academic_year_end')

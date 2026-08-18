@@ -5,7 +5,7 @@
 import { db, schema } from '@nuxthub/db'
 import { and, desc, eq, inArray, like, lt, or, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
-import { requireAdmin } from '../../utils/auth'
+import { requirePermission } from '../../utils/auth'
 
 const querySchema = z.object({
   action: z.string().trim().max(60).optional(),
@@ -17,7 +17,7 @@ const querySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  await requireAdmin(event)
+  await requirePermission(event, 'config.manage')
   const { action, actor, q, before, limit } = await getValidatedQuery(event, querySchema.parse)
 
   const conditions: (SQL | undefined)[] = []

@@ -4,11 +4,11 @@
 
 import { db, schema } from '@nuxthub/db'
 import { eq } from 'drizzle-orm'
-import { requireAdmin } from '../../../utils/auth'
+import { requirePermission } from '../../../utils/auth'
 import { writeAudit } from '../../../utils/audit'
 
 export default defineEventHandler(async (event) => {
-  const admin = await requireAdmin(event)
+  const admin = await requirePermission(event, 'config.manage')
   const id = getRouterParam(event, 'id')
 
   const lead = id

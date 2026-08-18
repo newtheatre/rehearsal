@@ -5,11 +5,11 @@
 import { db, schema } from '@nuxthub/db'
 import { eq } from 'drizzle-orm'
 import { revokeSchema } from '../../../utils/validation'
-import { requireAdmin } from '../../../utils/auth'
+import { requirePermission } from '../../../utils/auth'
 import { writeAudit } from '../../../utils/audit'
 
 export default defineEventHandler(async (event) => {
-  const admin = await requireAdmin(event)
+  const admin = await requirePermission(event, 'record.manage')
   const id = getRouterParam(event, 'id')
   const input = await readValidatedBody(event, revokeSchema.parse)
 

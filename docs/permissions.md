@@ -18,6 +18,13 @@ Who may do what. Authentication is the auth service's; everything here is app-ow
 `GET /api/_hooks/auth/manifest` (stage-door ADR-0017). It is also the only place the string
 `training` appears: `ROLE_NAMESPACE` and the client admin middleware both read it from there.
 
+Server routes name the permission they need through `requirePermission(event, …)`. `training:ADMIN`
+carries all four, so nothing changed about who may do what, but the routes now say which question
+they are asking: editing site config, service tokens, eligibility rules and department leads is
+`config.manage`; revoking a record and the recalculate tooling is `record.manage`; the admin
+fallback in `requireDepartmentSteward` is `signoff.any`, which is exactly what "not this
+department's lead, so needs authority over all of them" means.
+
 **The other two sources of authority stay local and are not in the manifest.** Department leadership
 is a row in `department_leads`, so a handover is a row swap rather than nine grants. Trainer standing
 is derived from holding a current `grants_trainer` certification, so it lapses with the certification

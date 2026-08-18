@@ -6,6 +6,7 @@
 import { beforeEach, vi } from 'vitest'
 import { resetDb } from './mocks/nuxthub-db'
 import { hasRole, hasAnyRole, isStale, ROLE_STALENESS_MS } from '../shared/utils/nntAuth'
+import { APP_MANIFEST } from '../shared/utils/appManifest'
 import { ensureLocalUser, resetMirrorDebounce } from '../server/utils/ensureLocalUser'
 import { writeAudit } from '../server/utils/audit'
 
@@ -118,6 +119,7 @@ export function makeEvent(overrides: Partial<FakeEvent> = {}): FakeEvent {
 
 // ── Shared auto-imports (shared/utils + server/utils) ───────────────────────
 
+g.APP_MANIFEST = APP_MANIFEST
 g.hasRole = hasRole
 g.hasAnyRole = hasAnyRole
 g.isStale = isStale

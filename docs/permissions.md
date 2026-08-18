@@ -2,13 +2,27 @@
 
 Who may do what. Authentication is the auth service's; everything here is app-owned authorisation, evaluated server-side (the UI reflecting it is a courtesy, not the check).
 
+
 ## The three sources of authority
 
 1. **`training:ADMIN`** (auth-service scoped role — the only one this app uses): the **Theatre Manager** (overall training owner) and the **ITM** (operational). Granted in the auth admin UI; privileged surfaces enforce the estate's 15-minute role-staleness refresh per the session contract.
 2. **Department leads** (`department_leads` table): per-department authority — tech → CTD, workshop/set → CWM, stage management → CSM, costume/producing → TBC. Data, not roles ([ADR-0005](decisions/0005-department-leads-as-data.md)): reality varies by department and by year, and handover is a row swap.
 3. **Derived trainer standing**: a currently-valid record for a `grants_trainer` certification (LEAD-CERT), checked at request time, never cached ([ADR-0004](decisions/0004-trainer-standing-from-records.md)).
 
-> **Role namespace:** `training` (not `rehearsal`) — it matches the domain and the role was named in the plan before the repo was. Register it in the auth service's namespace table when the first grant is made.
+> **Role namespace:** `training` (not `rehearsal`) — it matches the domain and the role was named in the plan before the repo was. The auth service learns it from this app's manifest; there is nothing to register by hand.
+
+## The manifest, and what deliberately stays out of it
+
+`shared/utils/appManifest.ts` declares `training:ADMIN` and the four permissions it carries
+(`module.manage`, `record.manage`, `signoff.any`, `config.manage`) to the auth service, which polls
+`GET /api/_hooks/auth/manifest` (stage-door ADR-0017). It is also the only place the string
+`training` appears: `ROLE_NAMESPACE` and the client admin middleware both read it from there.
+
+**The other two sources of authority stay local and are not in the manifest.** Department leadership
+is a row in `department_leads`, so a handover is a row swap rather than nine grants. Trainer standing
+is derived from holding a current `grants_trainer` certification, so it lapses with the certification
+and no admin acts. Neither is a role, and putting either in the manifest would turn a training
+outcome into something someone has to remember to revoke.
 
 ## Ability matrix
 

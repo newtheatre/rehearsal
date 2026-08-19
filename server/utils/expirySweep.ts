@@ -17,6 +17,7 @@ import { renderDigest, renderDryRunReport, renderMemberWarning, sendEmail } from
 import { getConfig, getConfigNumber } from './siteConfig'
 import { today } from './validity'
 import { writeAudit } from './audit'
+import { chunk } from './d1'
 
 export interface SweepResult {
   asOf: string
@@ -133,16 +134,18 @@ export async function runExpirySweep({
       const { subject, html } = renderMemberWarning(warning)
       try {
         await sendEmail({ to: warning.email, subject, html })
-        // Logged only after a successful send: a failed email must be
-        // retried tomorrow, not marked done.
-        await db.insert(schema.notificationLog).values(
-          warning.records.map(record => ({
-            userId: warning.userId,
-            type: warning.type,
-            recordId: record.recordId,
-            moduleId: record.moduleId,
-          })),
-        )
+        // Logged only after a successful send, and chunked: six bound params
+        // a row, and an unlogged send repeats tomorrow (d1.ts).
+        for (const batch of chunk(warning.records, 15)) {
+          await db.insert(schema.notificationLog).values(
+            batch.map(record => ({
+              userId: warning.userId,
+              type: warning.type,
+              recordId: record.recordId,
+              moduleId: record.moduleId,
+            })),
+          )
+        }
         sent++
       }
       catch (error) {

@@ -61,27 +61,27 @@ export default defineEventHandler(async (event) => {
 
   // ── Unique-index collisions, dropped before the re-point ────────────────
 
-  const sharedSessions = await db.select({ sessionId: schema.sessionAttendees.sessionId })
-    .from(schema.sessionAttendees)
-    .where(eq(schema.sessionAttendees.userId, toUserId)).all()
+  // Scoped by subquery, not an id list: a winner's attendance history is
+  // unbounded and would blow D1's bound-parameter cap (d1.ts).
+  await db.delete(schema.sessionAttendees).where(and(
+    eq(schema.sessionAttendees.userId, fromUserId),
+    inArray(
+      schema.sessionAttendees.sessionId,
+      db.select({ sessionId: schema.sessionAttendees.sessionId })
+        .from(schema.sessionAttendees)
+        .where(eq(schema.sessionAttendees.userId, toUserId)),
+    ),
+  ))
 
-  if (sharedSessions.length > 0) {
-    await db.delete(schema.sessionAttendees).where(and(
-      eq(schema.sessionAttendees.userId, fromUserId),
-      inArray(schema.sessionAttendees.sessionId, sharedSessions.map(s => s.sessionId)),
-    ))
-  }
-
-  const sharedDepartments = await db.select({ department: schema.departmentLeads.department })
-    .from(schema.departmentLeads)
-    .where(eq(schema.departmentLeads.userId, toUserId)).all()
-
-  if (sharedDepartments.length > 0) {
-    await db.delete(schema.departmentLeads).where(and(
-      eq(schema.departmentLeads.userId, fromUserId),
-      inArray(schema.departmentLeads.department, sharedDepartments.map(d => d.department)),
-    ))
-  }
+  await db.delete(schema.departmentLeads).where(and(
+    eq(schema.departmentLeads.userId, fromUserId),
+    inArray(
+      schema.departmentLeads.department,
+      db.select({ department: schema.departmentLeads.department })
+        .from(schema.departmentLeads)
+        .where(eq(schema.departmentLeads.userId, toUserId)),
+    ),
+  ))
 
   // ── Re-point everything ─────────────────────────────────────────────────
 

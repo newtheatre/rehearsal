@@ -96,6 +96,16 @@ Per the estate hook pattern (stage-door docs/api-reference.md §app-hooks), auth
 | `POST /api/_hooks/auth/anonymise` | Rewrite mirror row to anonymised values. **Records survive**, keyed to the anonymised id — training/safety history is retained as anonymous rows, same stance as bookings ([gdpr-retention.md](gdpr-retention.md)). Idempotent. |
 | `POST /api/_hooks/auth/last-activity` | `{ userIds }` → latest of: last record awarded, last session attended/delivered, per user |
 | `POST /api/_hooks/auth/merge` | `{ fromUserId, toUserId, dryRun? }` → re-point every user-referencing column (records `user_id`/`granted_by`/`revoked_by`, session `trainer_user_id`/`created_by`, attendees, leads) onto `toUserId`, delete the losing mirror row, return `{ ok, notMirrored, counts }`. Idempotent (stage-door ADR-0015). |
+| `GET /api/_hooks/auth/manifest` | This app's declaration: namespace (`training`), the roles it reads, the permissions each carries, and **the eligibility rules it offers**. The auth service polls it and turns the roles into definitions, so adding a role here is what makes it grantable (stage-door ADR-0017). |
+
+`eligibilityRules` in the manifest is read from the `eligibility_rules` table, never written as a
+literal: a rule the auth service cannot see is a rule nobody can gate on. `tests/manifest.test.ts`
+holds that property.
+
+Permissions are lowercase and dotted (`record.manage`) where roles are uppercase (`ADMIN`), so the
+two can never be confused in one string. Only what the auth-service role grants appears here.
+Department leadership and trainer standing are app data, not roles, and stay out of the manifest
+([permissions.md](permissions.md)).
 
 ## Versioning
 

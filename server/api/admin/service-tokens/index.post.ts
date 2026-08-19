@@ -5,7 +5,7 @@
 import { db, schema } from '@nuxthub/db'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { requireAdmin } from '../../../utils/auth'
+import { requirePermission } from '../../../utils/auth'
 import { createServiceToken } from '../../../utils/serviceToken'
 import { writeAudit } from '../../../utils/audit'
 
@@ -15,7 +15,7 @@ const bodySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  const admin = await requireAdmin(event)
+  const admin = await requirePermission(event, 'config.manage')
   const { name } = await readValidatedBody(event, bodySchema.parse)
 
   const existing = await db.select({ id: schema.serviceTokens.id })

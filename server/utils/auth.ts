@@ -5,7 +5,8 @@
 
 import type { H3Event } from 'h3'
 import type { User } from '#auth-utils'
-import { ROLE_NAMESPACE, useAbilities, type Abilities } from './abilities'
+import { useAbilities, type Abilities } from './abilities'
+import { can, type Permission } from '../../shared/utils/permissions'
 
 /**
  * 401 if there is no valid estate session.
@@ -23,10 +24,10 @@ export async function requireAuth(event: H3Event): Promise<User> {
 }
 
 /**
- * Requires `training:ADMIN`. A session whose roles are over 15 minutes old
- * gets 401 with `stale: true`, which the client turns into a refresh.
+ * Requires a named permission from appManifest.ts. Staleness first, so a role
+ * over 15 minutes old refreshes rather than silently failing the check.
  */
-export async function requireAdmin(event: H3Event): Promise<User> {
+export async function requirePermission(event: H3Event, permission: Permission): Promise<User> {
   const session = await getUserSession(event)
 
   if (!session.user) {
@@ -41,7 +42,7 @@ export async function requireAdmin(event: H3Event): Promise<User> {
     })
   }
 
-  if (!hasRole(session.user, ROLE_NAMESPACE, 'ADMIN')) {
+  if (!can(session.user, permission)) {
     throw createError({
       statusCode: 403,
       statusMessage: 'Forbidden',
@@ -61,8 +62,8 @@ export async function requireDepartmentSteward(event: H3Event, department: strin
 
   if (abilities.leadOf.includes(department)) return abilities
 
-  // Not a lead here — fall back to the admin path, staleness check included.
-  await requireAdmin(event)
+  // Not a lead here — needs authority over every department instead.
+  await requirePermission(event, 'signoff.any')
   return abilities
 }
 
@@ -80,12 +81,4 @@ export async function requireTrainer(event: H3Event): Promise<Abilities> {
     statusMessage: 'Forbidden',
     message: 'Logging a session needs a current Trainer certification',
   })
-}
-
-/** Requires stewardship of at least one department (for list/create screens). */
-export async function requireAnySteward(event: H3Event): Promise<Abilities> {
-  const abilities = await useAbilities(event)
-  if (abilities.leadOf.length > 0) return abilities
-  await requireAdmin(event)
-  return abilities
 }

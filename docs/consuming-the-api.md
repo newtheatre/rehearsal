@@ -37,6 +37,7 @@ Wrap your usage behind a single function (the rota's `isDMEligible(userId)` is t
 | Consumer | Uses | Seam | Status |
 |---|---|---|---|
 | Proscenium (rota) | `GET /eligibility/duty-manager?userId=` (+ list form for UI badges) | `isDMEligible()` per its access/staffing design §3.3 | **not yet integrated** — the rota isn't built. A token can be issued the day it is. |
+| stage-door (conditional role grants) | `GET /eligibility/:key` (list form), once a day | Its `eligibility:snapshot` task | **Live.** A role grant there can be conditional on one of our rules; an unmet answer makes it inert estate-wide (its ADR-0019, our [ADR-0010](decisions/0010-auth-service-holds-a-snapshot.md)). |
 
 Update this table when you integrate — and tell the ITM so rule changes reach you.
 

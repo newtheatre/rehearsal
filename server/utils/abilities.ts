@@ -8,8 +8,10 @@ import { and, eq } from 'drizzle-orm'
 import type { H3Event } from 'h3'
 import type { User } from '#auth-utils'
 import { heldRecordCondition } from './validity'
+import { APP_MANIFEST } from '../../shared/utils/appManifest'
 
-export const ROLE_NAMESPACE = 'training'
+/** Re-exported so server code has one import; the manifest owns the string. */
+export const ROLE_NAMESPACE = APP_MANIFEST.namespace
 
 export interface Abilities {
   user: User

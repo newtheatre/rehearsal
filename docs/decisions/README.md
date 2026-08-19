@@ -13,6 +13,7 @@ Why the system is the way it is. One decision per file, numbered, never edited a
 | [0007](0007-map-active-members-only.md) | Legacy migration maps active members only; the archive dump is the history | Accepted |
 | [0008](0008-records-revoked-never-deleted.md) | Records are revoked, never deleted | Accepted |
 | [0009](0009-atomic-writes-use-batch-not-transactions.md) | Multi-row writes are atomic via `db.batch()`, not transactions | Accepted |
+| [0010](0010-auth-service-holds-a-snapshot.md) | The auth service holds a long-lived snapshot of our answers | Accepted |
 
 ## Template
 

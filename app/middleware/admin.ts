@@ -29,7 +29,7 @@ export default defineNuxtRouteMiddleware((to) => {
     )
   }
 
-  if (!hasRole(user.value, 'training', 'ADMIN')) {
+  if (!hasRole(user.value, APP_MANIFEST.namespace, 'ADMIN')) {
     return navigateTo('/')
   }
 })

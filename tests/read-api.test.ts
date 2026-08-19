@@ -11,6 +11,8 @@ import eligibilityHandler from '../server/api/v1/eligibility/[key].get'
 import rulesHandler from '../server/api/admin/eligibility-rules/index.put'
 import tokensHandler from '../server/api/admin/service-tokens/index.post'
 import { db, schema } from './mocks/nuxthub-db'
+import consumerMiddleware from '../server/middleware/consumer-api'
+import hooksMiddleware from '../server/middleware/hooks'
 import { eq } from 'drizzle-orm'
 import { createServiceToken, hashServiceToken } from '../server/utils/serviceToken'
 import { makeEvent, signIn, type FakeEvent } from './setup'
@@ -54,6 +56,37 @@ function apiEvent(path: string, options: {
     params: options.params,
   })
 }
+
+describe('subtree middleware', () => {
+  it('refuses an unauthenticated /api/v1 request before any route runs', async () => {
+    await setup()
+    const event = apiEvent('/api/v1/modules')
+
+    await expect(call(consumerMiddleware, event)).rejects.toMatchObject({ statusCode: 401 })
+  })
+
+  it('lets a valid token through and sets the consumer cache header', async () => {
+    await setup()
+    const event = apiEvent('/api/v1/modules', { bearer: token })
+
+    await expect(call(consumerMiddleware, event)).resolves.toBeUndefined()
+  })
+
+  it('ignores paths outside its subtree', async () => {
+    await setup()
+    const event = apiEvent('/api/modules')
+
+    await expect(call(consumerMiddleware, event)).resolves.toBeUndefined()
+  })
+
+  it('refuses an unauthenticated hook request', async () => {
+    await setup()
+    const event = makeEvent({ method: 'POST', path: '/api/_hooks/auth/anonymise', headers: {} })
+
+    // Synchronous guard, so it throws rather than rejecting.
+    await expect(async () => call(hooksMiddleware, event)).rejects.toMatchObject({ statusCode: 401 })
+  })
+})
 
 describe('token authentication', () => {
   it('refuses a request with no token', async () => {

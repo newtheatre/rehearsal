@@ -29,11 +29,20 @@ export async function createServiceToken(name: string): Promise<{ id: string, to
 
 type ServiceTokenRow = typeof schema.serviceTokens.$inferSelect
 
+function hasScope(row: ServiceTokenRow, scope: string): boolean {
+  return row.scopes.split(',').map(s => s.trim()).includes(scope)
+}
+
 /**
  * Compared against each row in constant time; the table holds one per
  * consumer. Stamps `last_used_at`, which the runbook says to watch.
  */
 export async function requireServiceToken(event: H3Event, scope = 'read'): Promise<ServiceTokenRow> {
+  // Validated once per request: the subtree middleware has usually already
+  // done it, and the lookup reads every token row.
+  const cached = event.context.serviceToken as ServiceTokenRow | undefined
+  if (cached && hasScope(cached, scope)) return cached
+
   const authorization = getRequestHeader(event, 'authorization')
 
   if (authorization?.startsWith(`Bearer ${TOKEN_PREFIX}`)) {
@@ -45,7 +54,7 @@ export async function requireServiceToken(event: H3Event, scope = 'read'): Promi
       if (stored.length !== candidate.length) continue
       if (!timingSafeEqual(candidate, stored)) continue
 
-      if (!row.scopes.split(',').map(s => s.trim()).includes(scope)) {
+      if (!hasScope(row, scope)) {
         throw createError({ statusCode: 403, statusMessage: 'Token scope does not allow this' })
       }
 
@@ -53,6 +62,7 @@ export async function requireServiceToken(event: H3Event, scope = 'read'): Promi
         .set({ lastUsedAt: new Date() })
         .where(eq(schema.serviceTokens.id, row.id))
 
+      event.context.serviceToken = row
       return row
     }
   }

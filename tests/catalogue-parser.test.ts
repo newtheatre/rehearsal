@@ -7,6 +7,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseCatalogue, parseCsv, parseExpiry, CatalogueParseError } from '../scripts/lib/catalogue'
+import { buildCatalogueSql } from '../scripts/catalogue-sql'
 
 const header = 'Department,ID,Name,Description,Prerequisites,Old Module(s),Proposed Expiry,Materials Link,Safety Critical,Grants,Status,Notes'
 const csv = (...rows: string[]) => [header, ...rows].join('\n')
@@ -192,5 +193,28 @@ describe('the committed catalogue', () => {
     // the path to lighting, so it must not be quietly made here.
     const lighting = modules.find(m => m.id === 'TECH-111')!
     expect(lighting.prerequisites).not.toContain('SFTY-012')
+  })
+})
+
+describe('buildCatalogueSql', () => {
+  const modules = parseCatalogue(csv('TECH,TECH-111,Rigging,,,,Never,,yes,,ACTIVE,'))
+
+  it('never overwrites status, so an activation survives a regeneration', () => {
+    const sql = buildCatalogueSql(modules, 'catalogue.csv', 'abc123')
+
+    expect(sql).toContain('insert into modules')
+    // Content still syncs; only the operational field is left alone.
+    expect(sql).toContain('name = excluded.name')
+    expect(sql).not.toContain('status = excluded.status')
+  })
+
+  it('records the import, and can be applied twice without a second entry', () => {
+    const sql = buildCatalogueSql(modules, 'catalogue.csv', 'abc123')
+
+    expect(sql).toContain('insert into audit_log')
+    expect(sql).toContain('catalogue.import')
+    expect(sql).toContain('on conflict(id) do nothing')
+    // The id is the batch, so re-applying the same file is a no-op.
+    expect(sql).toContain('\'import-abc123\'')
   })
 })

@@ -6,8 +6,10 @@
 const PUBLIC_API = [
   /^\/api\/_auth\//, // nuxt-auth-utils session read
   /^\/api\/_nuxt_icon\//, // @nuxt/ui icon bundle
-  /^\/api\/_hooks\//, // GDPR hooks: carry their own service-token bearer auth
-  /^\/api\/v1\//, // consumer read API: service-token auth (Phase 4)
+  // These two carry their own credentials, enforced by the middleware beside
+  // this one rather than by each route remembering (hooks.ts, consumer-api.ts).
+  /^\/api\/_hooks\//,
+  /^\/api\/v1\//,
   /^\/api\/health$/,
 ]
 

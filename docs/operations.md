@@ -95,7 +95,7 @@ Department leads get their own departments; `training:ADMIN` holders get everyth
 
 ### Changing an expiry policy retroactively
 
-Editing a module's expiry affects future awards only ([ADR-0002](decisions/0002-expiry-stamped-at-award.md)). To apply it to existing records, use `/admin` → recalculation: it previews the exact diff (person, module, old date → new date), requires the change count to be echoed back before applying, and audit-logs every row it moved. It never touches `EXTERNAL` records — the issuing body's certificate date is not ours to rewrite — nor revoked or superseded ones.
+Editing a module's expiry affects future awards only ([ADR-0002](decisions/0002-expiry-stamped-at-award.md)). To apply it to existing records, use `/admin` → recalculation: it previews the exact diff (person, module, old date → new date), requires the change count to be echoed back before applying, and audit-logs every row it moved. The apply is a single atomic batch with its audit entry inside it, so a run either moves every row and is logged, or moves none. It never touches `EXTERNAL` records — the issuing body's certificate date is not ours to rewrite — nor revoked or superseded ones.
 
 ## Annual handover checklist (add to the Archivist runbook)
 

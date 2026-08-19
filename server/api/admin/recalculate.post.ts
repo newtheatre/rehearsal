@@ -6,7 +6,6 @@ import { z } from 'zod'
 import { requirePermission } from '../../utils/auth'
 import { getConfig } from '../../utils/siteConfig'
 import { applyRecalculation, planRecalculation } from '../../utils/recalculate'
-import { writeAudit } from '../../utils/audit'
 import { moduleIdSchema } from '../../utils/validation'
 
 const bodySchema = z.object({
@@ -33,14 +32,12 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const applied = await applyRecalculation(plan.changes)
-
-  await writeAudit({
+  const applied = await applyRecalculation(plan.changes, {
     actorUserId: admin.id,
     action: 'record.recalculate',
     target: moduleId ?? 'ALL',
     detail: {
-      applied,
+      applied: plan.changes.length,
       academicYearEnd,
       changes: plan.changes.map(c => ({
         recordId: c.recordId,

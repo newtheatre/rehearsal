@@ -10,6 +10,7 @@ import { db, schema } from './mocks/nuxthub-db'
 import { eq } from 'drizzle-orm'
 import { makeEvent, signIn, type FakeEvent } from './setup'
 import { seedDepartments, seedLead, seedModule, seedUser } from './helpers/fixtures'
+import { replacePrerequisites } from '../server/utils/moduleWrites'
 
 type Handler = (event: FakeEvent) => Promise<unknown>
 
@@ -274,6 +275,23 @@ describe('expiry consistency across a partial update', () => {
     signIn(event, { id: 'ctd' })
 
     await expect(call(updateModule, event)).rejects.toMatchObject({ statusCode: 400 })
+  })
+})
+
+describe('prerequisite writes are atomic', () => {
+  it('keeps the existing set when an insert fails', async () => {
+    await setup()
+    await seedModule('TECH-121', { name: 'Powered Tools' })
+    await seedModule('TECH-111', { name: 'Rigging' })
+    await replacePrerequisites('TECH-121', ['TECH-111'])
+
+    // Unknown id trips the foreign key; the delete must not survive it.
+    await expect(replacePrerequisites('TECH-121', ['NOPE-999', 'TECH-111']))
+      .rejects.toThrow()
+
+    const rows = await db.select().from(schema.modulePrerequisites)
+      .where(eq(schema.modulePrerequisites.moduleId, 'TECH-121')).all()
+    expect(rows.map(r => r.requiresModuleId)).toEqual(['TECH-111'])
   })
 })
 

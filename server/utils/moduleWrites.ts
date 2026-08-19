@@ -5,6 +5,7 @@
 
 import { db, schema } from '@nuxthub/db'
 import { eq, inArray } from 'drizzle-orm'
+import { runAtomic } from './batch'
 
 /** Every prerequisite must exist. Unknown ids are a 400, not a dangling FK. */
 export async function assertPrerequisitesExist(moduleId: string, prerequisites: string[]): Promise<void> {
@@ -60,12 +61,15 @@ export async function assertNoPrerequisiteCycle(moduleId: string, prerequisites:
 
 /** Replace a module's prerequisite set (an edit that removes one must remove it). */
 export async function replacePrerequisites(moduleId: string, prerequisites: string[]): Promise<void> {
-  await db.delete(schema.modulePrerequisites)
-    .where(eq(schema.modulePrerequisites.moduleId, moduleId))
-
-  for (const requiresModuleId of prerequisites) {
-    await db.insert(schema.modulePrerequisites).values({ moduleId, requiresModuleId })
-  }
+  // Atomic: a delete that lands without its inserts strips the module's
+  // sign-off gate silently (ADR-0009).
+  await runAtomic([
+    db.delete(schema.modulePrerequisites)
+      .where(eq(schema.modulePrerequisites.moduleId, moduleId)),
+    ...prerequisites.map(requiresModuleId =>
+      db.insert(schema.modulePrerequisites).values({ moduleId, requiresModuleId }),
+    ),
+  ])
 }
 
 /**

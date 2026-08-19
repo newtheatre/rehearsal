@@ -5,7 +5,7 @@
 import { db, schema } from '@nuxthub/db'
 import { eq } from 'drizzle-orm'
 import { sessionInputSchema } from '../../utils/validation'
-import { requireTrainer } from '../../utils/auth'
+import { requirePermission, requireTrainer } from '../../utils/auth'
 import { getConfig, getConfigNumber } from '../../utils/siteConfig'
 import { loadModules } from '../../utils/records'
 import { checkSessionPrerequisites, applySessionEdit, withinEditWindow } from '../../utils/sessions'
@@ -22,20 +22,28 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Session not found' })
   }
 
+  // Both admin fallbacks below are staleness-checked: editing someone else's
+  // session, or one past its window, amends records for another person.
   const isOwnSession = session.trainerUserId === abilities.user.id || session.createdBy === abilities.user.id
-  if (!abilities.isAdmin && !isOwnSession) {
-    throw createError({
-      statusCode: 403,
-      statusMessage: 'Only the trainer who logged this session can edit it',
-    })
+  if (!isOwnSession) {
+    if (!abilities.isAdmin) {
+      throw createError({
+        statusCode: 403,
+        statusMessage: 'Only the trainer who logged this session can edit it',
+      })
+    }
+    await requirePermission(event, 'record.manage')
   }
 
   const editWindowDays = await getConfigNumber('session_edit_window_days')
-  if (!abilities.isAdmin && !withinEditWindow(session, editWindowDays)) {
-    throw createError({
-      statusCode: 409,
-      statusMessage: `Sessions can only be edited for ${editWindowDays} days — correct the records individually instead`,
-    })
+  if (!withinEditWindow(session, editWindowDays)) {
+    if (!abilities.isAdmin) {
+      throw createError({
+        statusCode: 409,
+        statusMessage: `Sessions can only be edited for ${editWindowDays} days — correct the records individually instead`,
+      })
+    }
+    await requirePermission(event, 'record.manage')
   }
 
   const input = await readValidatedBody(event, sessionInputSchema.parse)

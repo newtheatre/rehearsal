@@ -9,8 +9,8 @@ import { requireDepartmentSteward } from '../../utils/auth'
 import { useAbilities } from '../../utils/abilities'
 import { presentModule } from '../../utils/modules'
 import { writeAudit } from '../../utils/audit'
+import { applyKindRules } from '../../utils/kindRules'
 import {
-  applyKindRules,
   assertDepartmentExists,
   assertIdMatchesDepartment,
   assertNoPrerequisiteCycle,

@@ -28,6 +28,34 @@ export interface RecordInsert {
 }
 
 /**
+ * Where a record may come from, by kind and status. Enforced here so every
+ * creation path is covered by construction, not by remembering (ADR-0003).
+ */
+function assertAwardable(modules: ModuleRow[], source: RecordSource): void {
+  // LEGACY is the historical import: it records what happened, including on
+  // modules since retired.
+  if (source !== 'LEGACY') {
+    const retired = modules.filter(m => m.status === 'RETIRED')
+    if (retired.length > 0) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: `Retired, so no longer awardable: ${retired.map(m => m.id).join(', ')}`,
+      })
+    }
+  }
+
+  if (source === 'SESSION') {
+    const certifications = modules.filter(m => m.signoffRequired)
+    if (certifications.length > 0) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: `${certifications.map(m => m.id).join(', ')} must be signed off, not logged in a session`,
+      })
+    }
+  }
+}
+
+/**
  * Returns inserts rather than performing them, so the caller can batch them
  * with the session rows. Ids are generated here for that reason.
  */
@@ -43,6 +71,8 @@ export function buildRecordInserts(options: {
   externalExpiresAt?: string | null
   academicYearEnd?: string
 }): RecordInsert[] {
+  assertAwardable(options.modules, options.source)
+
   const inserts: RecordInsert[] = []
 
   for (const userId of options.users) {

@@ -3,6 +3,8 @@
  * Unparseable cells are hard failures naming the cell.
  */
 
+import { applyKindRules } from '../../server/utils/kindRules'
+
 export interface ParsedModule {
   id: string
   department: string
@@ -238,11 +240,13 @@ export function parseCatalogue(text: string, source = 'catalogue.csv'): ParsedMo
     // own convention (ADR-0003), so there is nothing extra for them to fill in.
     const kind = isCertification ? 'CERTIFICATION' : expiry.isBrief ? 'BRIEF' : 'MODULE'
 
-    if (kind === 'BRIEF' && (grantsSupervisor || grantsTrainer)) {
-      throw new CatalogueParseError(source, line, id, 'Grants', 'briefs never confer standing')
+    // Only a certification confers standing: grants_trainer on an ordinary
+    // module would make every attendee a trainer (ADR-0004).
+    if (kind !== 'CERTIFICATION' && (grantsSupervisor || grantsTrainer)) {
+      throw new CatalogueParseError(source, line, id, 'Grants', 'only certifications confer standing')
     }
 
-    modules.push({
+    modules.push(applyKindRules({
       id,
       department,
       kind,
@@ -253,14 +257,13 @@ export function parseCatalogue(text: string, source = 'catalogue.csv'): ParsedMo
       expiryMode: expiry.expiryMode,
       expiryMonths: expiry.expiryMonths,
       safetyCritical,
-      signoffRequired: isCertification,
       grantsSupervisor,
       grantsTrainer,
       status: status as ParsedModule['status'],
       sort: modules.length,
       prerequisites: splitIds(cell(row, 'Prerequisites')).map(p => p.toUpperCase()),
       legacyCodes: splitIds(cell(row, 'Old Module(s)')),
-    })
+    }))
   })
 
   // Prerequisites must resolve within the catalogue — a dangling reference

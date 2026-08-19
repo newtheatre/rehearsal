@@ -289,6 +289,43 @@ describe('editing a session', () => {
     expect(records.every(r => r.revokedAt === null || r.revokeReason === 'Session edited')).toBe(true)
   })
 
+  it('refuses to introduce a certification through an edit', async () => {
+    await setup()
+    const id = await logSession()
+
+    const edit = makeEvent({
+      method: 'PUT',
+      path: `/api/sessions/${id}`,
+      params: { id },
+      body: { ...validSession, moduleIds: ['LEAD-CERT'] },
+    })
+    signIn(edit, { id: 'trainer' })
+
+    await expect(call(updateSessionHandler, edit)).rejects.toMatchObject({ statusCode: 400 })
+
+    // No LEAD-CERT record, so no trainer standing was conferred.
+    const granted = await db.select().from(schema.records)
+      .where(eq(schema.records.moduleId, 'LEAD-CERT')).all()
+    expect(granted.filter(r => r.sessionId === id)).toHaveLength(0)
+  })
+
+  it('refuses to introduce a retired module through an edit', async () => {
+    await setup()
+    const id = await logSession()
+    await db.update(schema.modules).set({ status: 'RETIRED' })
+      .where(eq(schema.modules.id, 'NNT-001'))
+
+    const edit = makeEvent({
+      method: 'PUT',
+      path: `/api/sessions/${id}`,
+      params: { id },
+      body: { ...validSession },
+    })
+    signIn(edit, { id: 'trainer' })
+
+    await expect(call(updateSessionHandler, edit)).rejects.toMatchObject({ statusCode: 400 })
+  })
+
   it('refuses a trainer editing someone else’s session', async () => {
     await setup()
     await seedUser('other-trainer', 'Other')

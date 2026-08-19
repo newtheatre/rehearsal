@@ -76,7 +76,7 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `GET /api/admin/leads` | admin | who leads what, grouped by department **including the empty ones** — "COST has no lead" is the useful answer at handover |
 | `POST /api/admin/leads` | admin | make someone a lead of a department; audit-logged ([ADR-0005](decisions/0005-department-leads-as-data.md)) |
 | `DELETE /api/admin/leads/:id` | admin | stand a lead down; audit-logged |
-| `GET /api/admin/audit` | admin | the audit trail, filtered and paged. Read-only — the table is append-only and nothing writes to it here. A null actor is the cron or an import and reads as "system" |
+| `GET /api/admin/audit` | admin | the audit trail, filtered and paged. Paging is a keyset cursor on `(before, beforeId)`, both taken from the last row of the previous page; `created_at` alone is not unique. Read-only — the table is append-only and nothing writes to it here. A null actor is the cron or an import and reads as "system" |
 | `GET /api/admin/eligibility-rules` | admin | rules and what they require; `requires` is `null` for a rule stored in an unparseable form |
 | `PUT /api/admin/eligibility-rules` | admin | create or update a rule; audit-logged with before and after |
 

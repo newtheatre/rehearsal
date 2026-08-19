@@ -101,6 +101,27 @@ describe('reading the audit log', () => {
     expect(result.actions).toEqual(['expiry.sweep', 'module.create', 'record.revoke', 'record.signoff'])
   })
 
+  it('does not drop entries written in the same millisecond', async () => {
+    await seedUser('tm', 'Theatre Manager')
+    // A merge hook and a revoke can land on the same tick; a bulk import
+    // certainly does.
+    const at = new Date(Date.now() - 5_000)
+    for (let i = 0; i < 4; i++) {
+      await db.insert(schema.auditLog).values({
+        actorUserId: 'tm', action: 'record.revoke', target: `rec-${i}`, detail: null, createdAt: at,
+      })
+    }
+
+    const first = await call(auditHandler, adminEvent({ limit: 2 })) as AuditResponse
+    const last = first.entries[1]!
+    const second = await call(auditHandler, adminEvent({
+      limit: 2, before: new Date(last.createdAt).getTime(), beforeId: last.id,
+    })) as AuditResponse
+
+    const ids = [...first.entries, ...second.entries].map(e => e.id)
+    expect(new Set(ids).size).toBe(4)
+  })
+
   it('pages without dropping or repeating an entry', async () => {
     await setup()
 
@@ -108,8 +129,11 @@ describe('reading the audit log', () => {
     expect(first.entries).toHaveLength(2)
     expect(first.hasMore).toBe(true)
 
-    const cursor = new Date(first.entries[1]!.createdAt).getTime()
-    const second = await call(auditHandler, adminEvent({ limit: 2, before: cursor })) as AuditResponse
+    const last = first.entries[1]!
+    const cursor = new Date(last.createdAt).getTime()
+    const second = await call(auditHandler, adminEvent({
+      limit: 2, before: cursor, beforeId: last.id,
+    })) as AuditResponse
 
     expect(second.entries).toHaveLength(2)
     expect(second.hasMore).toBe(false)

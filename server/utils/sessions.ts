@@ -5,17 +5,11 @@
 
 import { db, schema } from '@nuxthub/db'
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
-import type { BatchItem } from 'drizzle-orm/batch'
 import { nanoid } from 'nanoid'
 import { buildRecordInserts, loadModules } from './records'
 import type { ModuleRow } from './modules'
 import { checkPrerequisites, type PrerequisiteGap } from './prerequisites'
-
-/**
- * db.batch() wants a non-empty tuple, which Drizzle's builder types do not
- * narrow to — the cast lives here rather than at every call site.
- */
-type Batch = [BatchItem<'sqlite'>, ...BatchItem<'sqlite'>[]]
+import { runAtomic } from './batch'
 
 export type SessionRow = typeof schema.sessions.$inferSelect
 
@@ -94,7 +88,7 @@ export async function createSession(options: {
     academicYearEnd: options.academicYearEnd,
   })
 
-  await db.batch([
+  await runAtomic([
     db.insert(schema.sessions).values({
       id: sessionId,
       heldOn: input.heldOn,
@@ -110,7 +104,7 @@ export async function createSession(options: {
       db.insert(schema.sessionAttendees).values({ sessionId, userId }),
     ),
     ...records.map(record => db.insert(schema.records).values(record)),
-  ] as unknown as Batch)
+  ])
 
   return { sessionId, recordCount: records.length }
 }
@@ -145,7 +139,7 @@ export async function applySessionEdit(options: {
 
   const now = new Date()
 
-  await db.batch([
+  await runAtomic([
     db.update(schema.sessions).set({
       heldOn: input.heldOn,
       location: input.location ?? null,
@@ -173,7 +167,7 @@ export async function applySessionEdit(options: {
     ),
 
     ...records.map(record => db.insert(schema.records).values(record)),
-  ] as unknown as Batch)
+  ])
 
   return { revoked: existingRecords.length, created: records.length }
 }

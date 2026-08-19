@@ -7,6 +7,8 @@ import { db, schema } from '@nuxthub/db'
 import { and, eq, isNull } from 'drizzle-orm'
 import { computeExpiresAt } from './expiry'
 import { notSupersededCondition } from './validity'
+import { runAtomic } from './batch'
+import { auditStatement, type AuditEntry } from './audit'
 
 export interface ExpiryChange {
   recordId: string
@@ -83,13 +85,22 @@ export async function planRecalculation(
 }
 
 /**
- * Apply a previewed plan. Returns how many rows moved.
+ * Apply a previewed plan atomically, audit row included: a half-applied
+ * rewrite of stamped expiries must not be reachable (ADR-0002, ADR-0009).
  */
-export async function applyRecalculation(changes: ExpiryChange[]): Promise<number> {
-  for (const change of changes) {
-    await db.update(schema.records)
-      .set({ expiresAt: change.to })
-      .where(eq(schema.records.id, change.recordId))
+export async function applyRecalculation(changes: ExpiryChange[], audit: AuditEntry): Promise<number> {
+  if (changes.length === 0) {
+    await runAtomic([auditStatement(audit)])
+    return 0
   }
+
+  await runAtomic([
+    ...changes.map(change =>
+      db.update(schema.records)
+        .set({ expiresAt: change.to })
+        .where(eq(schema.records.id, change.recordId)),
+    ),
+    auditStatement(audit),
+  ])
   return changes.length
 }

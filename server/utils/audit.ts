@@ -5,16 +5,23 @@
 
 import { db, schema } from '@nuxthub/db'
 
-export async function writeAudit(entry: {
+export interface AuditEntry {
   actorUserId?: string | null // null = cron / import / system
   action: string // 'module.create', 'module.update', 'lead.add', …
   target: string // the id acted upon
   detail?: unknown // JSON-serialisable
-}): Promise<void> {
-  await db.insert(schema.auditLog).values({
+}
+
+/** The insert as a statement, for callers batching it with the mutation. */
+export function auditStatement(entry: AuditEntry) {
+  return db.insert(schema.auditLog).values({
     actorUserId: entry.actorUserId ?? null,
     action: entry.action,
     target: entry.target,
     detail: entry.detail === undefined ? null : JSON.stringify(entry.detail),
   })
+}
+
+export async function writeAudit(entry: AuditEntry): Promise<void> {
+  await auditStatement(entry)
 }

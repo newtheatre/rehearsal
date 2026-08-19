@@ -83,6 +83,8 @@ Issue: `/admin` → API tokens → New (name = consumer app). Plaintext `nnt_trn
 
 Daily cron 06:00 UTC (`expiry:sweep`). `site_config.notifications_mode`: ships `dry-run` (report emailed to admins, nothing sent to members); flip to `live` at `/admin/notifications` after reviewing the preview, and back to dry-run after any change to expiry config or the warning window. Idempotent per (record, type) via `notification_log`; running twice sends nothing new. Monthly digests (leads: own dept; TM+ITM: all) go out on the 1st. **The digest's absence is itself an alert**, if it doesn't arrive, check the cron.
 
+Monthly digests go to department leads (their own department) and to training admins (everything). Admin scope comes from a cached flag with no revocation path, so it is honoured only while the person has used the system inside `site_config.admin_cache_days` (default 90). **After a committee handover, an outgoing officer stops receiving the unscoped digest once that window passes**, and sooner if you clear the flag by hand.
+
 Members get two warnings per record: one on entering the warning window (`warning_window_days`, default 60) and a final one 14 days out. Expired training is not emailed to the member, the warnings already went out, but it appears in the digest until it is renewed.
 
 **A dry run records nothing as sent.** That is deliberate: flipping to live afterwards still delivers everything the dry run described, rather than silently swallowing a round of warnings. The same applies to a failed send: nothing is logged, so the next morning retries it.

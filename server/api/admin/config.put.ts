@@ -14,6 +14,7 @@ const schemas = {
   academic_year_end: z.string().regex(/^\d{2}-\d{2}$/, 'Use MM-DD, e.g. 09-30'),
   session_edit_window_days: z.coerce.number().int().min(0).max(365).transform(String),
   notifications_mode: z.enum(['dry-run', 'live']),
+  admin_cache_days: z.coerce.number().int().min(1).max(3650).transform(String),
 } as const
 
 const bodySchema = z.object({

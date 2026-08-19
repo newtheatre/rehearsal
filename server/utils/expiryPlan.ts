@@ -3,7 +3,7 @@
  * dry-run output testable. It plans notifications and nothing else.
  */
 
-import { validityState } from './validity'
+import { addDays, validityState } from './validity'
 
 /**
  * A constant rather than config: the warning window is the operator's dial,
@@ -28,6 +28,8 @@ export interface SweepPerson {
   email: string
   name: string
   isTrainingAdmin: boolean
+  /** When the mirror last saw them; the admin flag is only as fresh as this. */
+  mirrorUpdatedAt: Date
 }
 
 export interface MemberWarning {
@@ -77,6 +79,8 @@ export interface SweepInputs {
   digestSentThisMonth: ReadonlySet<string>
   /** Digests go out on the 1st. */
   isDigestDay: boolean
+  /** How long the cached admin flag is trusted for. */
+  adminCacheDays: number
 }
 
 /** Whole days from `from` to `to`, both ISO dates. */
@@ -183,9 +187,13 @@ function planDigests(
   for (const [userId, departments] of departmentsByLead) {
     recipients.set(userId, departments)
   }
-  // Admins see everything, and win over a narrower lead scope if they are both.
+  // Admins see everything, and outrank a lead scope. The flag is a cache with
+  // no revocation path, so it is trusted only while recently refreshed.
+  const staleBefore = new Date(`${addDays(input.asOf, -input.adminCacheDays)}T00:00:00Z`)
   for (const person of input.people) {
-    if (person.isTrainingAdmin) recipients.set(person.id, null)
+    if (!person.isTrainingAdmin) continue
+    if (person.mirrorUpdatedAt < staleBefore) continue
+    recipients.set(person.id, null)
   }
 
   const digests: Digest[] = []

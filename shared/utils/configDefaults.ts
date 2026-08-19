@@ -7,6 +7,7 @@ export const CONFIG_DEFAULTS = {
   academic_year_end: '09-30',
   session_edit_window_days: '14',
   notifications_mode: 'dry-run',
+  admin_cache_days: '90',
 } as const
 
 export type ConfigKey = keyof typeof CONFIG_DEFAULTS

@@ -4,7 +4,7 @@
  */
 
 import { db, schema } from '@nuxthub/db'
-import { and, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, lt, or, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { buildRecordInserts, loadModules } from './records'
 import type { ModuleRow } from './modules'
@@ -179,18 +179,33 @@ export async function applySessionEdit(options: {
 }
 
 /** Sessions newest first, with their modules and attendee counts. */
-export async function listSessions({ limit = 50 }: { limit?: number } = {}) {
-  const sessions = await db.select({
+export async function listSessions(
+  { limit = 50, before }: { limit?: number, before?: { heldOn: string, id: string } } = {},
+) {
+  // Keyset on (held_on, id): held_on is a date, so many sessions share one.
+  const cursor = before
+    ? or(
+        lt(schema.sessions.heldOn, before.heldOn),
+        and(eq(schema.sessions.heldOn, before.heldOn), lt(schema.sessions.id, before.id)),
+      )
+    : undefined
+
+  const rows = await db.select({
     session: schema.sessions,
     trainerName: schema.users.name,
   })
     .from(schema.sessions)
     .innerJoin(schema.users, eq(schema.sessions.trainerUserId, schema.users.id))
-    .orderBy(desc(schema.sessions.heldOn), desc(schema.sessions.createdAt))
-    .limit(limit)
+    .where(cursor)
+    .orderBy(desc(schema.sessions.heldOn), desc(schema.sessions.id))
+    // One extra row says whether there is another page without counting.
+    .limit(limit + 1)
     .all()
 
-  if (sessions.length === 0) return []
+  const sessions = rows.slice(0, limit)
+  const hasMore = rows.length > limit
+
+  if (sessions.length === 0) return { sessions: [], hasMore: false }
 
   const ids = sessions.map(s => s.session.id)
   const [modules, attendees] = await Promise.all([
@@ -200,12 +215,15 @@ export async function listSessions({ limit = 50 }: { limit?: number } = {}) {
       .where(inArray(schema.sessionAttendees.sessionId, ids)).all(),
   ])
 
-  return sessions.map(({ session, trainerName }) => ({
-    ...session,
-    trainerName,
-    moduleIds: modules.filter(m => m.sessionId === session.id).map(m => m.moduleId),
-    attendeeCount: attendees.filter(a => a.sessionId === session.id).length,
-  }))
+  return {
+    sessions: sessions.map(({ session, trainerName }) => ({
+      ...session,
+      trainerName,
+      moduleIds: modules.filter(m => m.sessionId === session.id).map(m => m.moduleId),
+      attendeeCount: attendees.filter(a => a.sessionId === session.id).length,
+    })),
+    hasMore,
+  }
 }
 
 /** One session with everything needed to render or edit it. */

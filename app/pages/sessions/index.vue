@@ -2,9 +2,36 @@
 definePageMeta({ title: 'Sessions' })
 
 const { data: me } = useMe()
-const { data } = await useFetch('/api/sessions')
 
-const sessions = computed(() => data.value?.sessions ?? [])
+const { data } = await useFetch('/api/sessions')
+type SessionsPage = NonNullable<typeof data.value>
+
+// Accumulated, because the log is the who-trained-whom evidence trail: older
+// entries must stay reachable rather than falling off the end.
+const pages = ref<SessionsPage[]>([])
+watch(data, (value) => {
+  if (value) pages.value = [value]
+}, { immediate: true })
+
+const sessions = computed(() => pages.value.flatMap(page => page.sessions))
+const hasMore = computed(() => pages.value.at(-1)?.hasMore ?? false)
+const loadingMore = ref(false)
+
+async function loadMore() {
+  const last = sessions.value.at(-1)
+  if (!last) return
+
+  loadingMore.value = true
+  try {
+    const page = await $fetch('/api/sessions', {
+      query: { beforeHeldOn: last.heldOn, beforeId: last.id },
+    })
+    pages.value.push(page as SessionsPage)
+  }
+  finally {
+    loadingMore.value = false
+  }
+}
 </script>
 
 <template>
@@ -73,6 +100,19 @@ const sessions = computed(() => data.value?.sessions ?? [])
           />
         </div>
       </NuxtLink>
+    </div>
+
+    <div
+      v-if="hasMore"
+      class="flex justify-center"
+    >
+      <UButton
+        :loading="loadingMore"
+        variant="subtle"
+        color="neutral"
+        label="Load older sessions"
+        @click="loadMore"
+      />
     </div>
   </div>
 </template>

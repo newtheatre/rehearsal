@@ -9,7 +9,7 @@ const toast = useToast()
 const router = useRouter()
 
 const { data: catalogue } = await useFetch('/api/modules')
-const { data: directory, refresh: refreshDirectory } = await useFetch('/api/people')
+const { data: directory, refresh: refreshDirectory } = await useFetch('/api/directory')
 
 const todayIso = today()
 

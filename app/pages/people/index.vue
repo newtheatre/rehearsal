@@ -2,13 +2,37 @@
 definePageMeta({ title: 'People' })
 
 const search = ref('')
-const { data } = await useFetch('/api/people')
 
-const people = computed(() => {
-  const query = search.value.trim().toLowerCase()
-  const all = data.value?.people ?? []
-  return query ? all.filter(p => p.name.toLowerCase().includes(query)) : all
-})
+// Searching server-side: the directory is paged, so filtering the page in the
+// browser would only ever search the part of the membership already loaded.
+const query = computed(() => ({ ...(search.value.trim() ? { q: search.value.trim() } : {}) }))
+const { data } = await useFetch('/api/people', { query })
+type PeoplePage = NonNullable<typeof data.value>
+
+const pages = ref<PeoplePage[]>([])
+watch(data, (value) => {
+  if (value) pages.value = [value]
+}, { immediate: true })
+
+const people = computed(() => pages.value.flatMap(page => page.people))
+const hasMore = computed(() => pages.value.at(-1)?.hasMore ?? false)
+const loadingMore = ref(false)
+
+async function loadMore() {
+  const last = people.value.at(-1)
+  if (!last) return
+
+  loadingMore.value = true
+  try {
+    const page = await $fetch('/api/people', {
+      query: { ...query.value, afterName: last.name, afterId: last.id },
+    })
+    pages.value.push(page as PeoplePage)
+  }
+  finally {
+    loadingMore.value = false
+  }
+}
 </script>
 
 <template>
@@ -92,6 +116,19 @@ const people = computed(() => {
           />
         </div>
       </NuxtLink>
+    </div>
+
+    <div
+      v-if="hasMore"
+      class="flex justify-center"
+    >
+      <UButton
+        :loading="loadingMore"
+        variant="subtle"
+        color="neutral"
+        label="Load more people"
+        @click="loadMore"
+      />
     </div>
   </div>
 </template>

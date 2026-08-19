@@ -13,11 +13,11 @@ const lastUpserted = new Map<string, number>()
 const UPSERT_INTERVAL_MS = 60_000
 
 export async function ensureLocalUser(user: Pick<User, 'id' | 'email' | 'name'> & { roles?: string[] }): Promise<void> {
-  // Cheap per-isolate debounce — one upsert a minute per user is plenty.
+  // Cheap per-isolate debounce: one upsert a minute per user is plenty.
   const last = lastUpserted.get(user.id)
   if (last && Date.now() - last < UPSERT_INTERVAL_MS) return
 
-  // Derived cache for the expiry cron's digest fan-out only — the cron has no
+  // Derived cache for the expiry cron's digest fan-out only: the cron has no
   // session to read roles from. Never gate on it; see the schema comment.
   const isTrainingAdmin = hasRole({ roles: user.roles ?? [] }, ROLE_NAMESPACE, 'ADMIN')
 
@@ -34,7 +34,7 @@ export async function ensureLocalUser(user: Pick<User, 'id' | 'email' | 'name'> 
   lastUpserted.set(user.id, Date.now())
 }
 
-/** Test seam — the debounce is per-isolate state. */
+/** Test seam: the debounce is per-isolate state. */
 export function resetMirrorDebounce(): void {
   lastUpserted.clear()
 }

@@ -4,7 +4,7 @@ let client: Resend | null | undefined
 
 /**
  * Returns null rather than throwing when no key is set, so email degrades to
- * a console log. Same shape as stage-door's — change it there and re-copy.
+ * a console log. Same shape as stage-door's: change it there and re-copy.
  */
 export function getResend(): Resend | null {
   if (client !== undefined) return client

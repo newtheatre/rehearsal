@@ -14,7 +14,7 @@ useHead({ title: () => module.value ? `${module.value.id} ${module.value.name}` 
 const expiryDescription = computed(() => {
   if (!module.value) return ''
   if (module.value.kind === 'BRIEF') {
-    return 'Briefs are given before every get-in or get-out. They never expire and never gate anything — your page simply shows when you last had one.'
+    return 'Briefs are given before every get-in or get-out. They never expire and never gate anything: your page simply shows when you last had one.'
   }
   switch (module.value.expiryMode) {
     case 'ACADEMIC_YEAR':
@@ -84,7 +84,7 @@ const canEdit = computed(() =>
       color="warning"
       variant="subtle"
       title="Draft"
-      description="This module is not published — ordinary members can't see it."
+      description="This module is not published: ordinary members can't see it."
     />
 
     <UCard>

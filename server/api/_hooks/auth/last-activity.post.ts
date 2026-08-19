@@ -1,5 +1,5 @@
 /**
- * POST /api/_hooks/auth/last-activity — feeds the auth service's inactivity
+ * POST /api/_hooks/auth/last-activity: feeds the auth service's inactivity
  * sweep (docs/gdpr-retention.md).
  */
 

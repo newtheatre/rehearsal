@@ -1,5 +1,5 @@
 /**
- * GET /api/me — who the caller is and what they may do.
+ * GET /api/me: who the caller is and what they may do.
  */
 
 import { useAbilities } from '../utils/abilities'

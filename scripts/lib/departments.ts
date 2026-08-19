@@ -1,5 +1,5 @@
 /**
- * The nine departments — the DEPT half of the `DEPT-LCT` id scheme, so they
+ * The nine departments: the DEPT half of the `DEPT-LCT` id scheme, so they
  * live in code while the modules live in the CSV.
  */
 export const DEPARTMENTS = [

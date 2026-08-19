@@ -1,5 +1,5 @@
 /**
- * GET /api/me/records — your own training, for the dashboard.
+ * GET /api/me/records: your own training, for the dashboard.
  */
 
 import { db, schema } from '@nuxthub/db'

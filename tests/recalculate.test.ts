@@ -1,5 +1,5 @@
 /**
- * The expiry recalculation tool — the only retroactive path (ADR-0002).
+ * The expiry recalculation tool: the only retroactive path (ADR-0002).
  *
  * The interesting behaviour is everything it refuses to touch.
  */

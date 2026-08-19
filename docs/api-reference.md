@@ -1,21 +1,21 @@
 # API Reference
 
-Base URL: `https://training.newtheatre.org.uk/api/v1`. Read-only, JSON, server-to-server. Errors: `{ statusCode, statusMessage }` — no internal detail.
+Base URL: `https://training.newtheatre.org.uk/api/v1`. Read-only, JSON, server-to-server. Errors: `{ statusCode, statusMessage }`: no internal detail.
 
-**Auth:** `Authorization: Bearer nnt_trn_…` — per-consumer tokens ([operations.md](operations.md#service-tokens)), SHA-256-hashed at rest, constant-time compared, scope `read`. 401 missing/unknown token; 403 scope mismatch. `last_used_at` updated per request.
+**Auth:** `Authorization: Bearer nnt_trn_…`: per-consumer tokens ([operations.md](operations.md#service-tokens)), SHA-256-hashed at rest, constant-time compared, scope `read`. 401 missing/unknown token; 403 scope mismatch. `last_used_at` updated per request.
 
-**Caching:** every response `Cache-Control: private, max-age=300`. Consumers must treat answers as advisory-fresh (≤5 min stale) — see [consuming-the-api.md](consuming-the-api.md#freshness).
+**Caching:** every response `Cache-Control: private, max-age=300`. Consumers must treat answers as advisory-fresh (≤5 min stale): see [consuming-the-api.md](consuming-the-api.md#freshness).
 
 **Payload rule:** user ids and names only. **Never emails** (CLAUDE.md invariant 8). Consumers join on canonical ids against their own mirrors.
 
 ## Endpoints
 
-Paths in this section are relative to the base URL above — `GET /modules` is
+Paths in this section are relative to the base URL above: `GET /modules` is
 `GET /api/v1/modules`. The one exception is flagged where it appears.
 
 ### `GET /modules`
 
-Query: `status=ACTIVE` (default) | `all` (includes DRAFT/RETIRED — for admin tooling, not gating).
+Query: `status=ACTIVE` (default) | `all` (includes DRAFT/RETIRED, for admin tooling, not gating).
 
 → `[{ id, department, kind, name, expiry_mode, expiry_months, safety_critical, status }]`
 
@@ -25,7 +25,7 @@ Query: `status=ACTIVE` (default) | `all` (includes DRAFT/RETIRED — for admin t
 
 ### `GET /records?module=TECH-112&state=VALID`
 
-→ `{ module, users: [{ id, name, state, expiresAt }] }` — who currently holds X (find-a-supervisor, rota UI badges). `state` filter optional; default VALID+EXPIRING. 404 unknown module.
+→ `{ module, users: [{ id, name, state, expiresAt }] }`: who currently holds X (find-a-supervisor, rota UI badges). `state` filter optional; default VALID+EXPIRING. 404 unknown module.
 
 ### `GET /eligibility/:key?userId=<id>` <a name="eligibility"></a>
 
@@ -33,11 +33,11 @@ Query: `status=ACTIVE` (default) | `all` (includes DRAFT/RETIRED — for admin t
 
 ### `GET /eligibility/:key`
 
-→ `{ key, userIds: [...] }` — everyone currently eligible (list form, for pre-filtering UIs). 404 unknown key.
+→ `{ key, userIds: [...] }`: everyone currently eligible (list form, for pre-filtering UIs). 404 unknown key.
 
-**Rule evaluation:** `requires` JSON has `allOf` (every module must be VALID/EXPIRING) and `anyOf` (at least one, if the array is non-empty). A rule that cannot be parsed, or that requires nothing at all, is answered with **503** rather than treated as satisfied: a consumer authorises on these answers, so the direction of failure is towards leaving access alone. Rules are data, edited in `/admin`, audit-logged. **This system answers; consumers enforce** ([ADR-0006](decisions/0006-eligibility-rules-as-data.md)) — the rota's DM restriction lives in Proscenium behind its `isDMEligible()` seam, pointed at this endpoint.
+**Rule evaluation:** `requires` JSON has `allOf` (every module must be VALID/EXPIRING) and `anyOf` (at least one, if the array is non-empty). A rule that cannot be parsed, or that requires nothing at all, is answered with **503** rather than treated as satisfied: a consumer authorises on these answers, so the direction of failure is towards leaving access alone. Rules are data, edited in `/admin`, audit-logged. **This system answers; consumers enforce** ([ADR-0006](decisions/0006-eligibility-rules-as-data.md)): the rota's DM restriction lives in Proscenium behind its `isDMEligible()` seam, pointed at this endpoint.
 
-### `GET /api/health` — public, **not** under `/api/v1`
+### `GET /api/health`: public, **not** under `/api/v1`
 
 `{ ok: true, version }`.
 
@@ -73,16 +73,16 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `GET /api/admin/service-tokens` | admin | issued consumer tokens (never the tokens themselves) |
 | `POST /api/admin/service-tokens` | admin | issue one; the plaintext is in the response and nowhere else |
 | `DELETE /api/admin/service-tokens/:id` | admin | revoke; the consumer starts getting 401s immediately |
-| `GET /api/admin/leads` | admin | who leads what, grouped by department **including the empty ones** — "COST has no lead" is the useful answer at handover |
+| `GET /api/admin/leads` | admin | who leads what, grouped by department **including the empty ones**: "COST has no lead" is the useful answer at handover |
 | `POST /api/admin/leads` | admin | make someone a lead of a department; audit-logged ([ADR-0005](decisions/0005-department-leads-as-data.md)) |
 | `DELETE /api/admin/leads/:id` | admin | stand a lead down; audit-logged |
-| `GET /api/admin/audit` | admin | the audit trail, filtered and paged. Paging is a keyset cursor on `(before, beforeId)`, both taken from the last row of the previous page; `created_at` alone is not unique. Read-only — the table is append-only and nothing writes to it here. A null actor is the cron or an import and reads as "system" |
+| `GET /api/admin/audit` | admin | the audit trail, filtered and paged. Paging is a keyset cursor on `(before, beforeId)`, both taken from the last row of the previous page; `created_at` alone is not unique. Read-only: the table is append-only and nothing writes to it here. A null actor is the cron or an import and reads as "system" |
 | `GET /api/admin/eligibility-rules` | admin | rules and what they require; `requires` is `null` for a rule stored in an unparseable form |
 | `PUT /api/admin/eligibility-rules` | admin | create or update a rule; audit-logged with before and after |
 
 **Session-flow status codes.** `POST /api/sessions` answers `409` when attendees are missing
 ordinary prerequisites (retry with `acknowledgeWarnings: true`), and `422` when they are
-missing prerequisites for a **safety-critical** module — which no acknowledgement overrides.
+missing prerequisites for a **safety-critical** module, which no acknowledgement overrides.
 `POST /api/people/:id/signoff` answers `422` for any unmet prerequisite; certification
 sign-off has no override at all.
 
@@ -93,7 +93,7 @@ Per the estate hook pattern (stage-door docs/api-reference.md §app-hooks), auth
 | Hook | Behaviour here |
 |---|---|
 | `POST /api/_hooks/auth/export` | `{ userId }` → this app's personal data: mirror row, records (with modules/dates/sources), sessions attended/delivered |
-| `POST /api/_hooks/auth/anonymise` | Rewrite mirror row to anonymised values. **Records survive**, keyed to the anonymised id — training/safety history is retained as anonymous rows, same stance as bookings ([gdpr-retention.md](gdpr-retention.md)). Idempotent. |
+| `POST /api/_hooks/auth/anonymise` | Rewrite mirror row to anonymised values. **Records survive**, keyed to the anonymised id: training/safety history is retained as anonymous rows, same stance as bookings ([gdpr-retention.md](gdpr-retention.md)). Idempotent. |
 | `POST /api/_hooks/auth/last-activity` | `{ userIds }` → latest of: last record awarded, last session attended/delivered, per user |
 | `POST /api/_hooks/auth/merge` | `{ fromUserId, toUserId, dryRun? }` → re-point every user-referencing column (records `user_id`/`granted_by`/`revoked_by`, session `trainer_user_id`/`created_by`, attendees, leads) onto `toUserId`, delete the losing mirror row, return `{ ok, notMirrored, counts }`. Idempotent (stage-door ADR-0015). |
 | `GET /api/_hooks/auth/manifest` | This app's declaration: namespace (`training`), the roles it reads, the permissions each carries, and **the eligibility rules it offers**. The auth service polls it and turns the roles into definitions, so adding a role here is what makes it grantable (stage-door ADR-0017). |

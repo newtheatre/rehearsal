@@ -34,7 +34,7 @@ const sessions = computed(() => data.value?.sessions ?? [])
       variant="subtle"
       title="No sessions yet"
       :description="me?.isTrainer
-        ? 'Log the first one — records are created from it.'
+        ? 'Log the first one: records are created from it.'
         : 'Sessions logged by trainers appear here.'"
     />
 

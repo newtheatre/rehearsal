@@ -1,5 +1,5 @@
 /**
- * POST /api/admin/leads — make someone a lead of a department.
+ * POST /api/admin/leads: make someone a lead of a department.
  */
 
 import { db, schema } from '@nuxthub/db'
@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
     // has never opened the app rather than that they don't exist.
     throw createError({
       statusCode: 400,
-      statusMessage: 'That person has no record here yet — ask them to sign in once first',
+      statusMessage: 'That person has no record here yet: ask them to sign in once first',
     })
   }
 

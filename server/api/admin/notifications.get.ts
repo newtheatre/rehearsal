@@ -1,4 +1,4 @@
-/** GET /api/admin/notifications — what has actually been sent, newest first. */
+/** GET /api/admin/notifications: what has actually been sent, newest first. */
 
 import { db, schema } from '@nuxthub/db'
 import { desc, eq } from 'drizzle-orm'

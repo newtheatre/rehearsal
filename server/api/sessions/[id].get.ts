@@ -1,5 +1,5 @@
 /**
- * GET /api/sessions/:id — one session, with its modules, attendees and record
+ * GET /api/sessions/:id: one session, with its modules, attendees and record
  * count.
  */
 

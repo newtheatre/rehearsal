@@ -10,7 +10,7 @@ import { modules } from './catalogue'
  */
 export const sessions = sqliteTable('sessions', {
   id: text('id').primaryKey().$defaultFn(() => nanoid()),
-  heldOn: text('held_on').notNull(), // ISO date — when the training happened
+  heldOn: text('held_on').notNull(), // ISO date: when the training happened
   trainerUserId: text('trainer_user_id').notNull().references(() => users.id),
   location: text('location'),
   notes: text('notes'), // free text; in the anonymisation scrub list
@@ -48,7 +48,7 @@ export const records = sqliteTable('records', {
   userId: text('user_id').notNull().references(() => users.id),
   moduleId: text('module_id').notNull().references(() => modules.id),
 
-  awardedAt: text('awarded_at').notNull(), // ISO date — when training happened
+  awardedAt: text('awarded_at').notNull(), // ISO date: when training happened
   expiresAt: text('expires_at'), // ISO date; NULL = never expires
 
   source: text('source', { enum: ['SESSION', 'SIGNOFF', 'EXTERNAL', 'LEGACY', 'ADMIN'] }).notNull(),

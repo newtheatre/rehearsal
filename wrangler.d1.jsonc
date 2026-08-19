@@ -1,7 +1,7 @@
 // Standalone config for `wrangler d1 migrations` against the production
 // training DB (docs/operations.md#deployments). The build-generated config in
 // .output/server resolves its migrations_dir relative to itself and breaks
-// when invoked directly — this one points at the source migrations.
+// when invoked directly: this one points at the source migrations.
 //
 //   npx wrangler d1 migrations list training --remote -c wrangler.d1.jsonc
 //   npx wrangler d1 migrations apply training --remote -c wrangler.d1.jsonc

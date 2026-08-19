@@ -1,5 +1,5 @@
 /**
- * Every page needs a session — nothing here is public. Global, so a new page
+ * Every page needs a session: nothing here is public. Global, so a new page
  * is protected the moment it exists (docs/permissions.md §pages).
  */
 export default defineNuxtRouteMiddleware((to) => {

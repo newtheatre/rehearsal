@@ -3,7 +3,7 @@
 # weekly/ objects expire after 70 days, monthly/ after 400.
 #
 # Uses the same CLOUDFLARE_API_TOKEN repo secret as the auth service's backup
-# — the token needs D1:Edit and Workers R2 Storage:Edit.
+#, the token needs D1:Edit and Workers R2 Storage:Edit.
 #
 # These are personal data (docs/gdpr-retention.md): the retention ceiling for
 # erased records living on in backups is the 12 months the monthly cycle
@@ -12,7 +12,7 @@ name: Backup training DB
 
 on:
   schedule:
-    # Mondays 04:30 UTC — quiet, and after the auth service's 04:00 so the
+    # Mondays 04:30 UTC, quiet, and after the auth service's 04:00 so the
     # two aren't competing for the same API token's rate limit.
     - cron: '30 4 * * 1'
   workflow_dispatch:

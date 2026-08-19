@@ -1,13 +1,13 @@
 /**
- * Global API guard — protection is opt-OUT. Every /api/** request needs a
+ * Global API guard: protection is opt-OUT. Every /api/** request needs a
  * session except the allowlist. Also upserts the local user mirror.
  */
 
 const PUBLIC_API = [
   /^\/api\/_auth\//, // nuxt-auth-utils session read
   /^\/api\/_nuxt_icon\//, // @nuxt/ui icon bundle
-  /^\/api\/_hooks\//, // GDPR hooks — carry their own service-token bearer auth
-  /^\/api\/v1\//, // consumer read API — service-token auth (Phase 4)
+  /^\/api\/_hooks\//, // GDPR hooks: carry their own service-token bearer auth
+  /^\/api\/v1\//, // consumer read API: service-token auth (Phase 4)
   /^\/api\/health$/,
 ]
 

@@ -1,5 +1,5 @@
 /**
- * PUT /api/modules/:id — edit a catalogue entry (including status changes).
+ * PUT /api/modules/:id: edit a catalogue entry (including status changes).
  */
 
 import { db, schema } from '@nuxthub/db'
@@ -77,7 +77,7 @@ export default defineEventHandler(async (event) => {
     await replacePrerequisites(id, prerequisites)
   }
 
-  // Record what actually changed — a diff reads far better in the audit log
+  // Record what actually changed: a diff reads far better in the audit log
   // than a full row, especially for the status transitions people query for.
   const changed = Object.fromEntries(
     Object.entries(fields)

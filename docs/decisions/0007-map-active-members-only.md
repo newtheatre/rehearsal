@@ -12,10 +12,10 @@ A reviewed, one-off import for **active members only**: script proposes grants (
 
 ## Alternatives considered
 
-- **Full historical import** — lost: thousands of records for departed members, under a retired scheme, in a system whose directory shows people — maximum GDPR surface for near-zero operational value. The dump answers historical questions at zero runtime cost.
-- **Fresh start entirely** — lost narrowly: defensible, but forcing the handful of demonstrably-trained current members to re-certify wastes real trainer hours in year one, when trainer capacity is the bottleneck.
-- **Lazy per-person claiming** — lost: keeps a legacy lookup path alive indefinitely for a tail that never converges.
+- **Full historical import**, lost: thousands of records for departed members, under a retired scheme, in a system whose directory shows people, maximum GDPR surface for near-zero operational value. The dump answers historical questions at zero runtime cost.
+- **Fresh start entirely**, lost narrowly: defensible, but forcing the handful of demonstrably-trained current members to re-certify wastes real trainer hours in year one, when trainer capacity is the bottleneck.
+- **Lazy per-person claiming**, lost: keeps a legacy lookup path alive indefinitely for a tail that never converges.
 
 ## Consequences
 
-Good: the live system contains only people with a reason to be in it; year-one training effort goes to genuinely new people; history is preserved where history belongs (the archive). Bad: the review is human work for the leads (bounded: tens of rows); anyone missed re-trains or asks the Archivist to consult the dump — an acceptable, reversible cost.
+Good: the live system contains only people with a reason to be in it; year-one training effort goes to genuinely new people; history is preserved where history belongs (the archive). Bad: the review is human work for the leads (bounded: tens of rows); anyone missed re-trains or asks the Archivist to consult the dump: an acceptable, reversible cost.

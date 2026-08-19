@@ -1,5 +1,5 @@
 /**
- * GET /api/admin/expiry-preview — what tonight's sweep would do.
+ * GET /api/admin/expiry-preview: what tonight's sweep would do.
  */
 
 import { z } from 'zod'

@@ -18,8 +18,8 @@ export interface ModuleListFilters {
 }
 
 /**
- * Retired modules stay visible to everyone — a member whose record points at
- * one still needs to read it — but are never offerable.
+ * Retired modules stay visible to everyone: a member whose record points at
+ * one still needs to read it, but are never offerable.
  */
 function visibleStatusCondition(abilities: Abilities): SQL | undefined {
   return canSeeDrafts(abilities) ? undefined : ne(schema.modules.status, 'DRAFT')

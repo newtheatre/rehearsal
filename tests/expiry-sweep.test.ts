@@ -62,7 +62,7 @@ describe('gathering inputs', () => {
     expect(inputs.records[0]!.userId).toBe('alice')
   })
 
-  it('ignores a superseded record — the renewal is what counts', async () => {
+  it('ignores a superseded record, the renewal is what counts', async () => {
     await setup()
     await seedRecord({ userId: 'alice', moduleId: 'NNT-001', awardedAt: '2025-01-01', expiresAt: '2025-09-30' })
     await seedRecord({ userId: 'alice', moduleId: 'NNT-001', awardedAt: '2026-01-01', expiresAt: '2027-09-30' })
@@ -177,7 +177,7 @@ describe('live run', () => {
 
     await runExpirySweep({ asOf: ASOF, force: 'live' })
 
-    // One email, two records — so a change to one of them later is tracked
+    // One email, two records, so a change to one of them later is tracked
     // independently.
     expect(sent).toHaveLength(1)
     expect(await db.select().from(schema.notificationLog).all()).toHaveLength(2)

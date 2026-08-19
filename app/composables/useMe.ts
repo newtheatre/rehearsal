@@ -1,5 +1,5 @@
 /**
- * The caller's abilities, fetched once per page load. For rendering only —
+ * The caller's abilities, fetched once per page load. For rendering only:
  * the server re-checks everything (docs/permissions.md).
  */
 export function useMe() {

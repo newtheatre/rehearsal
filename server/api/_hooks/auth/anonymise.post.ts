@@ -1,5 +1,5 @@
 /**
- * POST /api/_hooks/auth/anonymise — GDPR erasure, this app's share (docs/gdpr-
+ * POST /api/_hooks/auth/anonymise: GDPR erasure, this app's share (docs/gdpr-
  * retention.md).
  */
 
@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
     .from(schema.users).where(eq(schema.users.id, userId)).get()
 
   if (!user) {
-    // Nothing mirrored here — an erasure of someone who never trained.
+    // Nothing mirrored here: an erasure of someone who never trained.
     return { ok: true, mirrored: false }
   }
 

@@ -1,4 +1,4 @@
-/** GET /api/sessions — the delivery log, newest first. Any member may read it. */
+/** GET /api/sessions: the delivery log, newest first. Any member may read it. */
 
 import { listSessions } from '../../utils/sessions'
 import { useAbilities } from '../../utils/abilities'

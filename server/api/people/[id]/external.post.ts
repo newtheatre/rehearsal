@@ -1,5 +1,5 @@
 /**
- * POST /api/people/:id/external — record an externally-awarded qualification.
+ * POST /api/people/:id/external: record an externally-awarded qualification.
  */
 
 import { db, schema } from '@nuxthub/db'

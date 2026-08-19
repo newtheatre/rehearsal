@@ -25,7 +25,7 @@ export const departmentLeads = sqliteTable('department_leads', {
 ])
 
 // Modules, certifications and briefs share one table (ADR-0003). The human id
-// IS the primary key — it is published and members quote it.
+// IS the primary key: it is published and members quote it.
 export const modules = sqliteTable('modules', {
   id: text('id').primaryKey().$defaultFn(() => nanoid()), // 'TECH-111', 'LD-CERT'
   department: text('department').notNull().references(() => departments.code),
@@ -33,10 +33,10 @@ export const modules = sqliteTable('modules', {
 
   name: text('name').notNull(),
   description: text('description'),
-  notes: text('notes'), // lead/admin visible only — subcommittee working notes
+  notes: text('notes'), // lead/admin visible only: subcommittee working notes
   materialsUrl: text('materials_url'), // Drive doc/presentation/folder
 
-  // Expiry policy — config, not code (docs/records-and-expiry.md). Read at
+  // Expiry policy: config, not code (docs/records-and-expiry.md). Read at
   // award time only: changing it never touches existing records (ADR-0002).
   expiryMode: text('expiry_mode', { enum: ['NONE', 'MONTHS', 'ACADEMIC_YEAR'] }).notNull().default('NONE'),
   expiryMonths: integer('expiry_months'), // required iff mode = MONTHS
@@ -44,7 +44,7 @@ export const modules = sqliteTable('modules', {
   safetyCritical: integer('safety_critical', { mode: 'boolean' }).notNull().default(false),
   signoffRequired: integer('signoff_required', { mode: 'boolean' }).notNull().default(false),
   // Cert consequences: supervisor standing (display), trainer standing
-  // (unlocks session logging — derived at request time, ADR-0004).
+  // (unlocks session logging, derived at request time, ADR-0004).
   grantsSupervisor: integer('grants_supervisor', { mode: 'boolean' }).notNull().default(false),
   grantsTrainer: integer('grants_trainer', { mode: 'boolean' }).notNull().default(false),
 

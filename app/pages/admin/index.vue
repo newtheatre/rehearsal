@@ -19,7 +19,7 @@ const sections = computed(() => [
   },
   {
     label: 'Notifications',
-    description: 'Expiry warnings and the monthly digest — mode, preview and what has been sent.',
+    description: 'Expiry warnings and the monthly digest: mode, preview and what has been sent.',
     icon: 'i-lucide-mail',
     to: '/admin/notifications',
     adminOnly: true,

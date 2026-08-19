@@ -97,7 +97,7 @@ describe('which warning fires', () => {
   })
 
   it('does not email members about training that has already expired', () => {
-    // Expired training belongs in the digest, not in a nag to the member —
+    // Expired training belongs in the digest, not in a nag to the member:
     // the warnings already went out before it lapsed.
     const plan = planExpirySweep(inputs({
       records: [record({ recordId: 'r1', expiresAt: '2020-09-30' })],
@@ -182,7 +182,7 @@ describe('monthly digests', () => {
     expect(admin.expired.map(r => r.recordId)).toEqual(['r2'])
   })
 
-  it('sends an empty digest anyway — its absence is the alert', () => {
+  it('sends an empty digest anyway, its absence is the alert', () => {
     const plan = planExpirySweep(inputs({ records: [], isDigestDay: true }))
 
     expect(plan.digests).toHaveLength(2) // the lead and the admin

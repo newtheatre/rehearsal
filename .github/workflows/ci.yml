@@ -1,4 +1,4 @@
-# Test + lint on every push and PR. Deployment is NOT here — Cloudflare's
+# Test + lint on every push and PR. Deployment is NOT here: Cloudflare's
 # Workers Builds git integration deploys main on its own.
 name: CI
 

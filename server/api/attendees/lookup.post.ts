@@ -1,5 +1,5 @@
 /**
- * POST /api/attendees/lookup — resolve an email to a canonical user id,
+ * POST /api/attendees/lookup: resolve an email to a canonical user id,
  * creating a shadow account through the auth service if needed.
  */
 

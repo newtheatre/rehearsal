@@ -1,6 +1,6 @@
 /**
  * Dev-only seed: the catalogue plus users covering every ability. There are
- * no credentials to print — sign in through /dev-login.
+ * no credentials to print: sign in through /dev-login.
  */
 
 import { join } from 'node:path'
@@ -53,7 +53,7 @@ await db.insert(schema.departmentLeads)
   .values({ department: 'TECH', userId: 'dev-lead-tech', grantedBy: 'dev-admin' })
   .onConflictDoNothing()
 
-// The trainer's standing is a RECORD, not a flag — that is the whole point
+// The trainer's standing is a RECORD, not a flag: that is the whole point
 // of ADR-0004, and seeding it any other way would misrepresent the system.
 const trainerCert = await db.select().from(schema.modules)
   .where(eq(schema.modules.grantsTrainer, true)).get()
@@ -75,12 +75,12 @@ if (trainerCert) {
       source: 'SIGNOFF',
       grantedBy: 'dev-admin',
     })
-    console.info(`Granted ${trainerCert.id} to dev-trainer (source SIGNOFF — the documented bootstrap path)`)
+    console.info(`Granted ${trainerCert.id} to dev-trainer (source SIGNOFF, the documented bootstrap path)`)
   }
 }
 
 console.info(`
-Seeded ${seedUsers.length} dev users. No passwords exist — sign in with:
+Seeded ${seedUsers.length} dev users. No passwords exist, sign in with:
 
   /dev-login              Dev Member    (ordinary member)
   /dev-login?trainer=1    Dev Trainer   (valid ${trainerCert?.id ?? 'trainer cert'})

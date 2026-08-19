@@ -46,7 +46,7 @@ export async function planRecalculation(
     .where(and(
       isNull(schema.records.revokedAt),
       moduleId ? eq(schema.records.moduleId, moduleId) : undefined,
-      // Current records only — rewriting a superseded row's expiry would
+      // Current records only: rewriting a superseded row's expiry would
       // change history that nothing reads.
       notSupersededCondition(),
     ))

@@ -331,7 +331,7 @@ async function submitRevoke() {
         </div>
       </template>
       <p class="text-sm text-muted mb-3">
-        Withdrawn records stay visible here — corrections are accountable, not silent.
+        Withdrawn records stay visible here: corrections are accountable, not silent.
       </p>
       <ul class="text-sm space-y-2">
         <li
@@ -339,7 +339,7 @@ async function submitRevoke() {
           :key="record.id"
         >
           <span class="font-medium">{{ record.moduleId }} {{ record.moduleName }}</span>
-          <span class="text-muted"> — awarded {{ formatDate(record.awardedAt) }}</span>
+          <span class="text-muted">: awarded {{ formatDate(record.awardedAt) }}</span>
           <p class="text-xs text-muted">
             {{ record.revokeReason }}
           </p>
@@ -458,7 +458,7 @@ async function submitRevoke() {
           </UFormField>
           <UFormField
             label="Certificate expires"
-            help="From the certificate itself — this wins over the module's own policy"
+            help="From the certificate itself: this wins over the module's own policy"
           >
             <UInput
               v-model="external.expiresAt"
@@ -512,7 +512,7 @@ async function submitRevoke() {
           />
           <p class="text-sm">
             Revoking <strong>{{ revokeTarget?.moduleName }}</strong> stops it counting anywhere
-            immediately. The record is not deleted — it stays in this person's history with
+            immediately. The record is not deleted: it stays in this person's history with
             the reason you give, so the correction is reviewable.
           </p>
           <UFormField

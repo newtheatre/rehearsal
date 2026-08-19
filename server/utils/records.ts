@@ -121,7 +121,7 @@ function present(row: RecordRow, module: ModuleRow, warningWindowDays: number): 
     kind: module.kind,
     awardedAt: row.awardedAt,
     expiresAt: row.expiresAt,
-    // A brief's "state" would be meaningless — it recurs per event, so the
+    // A brief's "state" would be meaningless: it recurs per event, so the
     // person page shows when it was last received instead (ADR-0003).
     state: module.kind === 'BRIEF' ? null : validityState(row.expiresAt, { warningWindowDays }),
     source: row.source,
@@ -150,7 +150,7 @@ export async function currentRecordsFor(
     .sort((a, b) => a.department.localeCompare(b.department) || a.moduleId.localeCompare(b.moduleId))
 }
 
-/** Everyone currently holding a module, with state — the find-a-supervisor query. */
+/** Everyone currently holding a module, with state: the find-a-supervisor query. */
 export async function holdersOf(
   moduleId: string,
   { warningWindowDays = 60 }: { warningWindowDays?: number } = {},
@@ -178,7 +178,7 @@ export async function holdersOf(
 }
 
 /**
- * The current records for a set of (user, module) pairs — the bulk read the
+ * The current records for a set of (user, module) pairs: the bulk read the
  * prerequisite check and eligibility evaluation both need.
  */
 export async function currentRecordsForModules(

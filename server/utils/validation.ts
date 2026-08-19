@@ -117,7 +117,7 @@ export const isoDateSchema = z.string().trim()
   }, 'Not a real date')
 
 /**
- * `awarded_at` may be backdated but never postdated — a record for training
+ * `awarded_at` may be backdated but never postdated: a record for training
  * that has not happened would be valid to every gate in the system.
  */
 export const awardedAtSchema = isoDateSchema.refine(
@@ -144,7 +144,7 @@ export const signoffSchema = z.object({
 export const externalRecordSchema = z.object({
   moduleId: moduleIdSchema,
   awardedAt: awardedAtSchema,
-  /** The certificate's own expiry — always wins over module config. */
+  /** The certificate's own expiry: always wins over module config. */
   expiresAt: isoDateSchema.nullable().optional(),
   externalRef: z.string().trim().min(1, 'Record what the certificate is').max(200),
 })
@@ -152,7 +152,7 @@ export const externalRecordSchema = z.object({
 export const revokeSchema = z.object({
   // Mandatory: a revocation without a reason is indistinguishable from a
   // mistake, and the reason is what makes history reviewable (ADR-0008).
-  reason: z.string().trim().min(3, 'Give a reason — it stays in the record').max(500),
+  reason: z.string().trim().min(3, 'Give a reason, it stays in the record').max(500),
 })
 
 export const attendeeLookupSchema = z.object({

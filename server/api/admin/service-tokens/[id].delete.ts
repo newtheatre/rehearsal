@@ -1,5 +1,5 @@
 /**
- * DELETE /api/admin/service-tokens/:id — revoke a token.
+ * DELETE /api/admin/service-tokens/:id: revoke a token.
  */
 
 import { db, schema } from '@nuxthub/db'

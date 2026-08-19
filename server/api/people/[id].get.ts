@@ -1,5 +1,5 @@
 /**
- * GET /api/people/:id — one person's training.
+ * GET /api/people/:id: one person's training.
  */
 
 import { db, schema } from '@nuxthub/db'
@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
   const warningWindowDays = await getConfigNumber('warning_window_days')
   const records = await currentRecordsFor(person.id, { warningWindowDays })
 
-  // A certification stays valid even if the modules behind it have lapsed —
+  // A certification stays valid even if the modules behind it have lapsed,
   // but the page says so, which is the whole v1 stance (roadmap R2).
   const lapsed = await lapsedConstituents(
     person.id,
@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
       .limit(10).all(),
   ])
 
-  // Revoked records are history, not current standing — lead/admin only, so
+  // Revoked records are history, not current standing: lead/admin only, so
   // a withdrawn certification isn't broadcast to the whole membership.
   const revoked = canSeeDrafts(abilities)
     ? await db.select({

@@ -58,7 +58,7 @@ export async function requireDepartmentSteward(
 
 /**
  * Requires the ability to deliver training, derived from the record at
- * request time (ADR-0004). Leads qualify too — they carry more authority.
+ * request time (ADR-0004). Leads qualify too: they carry more authority.
  */
 export async function requireTrainer(event: H3Event): Promise<Abilities> {
   const abilities = await useAbilities(event)

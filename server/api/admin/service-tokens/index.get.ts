@@ -1,4 +1,4 @@
-/** GET /api/admin/service-tokens — issued tokens. Never the tokens themselves. */
+/** GET /api/admin/service-tokens: issued tokens. Never the tokens themselves. */
 
 import { db, schema } from '@nuxthub/db'
 import { desc } from 'drizzle-orm'

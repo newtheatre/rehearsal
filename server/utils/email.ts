@@ -1,6 +1,6 @@
 /**
  * Expiry warnings and monthly digests. Copy is a nudge, not a disciplinary
- * notice — never imply the person has done something wrong.
+ * notice: never imply the person has done something wrong.
  */
 
 import { getResend } from './resend'
@@ -50,7 +50,7 @@ function recordList(records: SweepRecord[]): string {
       ${records.map(record => `
         <li style="margin-bottom: 6px;">
           <strong>${record.moduleId}</strong> ${record.moduleName}
-          — ${formatDate(record.expiresAt)}
+         : ${formatDate(record.expiresAt)}
         </li>
       `).join('')}
     </ul>
@@ -75,7 +75,7 @@ export function renderMemberWarning(warning: MemberWarning): { subject: string, 
       </p>
       ${recordList(warning.records)}
       <p>
-        Expired training doesn't disappear from your record — it just stops counting
+        Expired training doesn't disappear from your record: it just stops counting
         towards things that need it, like supervising a get-in or duty-managing a show.
         Ask your department head about getting re-trained.
       </p>
@@ -91,7 +91,7 @@ export function renderDigest(digest: Digest, asOf: string): { subject: string, h
   const nothing = digest.expiring.length === 0 && digest.expired.length === 0
 
   return {
-    subject: `NNT training digest — ${digest.expiring.length} expiring, ${digest.expired.length} expired`,
+    subject: `NNT training digest: ${digest.expiring.length} expiring, ${digest.expired.length} expired`,
     html: layout(`
       <p>Hello ${digest.name.split(' ')[0]},</p>
       <p>Monthly training summary ${scope}, as of ${formatDate(asOf)}.</p>
@@ -125,7 +125,7 @@ export function renderDryRunReport(summary: {
   digests: Digest[]
 }): { subject: string, html: string } {
   return {
-    subject: `[dry run] NNT training sweep — ${summary.warnings.length} warnings, ${summary.digests.length} digests withheld`,
+    subject: `[dry run] NNT training sweep: ${summary.warnings.length} warnings, ${summary.digests.length} digests withheld`,
     html: layout(`
       <p><strong>Nothing was sent to anybody.</strong> Notifications are in dry-run mode
       (<code>site_config.notifications_mode</code>); this is what would have gone out on
@@ -141,7 +141,7 @@ export function renderDryRunReport(summary: {
         ? `<h3 style="font-size: 15px;">Member warnings (${summary.warnings.length})</h3>
            <ul style="padding-left: 18px;">
              ${summary.warnings.map(w => `
-               <li><strong>${w.name}</strong> (${w.type}) — ${w.records.map(r => r.moduleId).join(', ')}</li>
+               <li><strong>${w.name}</strong> (${w.type}): ${w.records.map(r => r.moduleId).join(', ')}</li>
              `).join('')}
            </ul>`
         : '<p>No member warnings due.</p>'}
@@ -150,7 +150,7 @@ export function renderDryRunReport(summary: {
         ? `<h3 style="font-size: 15px;">Digests (${summary.digests.length})</h3>
            <ul style="padding-left: 18px;">
              ${summary.digests.map(d => `
-               <li><strong>${d.name}</strong> — ${d.departments === null ? 'all departments' : d.departments.join(', ')}:
+               <li><strong>${d.name}</strong>, ${d.departments === null ? 'all departments' : d.departments.join(', ')}:
                  ${d.expiring.length} expiring, ${d.expired.length} expired</li>
              `).join('')}
            </ul>`

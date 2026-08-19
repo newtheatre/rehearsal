@@ -4,7 +4,7 @@
 
 ## Context
 
-Logging a session creates one record per attendee × module — five attendees on
+Logging a session creates one record per attendee × module: five attendees on
 three modules is fifteen rows plus the session and its two junction tables.
 [records-and-expiry.md](../records-and-expiry.md) and the original plan both
 describe this as happening "in one transaction", and it genuinely must be
@@ -14,7 +14,7 @@ system exists to prevent.
 
 Drizzle's D1 driver exposes `db.transaction()`, and it type-checks. It is also
 a trap. The implementation issues literal `begin` / `commit` statements, and
-Cloudflare D1 rejects those over its HTTP API — every statement is
+Cloudflare D1 rejects those over its HTTP API: every statement is
 auto-committed. Worse, the local test driver (libsql) and Miniflare's local D1
 emulation both *do* support `BEGIN`, so `db.transaction()` passes tests, passes
 local dev, and fails only against production D1.
@@ -34,7 +34,7 @@ transaction. `db.transaction()` is not used anywhere in this codebase.
 
 Because the statements are constructed before any of them runs, ids that later
 statements reference are generated up front (`nanoid()` in application code)
-rather than read back from an insert — `records.session_id` is filled in from
+rather than read back from an insert: `records.session_id` is filled in from
 the id the session insert was *given*, not one the database returned.
 
 The test driver (libsql) implements `batch()` with the same atomicity, so a
@@ -62,7 +62,7 @@ transaction-based implementation. Ids being generated in application code is a
 small, contained discipline.
 
 Bad: `batch()` takes a flat array, so anything conditional has to be decided
-*before* the batch is assembled rather than mid-transaction — the session edit
+*before* the batch is assembled rather than mid-transaction: the session edit
 path computes its whole diff first for this reason. Nested or interactive
 patterns are simply unavailable; a future need for read-then-write-atomically
 would have to be solved another way (optimistic checks, or a Durable Object).

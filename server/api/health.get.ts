@@ -2,7 +2,7 @@ import { db } from '@nuxthub/db'
 import { sql } from 'drizzle-orm'
 import journal from '../db/migrations/sqlite/meta/_journal.json'
 
-/** GET /api/health — uptime check (public, docs/operations.md#monitoring). */
+/** GET /api/health: uptime check (public, docs/operations.md#monitoring). */
 export default defineEventHandler(async (event) => {
   // Both ledger spellings exist: nuxt-db migrate records the bare tag,
   // wrangler records it with .sql. Compare on the tag.

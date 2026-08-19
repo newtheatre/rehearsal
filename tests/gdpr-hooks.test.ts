@@ -55,7 +55,7 @@ describe('hook authentication', () => {
       .rejects.toMatchObject({ statusCode: 401 })
   })
 
-  it('refuses the plaintext token — the hash is what travels', async () => {
+  it('refuses the plaintext token, the hash is what travels', async () => {
     await setup()
     await expect(call(exportHandler, hookEvent({ userId: 'alice' }, SERVICE_TOKEN)))
       .rejects.toMatchObject({ statusCode: 401 })

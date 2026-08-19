@@ -51,7 +51,7 @@ export function validRecordCondition(asOf: string = today()): SQL {
   return sql`(${records.expiresAt} is null or ${records.expiresAt} > ${asOf})`
 }
 
-/** Records that have not been revoked (ADR-0008 — revoked never deleted). */
+/** Records that have not been revoked (ADR-0008, revoked never deleted). */
 export function notRevokedCondition(): SQL {
   return sql`${records.revokedAt} is null`
 }
@@ -73,7 +73,7 @@ export function notSupersededCondition(): SQL {
   )`
 }
 
-/** Not revoked AND currently valid — the usual gate. */
+/** Not revoked AND currently valid: the usual gate. */
 export function heldRecordCondition(asOf: string = today()): SQL {
   return and(notRevokedCondition(), validRecordCondition(asOf))!
 }

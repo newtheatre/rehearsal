@@ -1,5 +1,5 @@
 /**
- * GET /api/admin/audit — the audit trail.
+ * GET /api/admin/audit: the audit trail.
  */
 
 import { db, schema } from '@nuxthub/db'
@@ -58,7 +58,7 @@ export default defineEventHandler(async (event) => {
   )).flat()
   const names = new Map(actors.map(a => [a.id, a.name]))
 
-  // Distinct actions, for the filter — small and bounded by the code, so a
+  // Distinct actions, for the filter: small and bounded by the code, so a
   // full scan of the column is cheaper than maintaining a list by hand.
   const allActions = await db.selectDistinct({ action: schema.auditLog.action })
     .from(schema.auditLog).all()

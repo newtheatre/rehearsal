@@ -58,7 +58,7 @@ export interface ExpiryPlan {
     windowWarnings: number
     finalWarnings: number
     digests: number
-    /** Records whose person has no mirror row — cannot be emailed. */
+    /** Records whose person has no mirror row: cannot be emailed. */
     unaddressable: number
   }
 }
@@ -164,7 +164,7 @@ export function planExpirySweep(input: SweepInputs): ExpiryPlan {
 }
 
 /**
- * An empty digest is still sent. Its absence is the alert — a silent month
+ * An empty digest is still sent. Its absence is the alert: a silent month
  * must mean nothing is expiring, not that the cron died.
  */
 function planDigests(

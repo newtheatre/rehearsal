@@ -1,5 +1,5 @@
 /**
- * GET /api/v1/records?module=TECH-112&state=VALID — who currently holds X.
+ * GET /api/v1/records?module=TECH-112&state=VALID: who currently holds X.
  */
 
 import { db, schema } from '@nuxthub/db'

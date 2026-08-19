@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-Bun ≥ 1.2, Node 20+ (tooling), wrangler (authenticated only for production D1 — most work doesn't need it). No Cloudflare account for local dev: D1 runs as local SQLite.
+Bun ≥ 1.2, Node 20+ (tooling), wrangler (authenticated only for production D1, most work doesn't need it). No Cloudflare account for local dev: D1 runs as local SQLite.
 
 ## Setup
 
@@ -20,10 +20,10 @@ bun run dev            # http://localhost:3000
 | Key | Dev value |
 |---|---|
 | `NUXT_SESSION_PASSWORD` | any 32+ char string; **match the auth service's dev value if running both** |
-| `NUXT_RESEND_API_KEY` | leave unset — dev logs emails to the console |
-| `NUXT_AUTH_SERVICE_TOKEN` | leave unset — dev stubs the shadow endpoint (add-by-email creates a local-only mirror row, clearly marked) |
+| `NUXT_RESEND_API_KEY` | leave unset: dev logs emails to the console |
+| `NUXT_AUTH_SERVICE_TOKEN` | leave unset: dev stubs the shadow endpoint (add-by-email creates a local-only mirror row, clearly marked) |
 
-Auth in dev follows the estate pattern (stage-door `docs/development.md`): host-only cookies on localhost, and a dev-only seeded-session login route guarded by `import.meta.dev` — the sanctioned exception to "apps never write sessions", absent from production builds. You do not need the auth service running for normal work.
+Auth in dev follows the estate pattern (stage-door `docs/development.md`): host-only cookies on localhost, and a dev-only seeded-session login route guarded by `import.meta.dev`: the sanctioned exception to "apps never write sessions", absent from production builds. You do not need the auth service running for normal work.
 
 ### `/dev-login`
 
@@ -36,7 +36,7 @@ Auth in dev follows the estate pattern (stage-door `docs/development.md`): host-
 
 The route redirects to `/` once the session is sealed. It 404s in production builds.
 
-It uses `replaceUserSession`, not `setUserSession` — the latter merges into the existing
+It uses `replaceUserSession`, not `setUserSession`: the latter merges into the existing
 session and concatenates arrays, so switching from admin to member kept the admin role
 while swapping the id. If you add a persona here, keep the replacement semantics: dev
 testing that quietly runs with more authority than you asked for is worse than no dev
@@ -44,13 +44,13 @@ login at all.
 
 ## Seeds
 
-`bun run db:seed` loads the full module catalogue (same parser as the production seed — [migration.md](migration.md)) and a handful of users covering every ability: member, trainer, department lead, admin. It refuses to run in production or against a remote database.
+`bun run db:seed` loads the full module catalogue (same parser as the production seed, [migration.md](migration.md)) and a handful of users covering every ability: member, trainer, department lead, admin. It refuses to run in production or against a remote database.
 
-**There are no credentials to print** — this app has no passwords, ever. The seeded users share their ids with the ones `/dev-login` creates, so seeding and signing in agree. The trainer's standing is seeded as a real `SIGNOFF` record rather than a flag, because deriving it from a record is the whole point of [ADR-0004](decisions/0004-trainer-standing-from-records.md).
+**There are no credentials to print**: this app has no passwords, ever. The seeded users share their ids with the ones `/dev-login` creates, so seeding and signing in agree. The trainer's standing is seeded as a real `SIGNOFF` record rather than a flag, because deriving it from a record is the whole point of [ADR-0004](decisions/0004-trainer-standing-from-records.md).
 
 Once Phase 2 lands, the seed will also carry fixture records covering every state: VALID, EXPIRING, EXPIRED, revoked, BRIEF attendance, external cert.
 
-> **Caveat:** `data/catalogue.csv` is a **placeholder** built from the modules named in the design docs — replace it with the subcommittee's export before anything real depends on it (see [data/README.md](../data/README.md) and [migration.md](migration.md#1-catalogue-seed)). The seed activates a slice of it so an ordinary member has something to look at; the real statuses come from the subcommittee's own Status column.
+> **Caveat:** `data/catalogue.csv` is a **placeholder** built from the modules named in the design docs: replace it with the subcommittee's export before anything real depends on it (see [data/README.md](../data/README.md) and [migration.md](migration.md#1-catalogue-seed)). The seed activates a slice of it so an ordinary member has something to look at; the real statuses come from the subcommittee's own Status column.
 
 ## Testing
 
@@ -58,7 +58,7 @@ Once Phase 2 lands, the seed will also carry fixture records covering every stat
 bun run test           # vitest: unit + integration (h3 app, in-memory SQLite)
 ```
 
-High-value suites — keep these green and comprehensive; they encode the safety posture:
+High-value suites, keep these green and comprehensive; they encode the safety posture:
 
 - **Expiry stamping**: each mode; `ACADEMIC_YEAR` boundary cases (award on 29/30 Sep, 1 Oct); external-date precedence; config change affecting future records only.
 - **Validity derivation**: state at boundaries (expires today = EXPIRED); warning window edges; BRIEF exclusion; the SQL fragment and the util agreeing on fixtures.
@@ -69,7 +69,7 @@ High-value suites — keep these green and comprehensive; they encode the safety
 - **API auth**: valid/invalid/missing token; email never in any payload (assert on serialisers).
 - **Cron**: dry-run produces the exactly-expected send list on fixtures incl. a mocked 30 Sep rollover; idempotency (running twice sends nothing new).
 
-Suites for phases not yet built are listed here deliberately — they are the acceptance criteria for those phases, not a claim that they exist.
+Suites for phases not yet built are listed here deliberately: they are the acceptance criteria for those phases, not a claim that they exist.
 
 Every PR touching record creation, validity, gating, or eligibility adds a test that fails without the change (CLAUDE.md).
 

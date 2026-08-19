@@ -3,11 +3,11 @@ import { nanoid } from 'nanoid'
 import { users } from './user'
 
 /**
- * Named eligibility rules (ADR-0006) — data, not code. This app answers;
+ * Named eligibility rules (ADR-0006): data, not code. This app answers;
  * consumers enforce. `requires` shape: docs/data-model.md
  */
 export const eligibilityRules = sqliteTable('eligibility_rules', {
-  key: text('key').primaryKey(), // 'duty-manager' — never rename; consumers hardcode it
+  key: text('key').primaryKey(), // 'duty-manager': never rename; consumers hardcode it
   name: text('name').notNull(),
   description: text('description'),
   requires: text('requires').notNull().default('{"allOf":[],"anyOf":[]}'),

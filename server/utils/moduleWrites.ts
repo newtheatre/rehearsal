@@ -74,7 +74,7 @@ export async function replacePrerequisites(moduleId: string, prerequisites: stri
 
 /**
  * An ordinary module's id IS its department, so a mismatch is nonsense.
- * Certifications are exempt — same rule the CSV importer applies.
+ * Certifications are exempt: same rule the CSV importer applies.
  */
 export function assertIdMatchesDepartment(id: string, department: string): void {
   if (id.endsWith('-CERT')) return
@@ -86,7 +86,7 @@ export function assertIdMatchesDepartment(id: string, department: string): void 
   }
 }
 
-/** The department must exist — the FK would say so, but not in English. */
+/** The department must exist: the FK would say so, but not in English. */
 export async function assertDepartmentExists(code: string): Promise<void> {
   const department = await db.select({ code: schema.departments.code })
     .from(schema.departments).where(eq(schema.departments.code, code)).get()

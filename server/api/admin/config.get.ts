@@ -1,4 +1,4 @@
-/** GET /api/admin/config — the operator-tunable values and their defaults. */
+/** GET /api/admin/config: the operator-tunable values and their defaults. */
 
 import { db, schema } from '@nuxthub/db'
 import { requirePermission } from '../../utils/auth'

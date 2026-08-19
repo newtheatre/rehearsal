@@ -12,9 +12,9 @@ One `modules` table with `kind: MODULE | CERTIFICATION | BRIEF`. Certifications 
 
 ## Alternatives considered
 
-- **Separate `certifications` table** — cleaner conceptually; lost because it duplicates prerequisites, records, display, and API handling for rows the subcommittee themselves model identically. The behavioural differences are three flags.
-- **Model briefs as annually-expiring modules** — lost: it abuses expiry to fake recurrence, generating meaningless EXPIRED states and warning emails for something that recurs weekly.
+- **Separate `certifications` table**: cleaner conceptually; lost because it duplicates prerequisites, records, display, and API handling for rows the subcommittee themselves model identically. The behavioural differences are three flags.
+- **Model briefs as annually-expiring modules**, lost: it abuses expiry to fake recurrence, generating meaningless EXPIRED states and warning emails for something that recurs weekly.
 
 ## Consequences
 
-Good: one records pipeline, one API shape, prerequisites compose across kinds (certs require modules), the catalogue seed maps 1:1 from the spreadsheet. Bad: `kind` conditionals in a few flows (sign-off, display) — bounded and tested; a future kind with genuinely different mechanics would force revisiting this.
+Good: one records pipeline, one API shape, prerequisites compose across kinds (certs require modules), the catalogue seed maps 1:1 from the spreadsheet. Bad: `kind` conditionals in a few flows (sign-off, display): bounded and tested; a future kind with genuinely different mechanics would force revisiting this.

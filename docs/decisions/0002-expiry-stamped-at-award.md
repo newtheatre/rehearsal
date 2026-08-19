@@ -12,9 +12,9 @@ Training can expire, with per-module configurable policy (never / months / acade
 
 ## Alternatives considered
 
-- **Derive expiry from module config at read time** — auto-applies policy changes; lost because a quiet config edit would silently strip (or extend) existing qualifications estate-wide — in a safety system, retroactivity must be a deliberate act with a diff in front of a human.
-- **Stored validity state + transition job** — lost: a state column can lie (missed cron, race), and the cron becomes safety-critical. Derived state cannot be stale.
+- **Derive expiry from module config at read time**, auto-applies policy changes; lost because a quiet config edit would silently strip (or extend) existing qualifications estate-wide, in a safety system, retroactivity must be a deliberate act with a diff in front of a human.
+- **Stored validity state + transition job**, lost: a state column can lie (missed cron, race), and the cron becomes safety-critical. Derived state cannot be stale.
 
 ## Consequences
 
-Good: records are self-contained evidence ("valid until X" was true when awarded and stays true); no safety-critical cron; the 1 October induction rollover emerges from the date maths. Bad: retroactive policy changes need the explicit recalc tool (built, audit-logged); `expires_at` on old records reflects old policy — which is exactly the point.
+Good: records are self-contained evidence ("valid until X" was true when awarded and stays true); no safety-critical cron; the 1 October induction rollover emerges from the date maths. Bad: retroactive policy changes need the explicit recalc tool (built, audit-logged); `expires_at` on old records reflects old policy, which is exactly the point.

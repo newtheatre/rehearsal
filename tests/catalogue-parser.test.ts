@@ -45,7 +45,7 @@ describe('parseExpiry', () => {
   })
 })
 
-describe('parseCatalogue — hard failures', () => {
+describe('parseCatalogue, hard failures', () => {
   it('names the row and column for an unrecognised expiry', () => {
     const input = csv('TECH,TECH-111,Rigging,,,,sometimes,,,,,')
     expect(() => parseCatalogue(input, 'catalogue.csv')).toThrow(CatalogueParseError)
@@ -107,7 +107,7 @@ describe('parseCatalogue — hard failures', () => {
   })
 })
 
-describe('parseCatalogue — derivation', () => {
+describe('parseCatalogue, derivation', () => {
   it('derives kind from the id and the expiry column', () => {
     const modules = parseCatalogue(csv(
       'TECH,TECH-111,Rigging,,,,Never,,,,,',
@@ -189,7 +189,7 @@ describe('the committed catalogue', () => {
     const modules = parseCatalogue(readFileSync(path, 'utf8'), path)
 
     // The draft flags this as a call for the subcommittee because it lengthens
-    // the path to lighting — so it must not be quietly made here.
+    // the path to lighting, so it must not be quietly made here.
     const lighting = modules.find(m => m.id === 'TECH-111')!
     expect(lighting.prerequisites).not.toContain('SFTY-012')
   })

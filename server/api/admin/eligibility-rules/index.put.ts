@@ -1,5 +1,5 @@
 /**
- * PUT /api/admin/eligibility-rules — create or update a rule.
+ * PUT /api/admin/eligibility-rules: create or update a rule.
  */
 
 import { db, schema } from '@nuxthub/db'
@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
   if (referenced.length === 0) {
     throw createError({
       statusCode: 400,
-      statusMessage: 'A rule with no requirements would make everyone eligible — say what it needs',
+      statusMessage: 'A rule with no requirements would make everyone eligible: say what it needs',
     })
   }
 
@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Briefs never gate anything, so one in a rule would silently never be
-  // satisfied — refuse rather than create an unsatisfiable rule.
+  // satisfied: refuse rather than create an unsatisfiable rule.
   const briefs = found.filter(m => m.kind === 'BRIEF')
   if (briefs.length > 0) {
     throw createError({

@@ -19,7 +19,7 @@ const people = computed(() => {
           People
         </h1>
         <p class="text-muted mt-1">
-          Who is trained in what — the "who can supervise me on this get-in" lookup.
+          Who is trained in what: the "who can supervise me on this get-in" lookup.
         </p>
       </div>
 

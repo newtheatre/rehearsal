@@ -8,6 +8,9 @@ const MAX_LINES = 2
 const ROOT = process.cwd()
 const SKIP = new Set(['node_modules', '.nuxt', '.output', '.wrangler', '.git', '.data', '.claude', 'dist', 'migrations'])
 const EXTS = ['.ts', '.vue', '.mjs', '.js', '.prisma']
+// The no-em-dash rule covers prose and UI copy too, so this list is wider.
+const PROSE_EXTS = [...EXTS, '.md', '.yml', '.yaml', '.sh', '.csv', '.jsonc', '.css', '.example']
+const EM_DASH = /\u2014/
 
 const BANNED_TAGS = /@(param|returns?|prop|props|emits?|module|route|authenticated|admin-only|method|example|see|throws)\b/
 const HISTORY = /\b(used to|originally|an earlier version|previously|it used to|we used to|this used to|no longer needed|before this)\b/i
@@ -15,12 +18,12 @@ const HISTORY = /\b(used to|originally|an earlier version|previously|it used to|
 // numbers do not, so they are not flagged.
 const FIGURES = /\b\d{1,3}(,\d{3})+\b|\b\d+\.\d+%/
 
-function walk(dir, out = []) {
+function walk(dir, out = [], exts = EXTS) {
   for (const entry of readdirSync(dir)) {
     if (SKIP.has(entry)) continue
     const full = join(dir, entry)
-    if (statSync(full).isDirectory()) walk(full, out)
-    else if (EXTS.some(e => entry.endsWith(e))) out.push(full)
+    if (statSync(full).isDirectory()) walk(full, out, exts)
+    else if (exts.some(e => entry.endsWith(e))) out.push(full)
   }
   return out
 }
@@ -81,16 +84,31 @@ for (const file of walk(ROOT)) {
     // Directives are instructions to tooling, not prose.
     if (/^(eslint|@ts-|prettier|c8 |v8 |istanbul|#!)/.test(joined)) continue
     if (body.length > MAX_LINES) failures.push(`${rel}:${line}  ${body.length} lines (max ${MAX_LINES})`)
-    if (BANNED_TAGS.test(joined)) failures.push(`${rel}:${line}  JSDoc tag — the signature already says it`)
-    if (HISTORY.test(joined)) failures.push(`${rel}:${line}  narrates history — that belongs in an ADR`)
-    if (FIGURES.test(joined)) failures.push(`${rel}:${line}  bare figure — put it in docs/, dated`)
+    if (BANNED_TAGS.test(joined)) failures.push(`${rel}:${line}  JSDoc tag, the signature already says it`)
+    if (HISTORY.test(joined)) failures.push(`${rel}:${line}  narrates history, that belongs in an ADR`)
+    if (FIGURES.test(joined)) failures.push(`${rel}:${line}  bare figure, put it in docs/, dated`)
   }
 }
 
+// Style rule, not a comment rule: no em dashes in code, prose or UI copy.
+for (const file of walk(ROOT, [], PROSE_EXTS)) {
+  const rel = relative(ROOT, file)
+  let source
+  try {
+    source = readFileSync(file, 'utf8')
+  }
+  catch {
+    continue
+  }
+  source.split('\n').forEach((line, i) => {
+    if (EM_DASH.test(line)) failures.push(`${rel}:${i + 1}  em dash, use a comma, colon, semicolon or two sentences`)
+  })
+}
+
 if (failures.length) {
-  console.error(`\n${failures.length} comment rule violation(s):\n`)
+  console.error(`\n${failures.length} style rule violation(s):\n`)
   for (const f of failures) console.error(`  ${f}`)
-  console.error('\nSee CLAUDE.md §Comments.\n')
+  console.error('\nSee CLAUDE.md §Comments and §Writing style.\n')
   process.exit(1)
 }
-console.log('Comments OK.')
+console.log('Comments and style OK.')

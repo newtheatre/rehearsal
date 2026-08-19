@@ -2,7 +2,7 @@
 
 ## `catalogue.csv` is the subcommittee's draft catalogue
 
-Loaded from *NNT Training Module Catalogue — Complete Draft* (10 Aug 2026): 57 modules
+Loaded from *NNT Training Module Catalogue, Complete Draft* (10 Aug 2026): 57 modules
 across the nine departments, including the eight certifications.
 
 **Every row is `DRAFT`**, so nothing is visible to ordinary members and nothing gates
@@ -15,7 +15,7 @@ Faithful to the document, deliberately:
 - `safety_critical` is set only on the rows the draft marks ⚠ (`SFTY-012`, `SFTY-021`,
   `SFTY-022`, `TECH-201`, `STGE-201`, `MGMT-201`). The flag hard-blocks a session when
   prerequisites are missing, so it is not somewhere to be generous.
-- `SFTY-012` is **not** a prerequisite of `TECH-111` — the draft flags that as a
+- `SFTY-012` is **not** a prerequisite of `TECH-111`: the draft flags that as a
   subcommittee call, so it stays unmade here.
 - The 13 TECH modules have no `description`: the draft says their text is unchanged in
   the subcommittee's own spreadsheet and does not reproduce it. Their notes say so.
@@ -33,7 +33,7 @@ npx wrangler d1 execute training --remote -c wrangler.d1.jsonc --file work/catal
 ```
 
 Both paths use the same parser, so they cannot describe the catalogue differently. The
-SQL is idempotent and never deletes a module — modules are retired, not dropped, because
+SQL is idempotent and never deletes a module: modules are retired, not dropped, because
 records reference them.
 
 ## Format
@@ -57,7 +57,7 @@ leading `Department` column.
 | `Notes` | | Lead/admin-visible only. |
 
 Unknown columns are ignored, so the subcommittee can keep their own working
-columns in the sheet. **Unparseable cells are hard failures naming the cell** —
+columns in the sheet. **Unparseable cells are hard failures naming the cell**:
 nothing is skipped silently.
 
 `kind` is derived, not typed: an id ending `-CERT` is a `CERTIFICATION` (and

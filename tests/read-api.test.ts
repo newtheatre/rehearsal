@@ -145,7 +145,7 @@ describe('GET /api/v1/users/:id/records', () => {
     const brief = result.records.find(r => r.module === 'NNT-002')!
 
     expect(induction.state).toBe('VALID')
-    // A brief has no validity to report — reporting one invites gating on it.
+    // A brief has no validity to report: reporting one invites gating on it.
     expect(brief.state).toBeUndefined()
     expect(brief.lastAttended).toBe('2026-08-01')
   })
@@ -303,7 +303,7 @@ describe('GET /api/v1/eligibility/:key', () => {
     expect(result.userIds).toEqual(['alice'])
   })
 
-  it('404s an unknown rule loudly — that is a configuration break', async () => {
+  it('404s an unknown rule loudly, that is a configuration break', async () => {
     await setup()
     await expect(call(eligibilityHandler, apiEvent('/api/v1/eligibility/nope', {
       bearer: token, params: { key: 'nope' },

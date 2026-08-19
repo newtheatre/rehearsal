@@ -1,5 +1,5 @@
 /**
- * GET /api/v1/eligibility/:key — everyone eligible, or with `?userId=`,
+ * GET /api/v1/eligibility/:key: everyone eligible, or with `?userId=`,
  * whether one person is.
  */
 

@@ -24,7 +24,7 @@ const form = ref({
 const moduleOptions = computed(() =>
   (catalogue.value?.modules ?? [])
     // Certifications are signed off after a supervised practical, not
-    // handed out in a session — the server refuses them too.
+    // handed out in a session: the server refuses them too.
     .filter(m => m.kind !== 'CERTIFICATION' && m.status === 'ACTIVE')
     .map(m => ({ label: `${m.id} · ${m.name}`, value: m.id })),
 )
@@ -135,7 +135,7 @@ async function submit() {
       body: { ...payload(), acknowledgeWarnings: (preview.value?.warnings.length ?? 0) > 0 },
     })
     toast.add({
-      title: `Session logged — ${result.recordCount} records created`,
+      title: `Session logged: ${result.recordCount} records created`,
       icon: 'i-lucide-check',
       color: 'success',
     })
@@ -152,7 +152,7 @@ async function submit() {
 const attendeeName = (id: string) =>
   (directory.value?.people ?? []).find(p => p.id === id)?.name ?? id
 
-// Any edit invalidates the review — the confirm screen must always describe
+// Any edit invalidates the review: the confirm screen must always describe
 // what is actually about to be written.
 watch(form, () => {
   preview.value = null
@@ -281,7 +281,7 @@ watch(form, () => {
           variant="subtle"
           title="Blocked: safety-critical prerequisites are missing"
           :description="preview.blocking
-            .map(b => `${b.name} — ${b.moduleId} needs ${b.missing.map(m => m.moduleId).join(', ')}`)
+            .map(b => `${b.name}, ${b.moduleId} needs ${b.missing.map(m => m.moduleId).join(', ')}`)
             .join('; ')"
         />
 
@@ -292,7 +292,7 @@ watch(form, () => {
           variant="subtle"
           title="Some attendees are missing prerequisites"
           :description="`${preview.warnings
-            .map(w => `${w.name} — ${w.moduleId} usually needs ${w.missing.map(m => m.moduleId).join(', ')}`)
+            .map(w => `${w.name}, ${w.moduleId} usually needs ${w.missing.map(m => m.moduleId).join(', ')}`)
             .join('; ')}. You can go ahead if you know why.`"
         />
 

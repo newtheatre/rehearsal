@@ -21,7 +21,7 @@ export interface EligibilityAnswer {
   eligible: boolean
   /** Required modules the person doesn't currently hold. */
   missing: string[]
-  /** Held, but inside the warning window — actionable UX for the consumer. */
+  /** Held, but inside the warning window: actionable UX for the consumer. */
   expiring: { moduleId: string, expiresAt: string }[]
 }
 

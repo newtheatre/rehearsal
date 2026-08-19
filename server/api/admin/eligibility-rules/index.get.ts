@@ -1,4 +1,4 @@
-/** GET /api/admin/eligibility-rules — the rules and what they currently require. */
+/** GET /api/admin/eligibility-rules: the rules and what they currently require. */
 
 import { db, schema } from '@nuxthub/db'
 import { requirePermission } from '../../../utils/auth'

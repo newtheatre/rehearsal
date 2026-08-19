@@ -26,7 +26,7 @@ export class HttpError extends Error {
   statusCode: number
   statusMessage: string
   // h3 carries `data` through to the client (that's how the client middleware
-  // learns a session is merely stale) — the fake must too.
+  // learns a session is merely stale): the fake must too.
   data?: unknown
   constructor(opts: { statusCode: number, statusMessage?: string, message?: string, data?: unknown }) {
     super(opts.statusMessage ?? opts.message ?? 'Error')
@@ -57,7 +57,7 @@ g.sendRedirect = (event: FakeEvent, url: string, status = 302) => {
 }
 g.$fetch = vi.fn()
 
-/** Runtime config fake — dev-shaped: no auth service token, no Resend key. */
+/** Runtime config fake, dev-shaped: no auth service token, no Resend key. */
 export const runtimeConfig = {
   session: { name: 'nnt-session', password: '', maxAge: 0 },
   authServiceToken: '',

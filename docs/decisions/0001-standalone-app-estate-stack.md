@@ -14,9 +14,9 @@ The repo and worker take the product name **Rehearsal**; the *domain* keeps the 
 
 ## Alternatives considered
 
-- **Module inside Proscenium** — no cross-service API needed for the rota; lost because it welds training to the box office's release cycle, grows an already-large app, and the API has to exist anyway for any *other* consumer. The rooms precedent (separate concern, separate app) fits better.
-- **Any other stack** — lost instantly on maintainer continuity: one set of conventions across the estate is the estate's whole survival strategy.
-- **Serving it at `rehearsal.newtheatre.org.uk`** — lost: the legacy system spent years teaching members that training lives at `training.`, and a rename buys nothing but broken links and confused inductees.
+- **Module inside Proscenium**: no cross-service API needed for the rota; lost because it welds training to the box office's release cycle, grows an already-large app, and the API has to exist anyway for any *other* consumer. The rooms precedent (separate concern, separate app) fits better.
+- **Any other stack**, lost instantly on maintainer continuity: one set of conventions across the estate is the estate's whole survival strategy.
+- **Serving it at `rehearsal.newtheatre.org.uk`**, lost: the legacy system spent years teaching members that training lives at `training.`, and a rename buys nothing but broken links and confused inductees.
 
 ## Consequences
 

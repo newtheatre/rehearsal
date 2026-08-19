@@ -10,7 +10,7 @@ export default defineNuxtConfig({
 
   $production: {
     runtimeConfig: {
-      // Production only — localhost has no subdomains. name/password/maxAge repeat
+      // Production only: localhost has no subdomains. name/password/maxAge repeat
       // the base values: env overrides must be complete SessionConfig objects.
       session: {
         name: 'nnt-session',
@@ -40,13 +40,13 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     // NUXT_SESSION_PASSWORD is consumed implicitly by nuxt-auth-utils. It is
-    // the shared estate seal secret — same value as every other NNT app.
+    // the shared estate seal secret: same value as every other NNT app.
     session: {
       name: 'nnt-session',
       password: '',
       maxAge: 60 * 60 * 24 * 30, // 30 days
     },
-    // Worker secret NUXT_AUTH_SERVICE_TOKEN. The NUXT_ prefix is load-bearing —
+    // Worker secret NUXT_AUTH_SERVICE_TOKEN. The NUXT_ prefix is load-bearing:
     // a secret named AUTH_SERVICE_TOKEN is silently ignored.
     authServiceToken: '',
     resendApiKey: '',
@@ -91,7 +91,7 @@ export default defineNuxtConfig({
       wrangler: {
         name: 'rehearsal',
 
-        // ⚠️ Attaching the custom domain here IS the Phase 5 cutover — the next build
+        // ⚠️ Attaching the custom domain here IS the Phase 5 cutover: the next build
         // would repoint it. See docs/migration.md §4 before uncommenting.
         d1_databases: [
           {
@@ -101,7 +101,7 @@ export default defineNuxtConfig({
           },
         ],
         // Estate secrets come from the Secrets Store (stage-door ADR-0016); the
-        // binding name matters — read server/plugins/0.secrets-store.ts first.
+        // binding name matters: read server/plugins/0.secrets-store.ts first.
         ...({
           secrets_store_secrets: [
             {

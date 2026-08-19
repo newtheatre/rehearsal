@@ -1,5 +1,5 @@
 /**
- * Expiry stamping — computed ONCE, at record creation (ADR-0002). Changing a
+ * Expiry stamping: computed ONCE, at record creation (ADR-0002). Changing a
  * module's policy affects future awards only.
  */
 

@@ -7,7 +7,7 @@ import { db, schema } from '@nuxthub/db'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { requireServiceToken, setConsumerCacheHeaders } from '../../../utils/serviceToken'
-import { eligibleUserIds, evaluateRule, loadRule, parseRequires } from '../../../utils/eligibility'
+import { eligibleUserIds, evaluateRule, loadRule, parseRequires, UnreadableRuleError } from '../../../utils/eligibility'
 import { getConfigNumber } from '../../../utils/siteConfig'
 
 const querySchema = z.object({
@@ -28,7 +28,21 @@ export default defineEventHandler(async (event) => {
   }
 
   setConsumerCacheHeaders(event)
-  const requires = parseRequires(rule.requires)
+
+  // A rule we cannot read must not become "everyone qualifies": the consumer
+  // is authorising on this (ADR-0010).
+  let requires
+  try {
+    requires = parseRequires(rule.requires)
+  }
+  catch (error) {
+    if (!(error instanceof UnreadableRuleError)) throw error
+    throw createError({
+      statusCode: 503,
+      statusMessage: `Eligibility rule "${rule.key}" cannot be answered: ${error.message}`,
+    })
+  }
+
   const warningWindowDays = await getConfigNumber('warning_window_days')
 
   if (!userId) {

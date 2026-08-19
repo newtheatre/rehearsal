@@ -25,13 +25,35 @@ export interface EligibilityAnswer {
   expiring: { moduleId: string, expiresAt: string }[]
 }
 
-/** Parse a stored `requires` blob, tolerating an empty or legacy value. */
+/** A stored rule nothing can read. Never answered around (ADR-0010). */
+export class UnreadableRuleError extends Error {}
+
+/**
+ * Parse a stored `requires` blob. A rule requiring nothing is corrupt, not
+ * permissive: the write path refuses to create one.
+ */
 export function parseRequires(raw: string): Requires {
+  let parsed: Requires
   try {
-    return requiresSchema.parse(JSON.parse(raw))
+    parsed = requiresSchema.parse(JSON.parse(raw))
   }
   catch {
-    return { allOf: [], anyOf: [] }
+    throw new UnreadableRuleError('the stored rule is not readable')
+  }
+
+  if (parsed.allOf.length === 0 && parsed.anyOf.length === 0) {
+    throw new UnreadableRuleError('the stored rule requires nothing')
+  }
+  return parsed
+}
+
+/** For listings, which must show a corrupt rule rather than fail on it. */
+export function tryParseRequires(raw: string): Requires | null {
+  try {
+    return parseRequires(raw)
+  }
+  catch {
+    return null
   }
 }
 
@@ -44,6 +66,10 @@ export async function evaluateRule(
   userId: string,
   { warningWindowDays = 60 }: { warningWindowDays?: number } = {},
 ): Promise<EligibilityAnswer> {
+  if (requires.allOf.length === 0 && requires.anyOf.length === 0) {
+    throw new UnreadableRuleError('the stored rule requires nothing')
+  }
+
   const moduleIds = [...new Set([...requires.allOf, ...requires.anyOf])]
   const held = await currentRecordsForModules(userId, moduleIds, { warningWindowDays })
 

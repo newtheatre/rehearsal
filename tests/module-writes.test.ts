@@ -249,6 +249,34 @@ describe('PUT /api/modules/:id', () => {
   })
 })
 
+describe('expiry consistency across a partial update', () => {
+  it('refuses to clear the month count while the mode still needs one', async () => {
+    await setup()
+    await seedModule('TECH-121', { name: 'Powered Tools', expiryMode: 'MONTHS', expiryMonths: 12 })
+
+    const event = putEvent('TECH-121', { expiryMonths: null })
+    signIn(event, { id: 'ctd' })
+
+    await expect(call(updateModule, event)).rejects.toMatchObject({ statusCode: 400 })
+
+    // computeExpiresAt throws on MONTHS with no months, which would 500 every
+    // award path and block all recalculation.
+    const row = await db.select().from(schema.modules)
+      .where(eq(schema.modules.id, 'TECH-121')).get()
+    expect(row).toMatchObject({ expiryMode: 'MONTHS', expiryMonths: 12 })
+  })
+
+  it('refuses a mode change that leaves a stale month count behind', async () => {
+    await setup()
+    await seedModule('TECH-122', { name: 'Ladders', expiryMode: 'MONTHS', expiryMonths: 12 })
+
+    const event = putEvent('TECH-122', { expiryMode: 'ACADEMIC_YEAR' })
+    signIn(event, { id: 'ctd' })
+
+    await expect(call(updateModule, event)).rejects.toMatchObject({ statusCode: 400 })
+  })
+})
+
 describe('audit trail', () => {
   it('records creates and updates with the actor and a diff', async () => {
     await setup()

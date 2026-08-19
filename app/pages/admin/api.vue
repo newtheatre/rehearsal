@@ -66,14 +66,14 @@ function newRule() {
   ruleOpen.value = true
 }
 
-function editRule(existing: { key: string, name: string, description: string | null, requires: { allOf: string[], anyOf: string[] } }) {
+function editRule(existing: { key: string, name: string, description: string | null, requires: { allOf: string[], anyOf: string[] } | null }) {
   editingKey.value = existing.key
   rule.value = {
     key: existing.key,
     name: existing.name,
     description: existing.description ?? '',
-    allOf: [...existing.requires.allOf],
-    anyOf: [...existing.requires.anyOf],
+    allOf: [...existing.requires?.allOf ?? []],
+    anyOf: [...existing.requires?.anyOf ?? []],
   }
   ruleError.value = null
   ruleOpen.value = true
@@ -154,11 +154,14 @@ function formatDateTime(value: string | Date | null) {
               <code class="text-xs font-mono">{{ entry.key }}</code>
               <span class="font-medium">{{ entry.name }}</span>
             </div>
-            <p class="text-xs text-muted mt-1">
+            <p v-if="entry.requires" class="text-xs text-muted mt-1">
               Needs all of: {{ entry.requires.allOf.join(', ') || '—' }}
               <span v-if="entry.requires.anyOf.length">
                 · and any of: {{ entry.requires.anyOf.join(', ') }}
               </span>
+            </p>
+            <p v-else class="text-xs text-error mt-1">
+              Unreadable: this rule is stored in a form nothing can parse, so the API refuses to answer it. Edit it to repair it.
             </p>
           </div>
           <UButton

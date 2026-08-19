@@ -12,8 +12,10 @@ const PUBLIC_API = [
 ]
 
 export default defineEventHandler(async (event) => {
-  if (!event.path.startsWith('/api/')) return
-  if (PUBLIC_API.some(pattern => pattern.test(event.path))) return
+  // event.path carries the query string, which anchored patterns must not see.
+  const path = event.path.split('?')[0]!
+  if (!path.startsWith('/api/')) return
+  if (PUBLIC_API.some(pattern => pattern.test(path))) return
 
   const { user } = await getUserSession(event)
 

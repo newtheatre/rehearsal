@@ -33,7 +33,11 @@ export default defineNitroPlugin((nitroApp) => {
 
     try {
       sessionPassword ??= secret.get()
-      useRuntimeConfig(event).session.password = await sessionPassword
+      const value = await sessionPassword
+      // An empty read is a failed read: pinning it seals every session in
+      // this isolate with the wrong key, silently (stage-door ADR-0016).
+      if (!value) throw new Error('SESSION_PASSWORD resolved empty')
+      useRuntimeConfig(event).session.password = value
     }
     catch (error) {
       // Don't pin a failed read for the life of the isolate.

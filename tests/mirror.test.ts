@@ -66,6 +66,16 @@ describe('global API middleware', () => {
     await expect(call(authMiddleware, event)).resolves.toBeUndefined()
   })
 
+  it('lets the health check through when a probe adds a query string', async () => {
+    const event = makeEvent({ path: '/api/health?probe=1' })
+    await expect(call(authMiddleware, event)).resolves.toBeUndefined()
+  })
+
+  it('still guards a protected route carrying a query string', async () => {
+    const event = makeEvent({ path: '/api/modules?status=ACTIVE' })
+    await expect(call(authMiddleware, event)).rejects.toMatchObject({ statusCode: 401 })
+  })
+
   it('leaves non-API paths alone (pages have their own guard)', async () => {
     const event = makeEvent({ path: '/modules' })
     await expect(call(authMiddleware, event)).resolves.toBeUndefined()

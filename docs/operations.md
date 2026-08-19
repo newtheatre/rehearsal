@@ -19,14 +19,28 @@ Until cutover the worker is reachable at `https://rehearsal.<account-subdomain>.
 
 ## Deployments
 
-CI on merge to `main` (Workers Builds). Migrations explicit, never automatic:
+CI on merge to `main` (Workers Builds). **Migrations now apply automatically**, from
+`.github/workflows/migrate.yml` on any push to `main` that touches
+`server/db/migrations/**`. Workers Builds only builds and deploys; nothing applied migrations until
+this workflow existed, which took the whole estate down for an hour on 2026-08-19 when `stage-door`
+shipped code against a schema six migrations behind (stage-door ADR-0021).
+
+Every run records a D1 Time Travel restore point in its job summary **before** applying anything, and
+gates on the `_hub_migrations` ledger afterwards rather than trusting the CLI's exit code. To see
+what is pending without applying it:
 
 ```bash
-npx wrangler d1 migrations list training --remote -c wrangler.d1.jsonc
-npx wrangler d1 migrations apply training --remote -c wrangler.d1.jsonc     # quiet window
+CLOUDFLARE_ACCOUNT_ID=3d250a94794003bd921b7f0379de7f00 ./.github/scripts/pending-migrations.sh
 ```
 
-Rollback = redeploy previous commit; migrations roll **forward** only. Before any migration touching `records`: `npx wrangler d1 export training --remote --output backup-$(date +%F).sql`.
+The workflow needs a `CLOUDFLARE_API_TOKEN` repository secret with D1:Edit. It fails loudly if that
+is missing rather than skipping the migration.
+
+`GET /api/health` returns **503** naming the pending files if a deploy ever lands ahead of its
+migration, so the gap is visible where uptime monitoring already looks.
+
+Rollback = redeploy previous commit; migrations roll **forward** only. Before any migration touching
+`records`: `npx wrangler d1 export training --remote --output backup-$(date +%F).sql`.
 
 ## Backups
 

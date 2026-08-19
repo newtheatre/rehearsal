@@ -12,19 +12,28 @@ const querySchema = z.object({
   action: z.string().trim().max(60).optional(),
   actor: z.string().trim().max(64).optional(),
   q: z.string().trim().max(100).optional(),
-  /** Epoch ms of the last row on the previous page. */
+  /** Epoch ms of the last row on the previous page, with its id to break ties. */
   before: z.coerce.number().int().positive().optional(),
+  beforeId: z.string().trim().max(64).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
 })
 
 export default defineEventHandler(async (event) => {
   await requirePermission(event, 'config.manage')
-  const { action, actor, q, before, limit } = await getValidatedQuery(event, querySchema.parse)
+  const { action, actor, q, before, beforeId, limit } = await getValidatedQuery(event, querySchema.parse)
 
   const conditions: (SQL | undefined)[] = []
   if (action) conditions.push(eq(schema.auditLog.action, action))
   if (actor) conditions.push(eq(schema.auditLog.actorUserId, actor))
-  if (before) conditions.push(lt(schema.auditLog.createdAt, new Date(before)))
+  if (before) {
+    // Keyed on (created_at, id): rows sharing a millisecond would otherwise
+    // fall between pages and be unreachable.
+    const at = new Date(before)
+    conditions.push(beforeId
+      ? or(lt(schema.auditLog.createdAt, at),
+          and(eq(schema.auditLog.createdAt, at), lt(schema.auditLog.id, beforeId)))
+      : lt(schema.auditLog.createdAt, at))
+  }
   if (q) {
     const pattern = `%${q}%`
     conditions.push(or(like(schema.auditLog.target, pattern), like(schema.auditLog.detail, pattern)))
@@ -32,7 +41,7 @@ export default defineEventHandler(async (event) => {
 
   const rows = await db.select().from(schema.auditLog)
     .where(conditions.length ? and(...conditions.filter(Boolean) as SQL[]) : undefined)
-    .orderBy(desc(schema.auditLog.createdAt))
+    .orderBy(desc(schema.auditLog.createdAt), desc(schema.auditLog.id))
     // One extra row tells us whether there is another page without counting.
     .limit(limit + 1)
     .all()

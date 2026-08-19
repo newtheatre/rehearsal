@@ -4,11 +4,13 @@ definePageMeta({ title: 'Audit log', middleware: 'admin' })
 const action = ref<string | undefined>(undefined)
 const search = ref('')
 const before = ref<number | undefined>(undefined)
+const beforeId = ref<string | undefined>(undefined)
 
 const query = computed(() => ({
   ...(action.value ? { action: action.value } : {}),
   ...(search.value.trim() ? { q: search.value.trim() } : {}),
   ...(before.value ? { before: before.value } : {}),
+  ...(beforeId.value ? { beforeId: beforeId.value } : {}),
 }))
 
 const { data, status } = await useFetch('/api/admin/audit', { query })
@@ -19,12 +21,15 @@ const expanded = ref<string | null>(null)
 // silently drops the first results of the new one.
 watch([action, search], () => {
   before.value = undefined
+  beforeId.value = undefined
 })
 
 function nextPage() {
   const entries = data.value?.entries ?? []
   const last = entries[entries.length - 1]
-  if (last) before.value = new Date(last.createdAt).getTime()
+  if (!last) return
+  before.value = new Date(last.createdAt).getTime()
+  beforeId.value = last.id
 }
 
 function auditTime(value: string | Date) {

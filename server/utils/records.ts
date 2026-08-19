@@ -7,6 +7,7 @@ import { db, schema } from '@nuxthub/db'
 import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { computeExpiresAt } from './expiry'
+import { chunk } from './d1'
 import { notSupersededCondition, validityState, type ValidityState } from './validity'
 // The catalogue owns this row type (server/utils/modules.ts); importing it
 // rather than re-declaring keeps one name for one table.
@@ -181,6 +182,40 @@ export async function holdersOf(
  * The current records for a set of (user, module) pairs: the bulk read the
  * prerequisite check and eligibility evaluation both need.
  */
+/**
+ * The same read across a cohort, keyed `userId:moduleId`. Chunked so the
+ * bound-parameter count never tracks the number of people (d1.ts).
+ */
+export async function currentRecordsForCohort(
+  userIds: string[],
+  moduleIds: string[],
+  { warningWindowDays = 60 }: { warningWindowDays?: number } = {},
+): Promise<Map<string, PresentedRecord>> {
+  const held = new Map<string, PresentedRecord>()
+  if (userIds.length === 0 || moduleIds.length === 0) return held
+
+  for (const users of chunk(userIds, 45)) {
+    for (const modules of chunk(moduleIds, 45)) {
+      const rows = await db.select({ record: schema.records, module: schema.modules })
+        .from(schema.records)
+        .innerJoin(schema.modules, eq(schema.records.moduleId, schema.modules.id))
+        .where(and(
+          inArray(schema.records.userId, users),
+          inArray(schema.records.moduleId, modules),
+          isNull(schema.records.revokedAt),
+          notSupersededCondition(),
+        ))
+        .all()
+
+      for (const { record, module } of rows) {
+        held.set(`${record.userId}:${module.id}`, present(record, module, warningWindowDays))
+      }
+    }
+  }
+
+  return held
+}
+
 export async function currentRecordsForModules(
   userId: string,
   moduleIds: string[],

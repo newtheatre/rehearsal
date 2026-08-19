@@ -7,7 +7,7 @@ import { and, eq, ne } from 'drizzle-orm'
 import { useAbilities } from '../../utils/abilities'
 import { getConfigNumber } from '../../utils/siteConfig'
 import { currentRecordsFor } from '../../utils/records'
-import { checkPrerequisites } from '../../utils/prerequisites'
+import { checkPrerequisitesForCohort } from '../../utils/prerequisites'
 
 export default defineEventHandler(async (event) => {
   const abilities = await useAbilities(event)
@@ -20,14 +20,16 @@ export default defineEventHandler(async (event) => {
     .where(and(eq(schema.modules.status, 'ACTIVE'), ne(schema.modules.kind, 'BRIEF')))
     .all()
 
-  const nextUp: { id: string, name: string, department: string, kind: string }[] = []
-  for (const module of candidates) {
-    if (held.has(module.id)) continue
-    const { met } = await checkPrerequisites(abilities.user.id, module.id, { warningWindowDays })
-    if (met) {
-      nextUp.push({ id: module.id, name: module.name, department: module.department, kind: module.kind })
-    }
-  }
+  const unheld = candidates.filter(module => !held.has(module.id))
+  const checks = await checkPrerequisitesForCohort(
+    [abilities.user.id],
+    unheld.map(m => m.id),
+    { warningWindowDays },
+  )
+
+  const nextUp = unheld
+    .filter(module => checks.get(`${abilities.user.id}:${module.id}`)?.met)
+    .map(module => ({ id: module.id, name: module.name, department: module.department, kind: module.kind }))
 
   return {
     records: records.filter(r => r.kind !== 'BRIEF'),

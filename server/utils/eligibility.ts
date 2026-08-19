@@ -6,8 +6,8 @@
 import { db, schema } from '@nuxthub/db'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { countsAsValid } from './validity'
-import { currentRecordsForModules } from './records'
+import { countsAsValid, type ValidityState } from './validity'
+import { currentRecordsForCohort, currentRecordsForModules } from './records'
 import { moduleIdSchema } from './validation'
 
 export const requiresSchema = z.object({
@@ -66,15 +66,28 @@ export async function evaluateRule(
   userId: string,
   { warningWindowDays = 60 }: { warningWindowDays?: number } = {},
 ): Promise<EligibilityAnswer> {
-  if (requires.allOf.length === 0 && requires.anyOf.length === 0) {
-    throw new UnreadableRuleError('the stored rule requires nothing')
-  }
+  assertAnswerable(requires)
 
   const moduleIds = [...new Set([...requires.allOf, ...requires.anyOf])]
   const held = await currentRecordsForModules(userId, moduleIds, { warningWindowDays })
 
+  return answerFrom(requires, id => held.get(id))
+}
+
+function assertAnswerable(requires: Requires): void {
+  if (requires.allOf.length === 0 && requires.anyOf.length === 0) {
+    throw new UnreadableRuleError('the stored rule requires nothing')
+  }
+}
+
+type HeldLookup = (moduleId: string) => { state: ValidityState | null, expiresAt: string | null } | undefined
+
+/** The rule semantics, over whatever the caller has already read. */
+function answerFrom(requires: Requires, lookup: HeldLookup): EligibilityAnswer {
+  const moduleIds = [...new Set([...requires.allOf, ...requires.anyOf])]
+
   const holds = (moduleId: string) => {
-    const record = held.get(moduleId)
+    const record = lookup(moduleId)
     if (!record) return false
     // Briefs have no state and gate nothing; they should never appear in a
     // rule, but if one does it must not silently satisfy it.
@@ -91,8 +104,8 @@ export async function evaluateRule(
   }
 
   const expiring = moduleIds
-    .filter(id => held.get(id)?.state === 'EXPIRING')
-    .map(id => ({ moduleId: id, expiresAt: held.get(id)!.expiresAt! }))
+    .filter(id => lookup(id)?.state === 'EXPIRING')
+    .map(id => ({ moduleId: id, expiresAt: lookup(id)!.expiresAt! }))
 
   return {
     eligible: missing.length === 0 && anyOfSatisfied,
@@ -101,7 +114,7 @@ export async function evaluateRule(
   }
 }
 
-/** Load a rule by key, or null. */
+/** The stored rule, or null if nothing is named that. */
 export async function loadRule(key: string) {
   const row = await db.select().from(schema.eligibilityRules)
     .where(eq(schema.eligibilityRules.key, key)).get()
@@ -109,19 +122,22 @@ export async function loadRule(key: string) {
 }
 
 /**
- * Evaluated per person rather than as one clever query: the membership is
- * tens of people, and one implementation of the semantics is worth more.
+ * One read for the whole membership, then the rule in memory: this backs a
+ * consumer endpoint other estate apps poll.
  */
 export async function eligibleUserIds(
   requires: Requires,
   { warningWindowDays = 60 }: { warningWindowDays?: number } = {},
 ): Promise<string[]> {
+  assertAnswerable(requires)
+
   const users = await db.select({ id: schema.users.id }).from(schema.users).all()
+  const userIds = users.map(u => u.id)
+  const moduleIds = [...new Set([...requires.allOf, ...requires.anyOf])]
 
-  const results = await Promise.all(users.map(async (user) => {
-    const answer = await evaluateRule(requires, user.id, { warningWindowDays })
-    return answer.eligible ? user.id : null
-  }))
+  const held = await currentRecordsForCohort(userIds, moduleIds, { warningWindowDays })
 
-  return results.filter((id): id is string => id !== null)
+  return userIds.filter(userId =>
+    answerFrom(requires, id => held.get(`${userId}:${id}`)).eligible,
+  )
 }

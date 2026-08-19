@@ -212,7 +212,7 @@ const windowDays = computed({
               v-for="(digest, i) in preview.digests"
               :key="i"
             >
-              {{ digest.name }} —
+              {{ digest.name }}:
               {{ digest.departments === null ? 'all departments' : digest.departments.join(', ') }}:
               {{ digest.expiring }} expiring, {{ digest.expired }} expired
             </li>
@@ -256,7 +256,7 @@ const windowDays = computed({
         >
           <span>{{ entry.name ?? 'Unknown' }}</span>
           <code class="text-xs text-muted">{{ entry.type }}</code>
-          <span class="text-xs text-muted">{{ entry.moduleId ?? '—' }}</span>
+          <span class="text-xs text-muted">{{ entry.moduleId ?? 'none' }}</span>
           <span class="text-xs text-dimmed">{{ formatDateTime(entry.sentAt) }}</span>
         </div>
       </div>

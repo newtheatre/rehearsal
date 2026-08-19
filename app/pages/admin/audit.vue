@@ -17,7 +17,7 @@ const { data, status } = await useFetch('/api/admin/audit', { query })
 
 const expanded = ref<string | null>(null)
 
-// Filtering starts a new page run — otherwise a cursor from the old filter
+// Filtering starts a new page run: otherwise a cursor from the old filter
 // silently drops the first results of the new one.
 watch([action, search], () => {
   before.value = undefined

@@ -1,5 +1,5 @@
 /**
- * GET /api/v1/modules — the catalogue, for consumers.
+ * GET /api/v1/modules: the catalogue, for consumers.
  */
 
 import { db, schema } from '@nuxthub/db'

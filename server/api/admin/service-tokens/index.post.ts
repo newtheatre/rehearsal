@@ -1,5 +1,5 @@
 /**
- * POST /api/admin/service-tokens — issue a token for a consumer app.
+ * POST /api/admin/service-tokens: issue a token for a consumer app.
  */
 
 import { db, schema } from '@nuxthub/db'
@@ -11,7 +11,7 @@ import { writeAudit } from '../../../utils/audit'
 
 const bodySchema = z.object({
   name: z.string().trim().min(2).max(60)
-    .regex(/^[a-z0-9-]+$/, 'Lowercase letters, numbers and hyphens — name it after the consumer app'),
+    .regex(/^[a-z0-9-]+$/, 'Lowercase letters, numbers and hyphens, name it after the consumer app'),
 })
 
 export default defineEventHandler(async (event) => {
@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
   if (existing) {
     throw createError({
       statusCode: 409,
-      statusMessage: `A token named "${name}" already exists — revoke it first, or pick another name`,
+      statusMessage: `A token named "${name}" already exists: revoke it first, or pick another name`,
     })
   }
 
@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
     actorUserId: admin.id,
     action: 'service-token.issue',
     target: id,
-    // The token itself is never audited — only that one was issued, to whom.
+    // The token itself is never audited: only that one was issued, to whom.
     detail: { name },
   })
 

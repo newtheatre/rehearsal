@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-Why the system is the way it is. One decision per file, numbered, never edited after acceptance — supersede instead. Same template as the `newtheatre/stage-door` repo (reproduced below).
+Why the system is the way it is. One decision per file, numbered, never edited after acceptance: supersede instead. Same template as the `newtheatre/stage-door` repo (reproduced below).
 
 | # | Decision | Status |
 |---|---|---|

@@ -1,5 +1,5 @@
 /**
- * DELETE /api/admin/leads/:id — stand someone down as lead.
+ * DELETE /api/admin/leads/:id: stand someone down as lead.
  */
 
 import { db, schema } from '@nuxthub/db'

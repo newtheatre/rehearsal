@@ -18,7 +18,7 @@ const moduleOptions = computed(() =>
 
 const tokenName = ref('')
 const issuing = ref(false)
-/** Shown exactly once — it is not stored anywhere we could show it again. */
+/** Shown exactly once: it is not stored anywhere we could show it again. */
 const issuedToken = ref<{ name: string, token: string } | null>(null)
 
 async function issueToken() {
@@ -128,7 +128,7 @@ function lastUsed(value: string | Date | null) {
       </template>
 
       <p class="text-sm text-muted mb-4">
-        A rule is a named question — "is this person duty-manager eligible?". This system
+        A rule is a named question: "is this person duty-manager eligible?". This system
         answers it; the consuming app decides what the answer means. Changing a rule takes
         effect within five minutes with no deploy anywhere, so tell the consuming app's
         owner when you do.
@@ -152,7 +152,7 @@ function lastUsed(value: string | Date | null) {
               v-if="entry.requires"
               class="text-xs text-muted mt-1"
             >
-              Needs all of: {{ entry.requires.allOf.join(', ') || '—' }}
+              Needs all of: {{ entry.requires.allOf.join(', ') || 'nothing' }}
               <span v-if="entry.requires.anyOf.length">
                 · and any of: {{ entry.requires.anyOf.join(', ') }}
               </span>
@@ -204,7 +204,7 @@ function lastUsed(value: string | Date | null) {
         color="warning"
         variant="subtle"
         class="mb-4"
-        :title="`Token for ${issuedToken.name} — copy it now`"
+        :title="`Token for ${issuedToken.name}: copy it now`"
       >
         <template #description>
           <p class="mb-2">
@@ -251,7 +251,7 @@ function lastUsed(value: string | Date | null) {
         <div class="flex items-end gap-2">
           <UFormField
             label="Consumer app"
-            help="Lowercase, hyphenated — name it after the app that will call"
+            help="Lowercase, hyphenated: name it after the app that will call"
             class="flex-1"
           >
             <UInput
@@ -287,7 +287,7 @@ function lastUsed(value: string | Date | null) {
 
           <UFormField
             label="Key"
-            :help="editingKey ? 'Consumers hardcode this — it is never renamed' : 'Consumers will hardcode this, so choose carefully'"
+            :help="editingKey ? 'Consumers hardcode this, it is never renamed' : 'Consumers will hardcode this, so choose carefully'"
             required
           >
             <UInput

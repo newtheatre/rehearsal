@@ -1,5 +1,5 @@
 /**
- * GET /api/v1/users/:id/records — one person's current training.
+ * GET /api/v1/users/:id/records: one person's current training.
  */
 
 import { db, schema } from '@nuxthub/db'
@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
   return {
     userId: user.id,
     records: records.map(record => record.kind === 'BRIEF'
-      // A brief recurs per event and has no validity — reporting a state for
+      // A brief recurs per event and has no validity: reporting a state for
       // one would invite a consumer to gate on it (ADR-0003).
       ? {
           module: record.moduleId,

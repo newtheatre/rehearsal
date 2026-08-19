@@ -1,5 +1,5 @@
 /**
- * POST /api/admin/recalculate — preview or apply an expiry recalculation.
+ * POST /api/admin/recalculate: preview or apply an expiry recalculation.
  */
 
 import { z } from 'zod'
@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
   if (confirmChangeCount !== plan.changes.length) {
     throw createError({
       statusCode: 409,
-      statusMessage: `The preview showed ${confirmChangeCount} changes but there are now ${plan.changes.length} — review it again`,
+      statusMessage: `The preview showed ${confirmChangeCount} changes but there are now ${plan.changes.length}: review it again`,
     })
   }
 

@@ -1,5 +1,5 @@
 /**
- * POST /api/sessions/check — what would this session actually record?
+ * POST /api/sessions/check: what would this session actually record?
  */
 
 import { sessionInputSchema } from '../../utils/validation'

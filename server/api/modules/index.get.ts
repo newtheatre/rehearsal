@@ -1,5 +1,5 @@
 /**
- * GET /api/modules — the catalogue.
+ * GET /api/modules: the catalogue.
  */
 
 import { moduleListQuerySchema } from '../../utils/validation'

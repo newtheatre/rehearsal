@@ -1,5 +1,5 @@
 /**
- * The session flow, run through the real handlers — trainer derivation,
+ * The session flow, run through the real handlers: trainer derivation,
  * prerequisite gating and the atomic batch as deployed.
  */
 
@@ -80,7 +80,7 @@ describe('trainer gating', () => {
     const event = postEvent(validSession)
     signIn(event, { id: 'trainer' })
 
-    // No admin action revoked anything — the certification simply lapsed.
+    // No admin action revoked anything: the certification simply lapsed.
     await expect(call(createSessionHandler, event)).rejects.toMatchObject({ statusCode: 403 })
   })
 
@@ -142,7 +142,7 @@ describe('session → records', () => {
   it('writes nothing at all when the batch fails', async () => {
     await setup()
     // Same attendee twice violates the unique (session, user) index, which
-    // fails the whole batch — the atomicity ADR-0009 exists for.
+    // fails the whole batch: the atomicity ADR-0009 exists for.
     const event = postEvent({ ...validSession, attendeeIds: ['alice', 'alice'] })
     signIn(event, { id: 'trainer' })
 
@@ -152,7 +152,7 @@ describe('session → records', () => {
     expect(await db.select().from(schema.records).where(eq(schema.records.source, 'SESSION')).all()).toHaveLength(0)
   })
 
-  it('refuses a session with no attendees — it would record nothing', async () => {
+  it('refuses a session with no attendees, it would record nothing', async () => {
     await setup()
     const event = postEvent({ ...validSession, attendeeIds: [] })
     signIn(event, { id: 'trainer' })

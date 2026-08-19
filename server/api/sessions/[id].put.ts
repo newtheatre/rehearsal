@@ -1,5 +1,5 @@
 /**
- * PUT /api/sessions/:id — correct a recently-logged session.
+ * PUT /api/sessions/:id: correct a recently-logged session.
  */
 
 import { db, schema } from '@nuxthub/db'
@@ -40,7 +40,7 @@ export default defineEventHandler(async (event) => {
     if (!abilities.isAdmin) {
       throw createError({
         statusCode: 409,
-        statusMessage: `Sessions can only be edited for ${editWindowDays} days — correct the records individually instead`,
+        statusMessage: `Sessions can only be edited for ${editWindowDays} days: correct the records individually instead`,
       })
     }
     await requirePermission(event, 'record.manage')

@@ -1,5 +1,5 @@
 /**
- * POST /api/_hooks/auth/merge — account merge, this app's share (stage-door
+ * POST /api/_hooks/auth/merge: account merge, this app's share (stage-door
  * ADR-0015).
  */
 

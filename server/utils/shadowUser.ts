@@ -56,7 +56,7 @@ export async function findOrCreateAttendee(
   catch {
     throw createError({
       statusCode: 503,
-      statusMessage: 'The accounts service is unreachable — try adding this person again shortly',
+      statusMessage: 'The accounts service is unreachable: try adding this person again shortly',
     })
   }
 

@@ -42,7 +42,7 @@ function putEvent(id: string, body: unknown) {
   return makeEvent({ method: 'PUT', path: `/api/modules/${id}`, params: { id }, body })
 }
 
-describe('POST /api/modules — authorisation', () => {
+describe('POST /api/modules, authorisation', () => {
   it('refuses an ordinary member', async () => {
     await setup()
     const event = postEvent(validModule)
@@ -75,7 +75,7 @@ describe('POST /api/modules — authorisation', () => {
     const stale = postEvent({ ...validModule, id: 'STGE-161', department: 'STGE' })
     signIn(stale, { id: 'tm', roles: ['training:ADMIN'] }, { refreshedAt: Date.now() - 20 * 60_000 })
 
-    // A stale session may be missing a revoked role — refresh before honouring it.
+    // A stale session may be missing a revoked role: refresh before honouring it.
     await expect(call(createModule, stale)).rejects.toMatchObject({
       statusCode: 401,
       data: { stale: true },
@@ -89,7 +89,7 @@ describe('POST /api/modules — authorisation', () => {
   })
 })
 
-describe('POST /api/modules — validation', () => {
+describe('POST /api/modules, validation', () => {
   it('rejects an id whose prefix contradicts the department', async () => {
     await setup()
     const event = postEvent({ ...validModule, department: 'NNT' })

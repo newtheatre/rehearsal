@@ -1,5 +1,5 @@
 /**
- * The local user mirror and the fail-closed API middleware — the two things
+ * The local user mirror and the fail-closed API middleware: the two things
  * every other server path assumes are working.
  */
 

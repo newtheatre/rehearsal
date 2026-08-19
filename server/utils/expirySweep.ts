@@ -28,7 +28,7 @@ export interface SweepResult {
   failed: { to: string, type: NotificationType, error: string }[]
 }
 
-/** First day of `asOf`'s month, as epoch ms — the digest idempotency window. */
+/** First day of `asOf`'s month, as epoch ms: the digest idempotency window. */
 function startOfMonth(asOf: string): Date {
   return new Date(`${asOf.slice(0, 7)}-01T00:00:00Z`)
 }
@@ -95,7 +95,7 @@ export async function gatherSweepInputs(asOf: string, warningWindowDays: number)
 }
 
 /**
- * What the sweep would do, without doing any of it — no sends, no audit
+ * What the sweep would do, without doing any of it: no sends, no audit
  * entry, so an operator can look as often as they like.
  */
 export async function previewExpirySweep(asOf: string = today()): Promise<ExpiryPlan> {

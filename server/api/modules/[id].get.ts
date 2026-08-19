@@ -1,5 +1,5 @@
 /**
- * GET /api/modules/:id — module detail with prerequisites and dependents.
+ * GET /api/modules/:id: module detail with prerequisites and dependents.
  */
 
 import { moduleIdSchema } from '../../utils/validation'

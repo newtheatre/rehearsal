@@ -40,7 +40,7 @@ function adminEvent(overrides: Partial<FakeEvent> = {}) {
 }
 
 describe('listing leads', () => {
-  it('includes departments that have none — that is the useful answer', async () => {
+  it('includes departments that have none, that is the useful answer', async () => {
     await setup()
     const result = await call(listHandler, adminEvent()) as {
       departments: { code: string, leads: unknown[] }[]
@@ -170,7 +170,7 @@ describe('removing a lead', () => {
     })
     expect(abilities.leadOf).toEqual([])
 
-    // The record stays, still attributed to them — that is where the history
+    // The record stays, still attributed to them: that is where the history
     // belongs, not in a stale authority row.
     const record = await db.select().from(schema.records)
       .where(eq(schema.records.moduleId, 'LD-CERT')).get()
@@ -193,7 +193,7 @@ describe('removing a lead', () => {
     const event = makeEvent({ method: 'DELETE', path: `/api/admin/leads/${added.id}`, params: { id: added.id } })
     signIn(event, { id: 'ctd' })
 
-    // A lead cannot remove themselves or anyone else — that is the TM's job.
+    // A lead cannot remove themselves or anyone else: that is the TM's job.
     await expect(call(removeHandler, event)).rejects.toMatchObject({ statusCode: 403 })
   })
 })

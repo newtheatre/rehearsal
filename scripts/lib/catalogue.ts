@@ -40,7 +40,7 @@ export function parseCsv(text: string): string[][] {
   let inQuotes = false
   let i = 0
 
-  // Strip a UTF-8 BOM — Excel and Google Sheets both like to add one.
+  // Strip a UTF-8 BOM: Excel and Google Sheets both like to add one.
   if (text.charCodeAt(0) === 0xFEFF) i = 1
 
   for (; i < text.length; i++) {
@@ -142,7 +142,7 @@ export function parseExpiry(raw: string): ExpiryResult | null {
 }
 
 // Certification prefixes are the subcommittee's shorthand and deliberately
-// need not match a department code — the column names the department.
+// need not match a department code: the column names the department.
 const MODULE_ID = /^[A-Z]{2,4}-([0-9]{3}|CERT)$/
 const REQUIRED_COLUMNS = ['Department', 'ID', 'Name']
 
@@ -236,7 +236,7 @@ export function parseCatalogue(text: string, source = 'catalogue.csv'): ParsedMo
     }
     const safetyCritical = /^(yes|true|y|1)$/.test(safetyRaw)
 
-    // Kind is derived from the id and the expiry column — the subcommittee's
+    // Kind is derived from the id and the expiry column: the subcommittee's
     // own convention (ADR-0003), so there is nothing extra for them to fill in.
     const kind = isCertification ? 'CERTIFICATION' : expiry.isBrief ? 'BRIEF' : 'MODULE'
 
@@ -266,7 +266,7 @@ export function parseCatalogue(text: string, source = 'catalogue.csv'): ParsedMo
     }))
   })
 
-  // Prerequisites must resolve within the catalogue — a dangling reference
+  // Prerequisites must resolve within the catalogue: a dangling reference
   // would fail at insert time with a far less helpful message.
   const ids = new Set(modules.map(m => m.id))
   for (const module of modules) {

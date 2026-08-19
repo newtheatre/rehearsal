@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 /**
  * Create/edit a catalogue entry. The server is the authority on every rule
- * here — this form's job is to make the rules legible, not to enforce them.
+ * here: this form's job is to make the rules legible, not to enforce them.
  */
 
 interface ModuleFormValue {
@@ -91,7 +91,7 @@ const isBrief = computed(() => state.value.kind === 'BRIEF')
 
 /**
  * An ordinary module's id carries its department, so follow the prefix as it
- * is typed. Certifications are exempt — `LD-CERT` sits in TECH.
+ * is typed. Certifications are exempt: `LD-CERT` sits in TECH.
  */
 watch(() => state.value.id, (id) => {
   if (props.moduleId) return // editing: the id is fixed
@@ -182,7 +182,7 @@ async function save() {
         <div class="grid gap-4 sm:grid-cols-2">
           <UFormField
             label="Module ID"
-            :help="moduleId ? 'Published identifier — cannot be changed' : 'e.g. TECH-111, or LD-CERT for a certification'"
+            :help="moduleId ? 'Published identifier, cannot be changed' : 'e.g. TECH-111, or LD-CERT for a certification'"
             required
           >
             <UInput
@@ -298,7 +298,7 @@ async function save() {
           icon="i-lucide-megaphone"
           color="neutral"
           variant="subtle"
-          description="Briefs never expire and never gate anything — attendance is recorded per event and shown as 'last received'."
+          description="Briefs never expire and never gate anything: attendance is recorded per event and shown as 'last received'."
         />
 
         <UFormField

@@ -1,5 +1,5 @@
 /**
- * POST /api/people/:id/signoff — sign off a certification.
+ * POST /api/people/:id/signoff: sign off a certification.
  */
 
 import { db, schema } from '@nuxthub/db'
@@ -34,7 +34,7 @@ export default defineEventHandler(async (event) => {
   if (!module.signoffRequired) {
     throw createError({
       statusCode: 400,
-      statusMessage: `${module.id} is not a certification — record it by logging a session`,
+      statusMessage: `${module.id} is not a certification: record it by logging a session`,
     })
   }
 

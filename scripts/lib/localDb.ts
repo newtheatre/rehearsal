@@ -1,6 +1,6 @@
 /**
  * Local-database connection for the seed and import scripts. These never
- * touch production D1 — that is `wrangler d1`, a different runbook.
+ * touch production D1: that is `wrangler d1`, a different runbook.
  */
 
 import { existsSync } from 'node:fs'
@@ -28,7 +28,7 @@ export function openLocalDb() {
 
   const dbPath = join(import.meta.dirname, '../../.data/db/sqlite.db')
   if (!existsSync(dbPath)) {
-    console.error(`No local database at ${dbPath} — run \`bun run db:migrate\` (or \`bun run dev\` once) first.`)
+    console.error(`No local database at ${dbPath}, run \`bun run db:migrate\` (or \`bun run dev\` once) first.`)
     process.exit(1)
   }
 

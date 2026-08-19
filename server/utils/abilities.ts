@@ -1,6 +1,6 @@
 /**
  * The ability layer. Three independent sources of authority, deliberately not
- * collapsed into one role list — docs/permissions.md.
+ * collapsed into one role list: docs/permissions.md.
  */
 
 import { db, schema } from '@nuxthub/db'
@@ -15,7 +15,7 @@ export const ROLE_NAMESPACE = APP_MANIFEST.namespace
 
 export interface Abilities {
   user: User
-  /** training:ADMIN — Theatre Manager and ITM. */
+  /** training:ADMIN: Theatre Manager and ITM. */
   isAdmin: boolean
   /** Department codes this user leads (empty for most people). */
   leadOf: string[]

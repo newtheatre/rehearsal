@@ -85,7 +85,7 @@ const withoutLeads = computed(() =>
       color="warning"
       variant="subtle"
       title="Departments with no lead"
-      :description="`${withoutLeads.join(', ')} — nobody can sign off their certifications except an admin.`"
+      :description="`${withoutLeads.join(', ')}: nobody can sign off their certifications except an admin.`"
     />
 
     <div class="space-y-3">

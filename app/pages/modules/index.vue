@@ -100,7 +100,7 @@ const grouped = computed(() => {
       title="Nothing to show"
       :description="search || selectedDepartment !== ALL_DEPARTMENTS
         ? 'No modules match that search.'
-        : 'The catalogue is empty — or everything in it is still a draft. An admin can seed it from the subcommittee\'s spreadsheet.'"
+        : 'The catalogue is empty, or everything in it is still a draft. An admin can seed it from the subcommittee\'s spreadsheet.'"
     />
 
     <div

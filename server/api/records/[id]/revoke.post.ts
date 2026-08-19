@@ -1,5 +1,5 @@
 /**
- * POST /api/records/:id/revoke — withdraw a record.
+ * POST /api/records/:id/revoke: withdraw a record.
  */
 
 import { db, schema } from '@nuxthub/db'

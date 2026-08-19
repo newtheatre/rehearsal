@@ -1,5 +1,5 @@
 /**
- * POST /api/_hooks/auth/export — this app's contribution to a subject-access
+ * POST /api/_hooks/auth/export: this app's contribution to a subject-access
  * bundle (stage-door docs/gdpr-retention.md).
  */
 

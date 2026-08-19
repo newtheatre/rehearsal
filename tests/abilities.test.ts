@@ -45,7 +45,7 @@ describe('trainer standing', () => {
     expect(await holdsTrainerCertification('alice')).toBe(false)
   })
 
-  it('survives inside the warning window — the ability must not flicker off early', async () => {
+  it('survives inside the warning window, the ability must not flicker off early', async () => {
     await seedTrainerCert()
     await seedUser('alice')
     // Expiring within the 60-day window still counts as held.

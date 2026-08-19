@@ -1,5 +1,5 @@
 /**
- * GET /api/departments — departments with the number of modules this caller
+ * GET /api/departments: departments with the number of modules this caller
  * can actually see, so the catalogue's counts never advertise hidden drafts.
  */
 

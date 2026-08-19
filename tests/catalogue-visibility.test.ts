@@ -1,5 +1,5 @@
 /**
- * Draft visibility — the Phase 1 acceptance criterion, and the one mistake
+ * Draft visibility: the Phase 1 acceptance criterion, and the one mistake
  * that would put half-written safety content in front of members.
  */
 
@@ -31,7 +31,7 @@ describe('listModules', () => {
     expect(ids).not.toContain('STGE-101')
   })
 
-  it('keeps retired modules visible — a member may hold a record for one', async () => {
+  it('keeps retired modules visible, a member may hold a record for one', async () => {
     await seedCatalogue()
     expect((await listModules(member)).map(m => m.id)).toContain('TECH-113')
   })

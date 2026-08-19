@@ -278,7 +278,7 @@ describe('revocation', () => {
     return makeEvent({ method: 'POST', path: `/api/records/${id}/revoke`, params: { id }, body })
   }
 
-  it('is admin-only — a department lead cannot revoke', async () => {
+  it('is admin-only, a department lead cannot revoke', async () => {
     const record = await seedSignedOff()
     const event = revokeEvent(record.id, { reason: 'Mistaken' })
     signIn(event, { id: 'ctd' })

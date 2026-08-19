@@ -18,7 +18,7 @@ export function generateServiceToken(): string {
   return `${TOKEN_PREFIX}${randomBytes(32).toString('base64url')}`
 }
 
-/** Create a token for a consumer. Returns the plaintext — shown once, never stored. */
+/** Create a token for a consumer. Returns the plaintext: shown once, never stored. */
 export async function createServiceToken(name: string): Promise<{ id: string, token: string }> {
   const token = generateServiceToken()
   const [row] = await db.insert(schema.serviceTokens)

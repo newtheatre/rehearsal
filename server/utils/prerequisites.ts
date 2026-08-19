@@ -20,7 +20,7 @@ export interface PrerequisiteCheck {
   missing: PrerequisiteGap[]
 }
 
-/** Direct prerequisites of a module (not transitive — see the note below). */
+/** Direct prerequisites of a module (not transitive, see the note below). */
 export async function prerequisiteIdsOf(moduleId: string): Promise<string[]> {
   const rows = await db.select({ id: schema.modulePrerequisites.requiresModuleId })
     .from(schema.modulePrerequisites)
@@ -30,7 +30,7 @@ export async function prerequisiteIdsOf(moduleId: string): Promise<string[]> {
 }
 
 /**
- * Direct prerequisites only, not the transitive closure — the catalogue
+ * Direct prerequisites only, not the transitive closure: the catalogue
  * already chains them. Deepening the rule is a policy change with an ADR.
  */
 export async function checkPrerequisites(
@@ -67,8 +67,8 @@ export async function checkPrerequisites(
 }
 
 /**
- * A certification whose constituent modules have lapsed stays valid — v1 does
- * not auto-suspend — but says so on the person's page.
+ * A certification whose constituent modules have lapsed stays valid: v1 does
+ * not auto-suspend, but says so on the person's page.
  */
 export async function lapsedConstituents(
   userId: string,

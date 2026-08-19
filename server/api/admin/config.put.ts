@@ -1,5 +1,5 @@
 /**
- * PUT /api/admin/config — change an operator-tunable value.
+ * PUT /api/admin/config: change an operator-tunable value.
  */
 
 import { db, schema } from '@nuxthub/db'

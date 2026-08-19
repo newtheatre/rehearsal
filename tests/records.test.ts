@@ -83,7 +83,7 @@ describe('current record resolution', () => {
     expect(current).toHaveLength(1)
     expect(current[0]!.awardedAt).toBe('2026-01-01')
 
-    // Both rows are still there — re-training doesn't erase the first session.
+    // Both rows are still there: re-training doesn't erase the first session.
     const all = await db.select().from(schema.records).all()
     expect(all).toHaveLength(2)
   })
@@ -148,7 +148,7 @@ describe('holdersOf', () => {
     const holders = await holdersOf('TECH-111')
     const byUser = new Map(holders.map(h => [h.userId, h]))
 
-    // Expired holders are listed but distinguished — held-but-expired is
+    // Expired holders are listed but distinguished: held-but-expired is
     // visible, never hidden.
     expect(byUser.get('alice')!.state).toBe('VALID')
     expect(byUser.get('bob')!.state).toBe('EXPIRED')

@@ -83,7 +83,7 @@ const statusColour = { ACTIVE: 'success', DRAFT: 'neutral', RETIRED: 'warning' }
       color="neutral"
       variant="subtle"
       title="Changing an expiry policy affects future awards only"
-      description="Existing records keep the expiry they were stamped with. Retroactive change is a separate, previewed admin action — deliberately not something an edit here can do by accident."
+      description="Existing records keep the expiry they were stamped with. Retroactive change is a separate, previewed admin action: deliberately not something an edit here can do by accident."
     />
 
     <div class="border border-default rounded-lg overflow-x-auto">
@@ -165,7 +165,7 @@ const statusColour = { ACTIVE: 'success', DRAFT: 'neutral', RETIRED: 'warning' }
     </div>
 
     <p class="text-xs text-muted">
-      Modules are retired, never deleted — records and history reference them.
+      Modules are retired, never deleted: records and history reference them.
     </p>
 
     <AdminModuleFormModal

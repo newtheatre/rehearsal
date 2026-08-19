@@ -1,5 +1,5 @@
 /**
- * POST /api/sessions — log a delivered training session.
+ * POST /api/sessions: log a delivered training session.
  */
 
 import { sessionInputSchema } from '../../utils/validation'
@@ -34,7 +34,7 @@ export default defineEventHandler(async (event) => {
   )
 
   // Safety-critical modules block. Everything else warns, and the trainer
-  // confirms past it — they know why they are teaching someone.
+  // confirms past it: they know why they are teaching someone.
   if (blocking.length > 0) {
     throw createError({
       statusCode: 422,

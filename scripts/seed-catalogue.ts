@@ -93,14 +93,14 @@ if (import.meta.main) {
   }, {})
 
   console.info(`Catalogue seeded from ${csvPath}`)
-  console.info(`  ${modules.length} modules — ${Object.entries(byKind).map(([k, v]) => `${v} ${k}`).join(', ')}`)
+  console.info(`  ${modules.length} modules, ${Object.entries(byKind).map(([k, v]) => `${v} ${k}`).join(', ')}`)
   console.info(`  status: ${Object.entries(byStatus).map(([k, v]) => `${v} ${k}`).join(', ')}`)
   console.info(`  ${prerequisiteCount} prerequisites, ${legacyCount} legacy code mappings`)
 
   const placeholders = modules.filter(m => m.notes?.startsWith('PLACEHOLDER'))
   if (placeholders.length > 0) {
     console.warn(`\n⚠️  ${placeholders.length}/${modules.length} rows are PLACEHOLDER content, not the subcommittee's catalogue.`)
-    console.warn('   See data/README.md — replace the CSV before this system carries any weight.')
+    console.warn('   See data/README.md, replace the CSV before this system carries any weight.')
   }
 
   const drafts = modules.filter(m => m.status === 'DRAFT').length

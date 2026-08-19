@@ -1,5 +1,5 @@
 /**
- * GET /api/people — the member directory.
+ * GET /api/people: the member directory.
  */
 
 import { db, schema } from '@nuxthub/db'
@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
   const users = await db.select({ id: schema.users.id, name: schema.users.name })
     .from(schema.users).all()
 
-  // Current records for everyone, in one pass — the directory is tens of
+  // Current records for everyone, in one pass: the directory is tens of
   // people, so this is cheaper than a query per person.
   const records = await db.select({
     userId: schema.records.userId,

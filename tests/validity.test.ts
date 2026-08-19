@@ -1,5 +1,5 @@
 /**
- * Validity derivation and expiry stamping — the semantics everything else,
+ * Validity derivation and expiry stamping: the semantics everything else,
  * and every API consumer, depends on. docs/records-and-expiry.md
  */
 
@@ -41,7 +41,7 @@ describe('validityState', () => {
     expect(validityState('2026-10-14', { asOf, warningWindowDays: 60 })).toBe('VALID')
   })
 
-  it('counts EXPIRING as held — an ability must not flicker off early', () => {
+  it('counts EXPIRING as held, an ability must not flicker off early', () => {
     expect(countsAsValid('EXPIRING')).toBe(true)
     expect(countsAsValid('VALID')).toBe(true)
     expect(countsAsValid('EXPIRED')).toBe(false)
@@ -64,7 +64,7 @@ describe('nextAcademicYearEnd', () => {
     expect(nextAcademicYearEnd('2027-01-15')).toBe('2027-09-30')
   })
 
-  it('gives a mid-September award only days of validity — that is what an academic-year gate means', () => {
+  it('gives a mid-September award only days of validity, that is what an academic-year gate means', () => {
     expect(nextAcademicYearEnd('2027-09-15')).toBe('2027-09-30')
   })
 

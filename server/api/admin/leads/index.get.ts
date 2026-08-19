@@ -1,5 +1,5 @@
 /**
- * GET /api/admin/leads — who leads what.
+ * GET /api/admin/leads: who leads what.
  */
 
 import { db, schema } from '@nuxthub/db'

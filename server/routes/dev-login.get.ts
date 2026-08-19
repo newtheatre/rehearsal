@@ -1,5 +1,5 @@
 /**
- * DEV ONLY — the one sanctioned exception to "apps never write the session".
+ * DEV ONLY: the one sanctioned exception to "apps never write the session".
  * Flags and personas: docs/development.md#dev-login
  */
 
@@ -35,7 +35,7 @@ export default defineEventHandler(async (event) => {
     if (!department) {
       throw createError({
         statusCode: 400,
-        statusMessage: `Unknown department '${leadDept}' — seed the catalogue first (bun run db:seed)`,
+        statusMessage: `Unknown department '${leadDept}', seed the catalogue first (bun run db:seed)`,
       })
     }
     await db.insert(schema.departmentLeads)
@@ -49,7 +49,7 @@ export default defineEventHandler(async (event) => {
     if (!trainerCert) {
       throw createError({
         statusCode: 400,
-        statusMessage: 'No grants_trainer certification in the catalogue — seed it first (bun run db:seed)',
+        statusMessage: 'No grants_trainer certification in the catalogue, seed it first (bun run db:seed)',
       })
     }
     const existing = await db.select().from(schema.records)

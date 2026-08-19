@@ -1,5 +1,5 @@
 /**
- * POST /api/modules — create a catalogue entry.
+ * POST /api/modules: create a catalogue entry.
  */
 
 import { db, schema } from '@nuxthub/db'

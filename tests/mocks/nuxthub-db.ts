@@ -33,6 +33,28 @@ for (const file of readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).so
 
 await client.execute('PRAGMA foreign_keys = ON')
 
+// Test seam: the cohort reads exist to keep query counts off the row count,
+// so a test needs to be able to see them.
+let queries = 0
+const rawExecute = client.execute.bind(client)
+const rawBatch = client.batch.bind(client)
+client.execute = ((...args: Parameters<typeof rawExecute>) => {
+  queries++
+  return rawExecute(...args)
+}) as typeof client.execute
+client.batch = ((...args: Parameters<typeof rawBatch>) => {
+  queries++
+  return rawBatch(...args)
+}) as typeof client.batch
+
+export function countQueries(): number {
+  return queries
+}
+
+export function resetQueryCount(): void {
+  queries = 0
+}
+
 export const db = drizzle(client, { schema })
 
 /** Wipe all rows between tests (schema stays). */

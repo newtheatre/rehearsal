@@ -8,7 +8,7 @@ import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { buildRecordInserts, loadModules } from './records'
 import type { ModuleRow } from './modules'
-import { checkPrerequisites, type PrerequisiteGap } from './prerequisites'
+import { checkPrerequisitesForCohort, type PrerequisiteGap } from './prerequisites'
 import { runAtomic } from './batch'
 
 export type SessionRow = typeof schema.sessions.$inferSelect
@@ -46,9 +46,15 @@ export async function checkSessionPrerequisites(
   const warnings: AttendeeWarning[] = []
   const blocking: AttendeeWarning[] = []
 
+  const checks = await checkPrerequisitesForCohort(
+    attendeeIds,
+    modules.map(m => m.id),
+    { warningWindowDays },
+  )
+
   for (const module of modules) {
     for (const userId of attendeeIds) {
-      const { met, missing } = await checkPrerequisites(userId, module.id, { warningWindowDays })
+      const { met, missing } = checks.get(`${userId}:${module.id}`) ?? { met: true, missing: [] }
       if (met) continue
 
       const gap: AttendeeWarning = {

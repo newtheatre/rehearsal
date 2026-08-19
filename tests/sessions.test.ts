@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest'
 import createSessionHandler from '../server/api/sessions/index.post'
 import checkSessionHandler from '../server/api/sessions/check.post'
 import updateSessionHandler from '../server/api/sessions/[id].put'
-import { db, schema } from './mocks/nuxthub-db'
+import { db, schema, countQueries, resetQueryCount } from './mocks/nuxthub-db'
 import { addDays } from '../server/utils/validity'
 import { today } from '../shared/utils/dates'
 import { eq } from 'drizzle-orm'
@@ -259,6 +259,34 @@ describe('POST /api/sessions/check', () => {
     expect(preview.records).toHaveLength(4)
 
     expect(await db.select().from(schema.sessions).all()).toHaveLength(0)
+  })
+})
+
+describe('prerequisite checking at cohort size', () => {
+  it('costs a fixed number of queries however many attendees there are', async () => {
+    await setup()
+    // TECH-211 already requires TECH-111 and TECH-112, which nobody here holds.
+    const cohort: string[] = []
+    for (let i = 0; i < 40; i++) {
+      await seedUser(`member-${i}`, `Member ${i}`)
+      cohort.push(`member-${i}`)
+    }
+
+    const event = makeEvent({
+      method: 'POST',
+      path: '/api/sessions/check',
+      body: { heldOn: TODAY, moduleIds: ['TECH-211'], attendeeIds: cohort },
+    })
+    signIn(event, { id: 'trainer' })
+
+    resetQueryCount()
+    const result = await call(checkSessionHandler, event) as { warnings: unknown[] }
+    const used = countQueries()
+
+    // Everyone lacks TECH-111, so the answer must still be per-person.
+    expect(result.warnings).toHaveLength(40)
+    // Per-pair checking made this 40+ queries; it must not scale with cohort.
+    expect(used).toBeLessThan(15)
   })
 })
 

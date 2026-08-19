@@ -137,6 +137,34 @@ describe('anonymise', () => {
     expect(session!.notes).toBeNull()
   })
 
+  it('scrubs the sign-off note, which shares the external_ref column', async () => {
+    await setup()
+    await seedRecord({
+      userId: 'alice', moduleId: 'NNT-001', expiresAt: null,
+      source: 'SIGNOFF', grantedBy: 'trainer',
+      externalRef: 'Held back twice, re-tested after a complaint',
+    })
+
+    await call(anonymiseHandler, hookEvent({ userId: 'alice' }))
+
+    const record = await db.select().from(schema.records)
+      .where(eq(schema.records.userId, 'alice')).get()
+    expect(record!.externalRef).toBeNull()
+    expect(record!.moduleId).toBe('NNT-001') // the training itself survives
+  })
+
+  it('stamps the erasure once, however many times it is retried', async () => {
+    await setup()
+    await call(anonymiseHandler, hookEvent({ userId: 'alice' }))
+    const first = await db.select().from(schema.users).where(eq(schema.users.id, 'alice')).get()
+
+    await call(anonymiseHandler, hookEvent({ userId: 'alice' }))
+    const second = await db.select().from(schema.users).where(eq(schema.users.id, 'alice')).get()
+
+    expect(first!.anonymisedAt).not.toBeNull()
+    expect(second!.anonymisedAt!.getTime()).toBe(first!.anonymisedAt!.getTime())
+  })
+
   it('clears the admin cache so an erased account stops receiving digests', async () => {
     await setup()
     await db.update(schema.users).set({ isTrainingAdmin: true })

@@ -15,8 +15,8 @@ export default defineEventHandler(async (event) => {
   requireHookAuth(event)
   const { userId } = await readValidatedBody(event, bodySchema.parse)
 
-  const user = await db.select({ id: schema.users.id }).from(schema.users)
-    .where(eq(schema.users.id, userId)).get()
+  const user = await db.select({ id: schema.users.id, anonymisedAt: schema.users.anonymisedAt })
+    .from(schema.users).where(eq(schema.users.id, userId)).get()
 
   if (!user) {
     // Nothing mirrored here — an erasure of someone who never trained.
@@ -27,10 +27,12 @@ export default defineEventHandler(async (event) => {
     email: `deleted-${userId}@anonymised.invalid`,
     name: 'Deleted user',
     isTrainingAdmin: false,
+    // Retried by the auth service, so keep the first erasure's timestamp.
+    anonymisedAt: user.anonymisedAt ?? new Date(),
     updatedAt: new Date(),
   }).where(eq(schema.users.id, userId))
 
-  await db.update(schema.records).set({ revokeReason: null })
+  await db.update(schema.records).set({ revokeReason: null, externalRef: null })
     .where(eq(schema.records.userId, userId))
 
   await db.update(schema.sessions).set({ notes: null })

@@ -4,6 +4,7 @@
  */
 
 import { getResend } from './resend'
+import { formatDate } from '../../shared/utils/dates'
 import type { Digest, MemberWarning, SweepRecord } from './expiryPlan'
 
 interface SendEmailOptions {
@@ -41,11 +42,6 @@ function layout(body: string): string {
       </p>
     </div>
   `
-}
-
-function formatDate(iso: string): string {
-  const [year, month, day] = iso.split('-')
-  return `${day}/${month}/${year}`
 }
 
 function recordList(records: SweepRecord[]): string {

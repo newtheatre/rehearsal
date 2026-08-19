@@ -36,14 +36,14 @@ const externalModules = computed(() => {
     .map(m => ({ label: `${m.id} · ${m.name}`, value: m.id }))
 })
 
-const today = new Date().toISOString().slice(0, 10)
+const todayIso = today()
 
 // ── Sign-off ────────────────────────────────────────────────────────────────
 
 const signoffOpen = ref(false)
 const signoffBusy = ref(false)
 const signoffError = ref<string | null>(null)
-const signoff = ref({ moduleId: '', awardedAt: today, note: '' })
+const signoff = ref({ moduleId: '', awardedAt: todayIso, note: '' })
 
 async function submitSignoff() {
   signoffBusy.value = true
@@ -59,7 +59,7 @@ async function submitSignoff() {
     })
     toast.add({ title: 'Certification signed off', icon: 'i-lucide-check', color: 'success' })
     signoffOpen.value = false
-    signoff.value = { moduleId: '', awardedAt: today, note: '' }
+    signoff.value = { moduleId: '', awardedAt: todayIso, note: '' }
     await refresh()
   }
   catch (e) {
@@ -75,7 +75,7 @@ async function submitSignoff() {
 const externalOpen = ref(false)
 const externalBusy = ref(false)
 const externalError = ref<string | null>(null)
-const external = ref({ moduleId: '', awardedAt: today, expiresAt: '', externalRef: '' })
+const external = ref({ moduleId: '', awardedAt: todayIso, expiresAt: '', externalRef: '' })
 
 async function submitExternal() {
   externalBusy.value = true
@@ -92,7 +92,7 @@ async function submitExternal() {
     })
     toast.add({ title: 'External certificate recorded', icon: 'i-lucide-check', color: 'success' })
     externalOpen.value = false
-    external.value = { moduleId: '', awardedAt: today, expiresAt: '', externalRef: '' }
+    external.value = { moduleId: '', awardedAt: todayIso, expiresAt: '', externalRef: '' }
     await refresh()
   }
   catch (e) {
@@ -137,16 +137,6 @@ async function submitRevoke() {
   finally {
     revokeBusy.value = false
   }
-}
-
-function errorMessage(e: unknown, fallback: string): string {
-  const err = e as { statusMessage?: string, data?: { message?: string, statusMessage?: string } }
-  return err.data?.statusMessage || err.data?.message || err.statusMessage || fallback
-}
-
-function formatDate(iso: string) {
-  const [year, month, day] = iso.split('-')
-  return `${day}/${month}/${year}`
 }
 </script>
 
@@ -394,7 +384,7 @@ function formatDate(iso: string) {
             <UInput
               v-model="signoff.awardedAt"
               type="date"
-              :max="today"
+              :max="todayIso"
               class="w-full"
             />
           </UFormField>
@@ -462,7 +452,7 @@ function formatDate(iso: string) {
             <UInput
               v-model="external.awardedAt"
               type="date"
-              :max="today"
+              :max="todayIso"
               class="w-full"
             />
           </UFormField>

@@ -11,11 +11,6 @@ if (!data.value) {
 }
 
 definePageMeta({ title: 'Session' })
-
-function formatDate(iso: string) {
-  const [year, month, day] = iso.split('-')
-  return `${day}/${month}/${year}`
-}
 </script>
 
 <template>

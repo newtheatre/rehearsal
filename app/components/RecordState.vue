@@ -23,11 +23,7 @@ const config = computed(() => {
   }
 })
 
-const formattedDate = computed(() => {
-  if (!props.expiresAt) return null
-  const [year, month, day] = props.expiresAt.split('-')
-  return `${day}/${month}/${year}`
-})
+const formattedDate = computed(() => props.expiresAt ? formatDate(props.expiresAt) : null)
 </script>
 
 <template>

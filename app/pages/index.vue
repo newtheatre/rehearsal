@@ -18,11 +18,6 @@ const byDepartment = computed(() => {
   }
   return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b))
 })
-
-function formatDate(iso: string) {
-  const [year, month, day] = iso.split('-')
-  return `${day}/${month}/${year}`
-}
 </script>
 
 <template>

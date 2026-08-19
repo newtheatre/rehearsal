@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest'
 import { getAbilities, holdsTrainerCertification, leadDepartments, canSeeDrafts, canStewardDepartment } from '../server/utils/abilities'
 import { computeExpiresAt } from '../server/utils/expiry'
-import { today } from '../server/utils/validity'
+import { today } from '../shared/utils/dates'
 import { seedDepartments, seedLead, seedModule, seedRecord, seedUser } from './helpers/fixtures'
 
 const sessionUser = (id: string, roles: string[] = []) => ({

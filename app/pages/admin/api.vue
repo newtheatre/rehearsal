@@ -104,14 +104,8 @@ async function saveRule() {
   }
 }
 
-function errorMessage(e: unknown, fallback: string): string {
-  const err = e as { statusMessage?: string, data?: { message?: string, statusMessage?: string } }
-  return err.data?.statusMessage || err.data?.message || err.statusMessage || fallback
-}
-
-function formatDateTime(value: string | Date | null) {
-  if (!value) return 'never'
-  return new Date(value).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })
+function lastUsed(value: string | Date | null) {
+  return value ? formatDateTime(value) : 'never'
 }
 </script>
 
@@ -224,7 +218,7 @@ function formatDateTime(value: string | Date | null) {
           <div>
             <code class="font-mono">{{ token.name }}</code>
             <p class="text-xs text-muted mt-0.5">
-              issued {{ formatDateTime(token.createdAt) }} · last used {{ formatDateTime(token.lastUsedAt) }}
+              issued {{ formatDateTime(token.createdAt) }} · last used {{ lastUsed(token.lastUsedAt) }}
             </p>
           </div>
           <UButton

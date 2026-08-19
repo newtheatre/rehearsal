@@ -4,7 +4,7 @@ definePageMeta({ title: 'Department leads', middleware: 'admin' })
 const toast = useToast()
 
 const { data, refresh } = await useFetch('/api/admin/leads')
-const { data: directory } = await useFetch('/api/people')
+const { data: directory } = await useFetch('/api/directory')
 
 const adding = ref<string | null>(null)
 const chosenPerson = ref<string | undefined>(undefined)

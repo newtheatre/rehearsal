@@ -31,6 +31,10 @@ Query: `status=ACTIVE` (default) | `all` (includes DRAFT/RETIRED, for admin tool
 
 → `{ key, userId, eligible: boolean, missing: [moduleId], expiring: [{ moduleId, expiresAt }] }`
 
+> **`GET /v1/modules` returns a bare array, and stays that way.** The estate convention is that list endpoints return a pagination envelope. This one
+> predates that and is a published contract, so changing its shape needs a `/v2`. It is bounded by the catalogue rather than by membership or
+> records (57 modules today, and it grows only when the subcommittee adds one), so it does not carry the risk the rule exists to prevent.
+
 ### `GET /eligibility/:key`
 
 → `{ key, userIds: [...] }`: everyone currently eligible (list form, for pre-filtering UIs). 404 unknown key.
@@ -54,12 +58,13 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `GET /api/modules/:id` | session | module detail incl. prerequisites and dependents; `notes` only for leads/admins |
 | `POST /api/modules` | lead (own dept) or admin | create; Zod-validated; audit-logged |
 | `PUT /api/modules/:id` | lead (own dept) or admin | update incl. status transitions and prerequisites; audit-logged |
-| `GET /api/people` | session | directory with per-person valid/expiring/expired counts and certifications |
+| `GET /api/people` | session | directory with per-person valid/expiring/expired counts and certifications. Paged: `limit` (default 50, max 100) with a keyset cursor `(afterName, afterId)`; `q` and `module` filter in SQL. Returns `{ people, hasMore }` |
+| `GET /api/directory` | session | id and name only, for the attendee and lead pickers. No record aggregation, so it can return the whole membership (`limit` default 500) |
 | `GET /api/people/:id` | session | one person's records; revoked history and actions for leads/admins |
 | `POST /api/people/:id/signoff` | lead (module's dept) or admin | certification sign-off; **422 with the gaps named** if prerequisites are unmet |
 | `POST /api/people/:id/external` | lead (module's dept) or admin | external certificate; its own expiry wins over module config |
 | `POST /api/records/:id/revoke` | admin | revoke with a mandatory reason; idempotent |
-| `GET /api/sessions` | session | delivery log, newest first |
+| `GET /api/sessions` | session | delivery log, newest first. Paged: `limit` (default 50, max 100) with a keyset cursor `(beforeHeldOn, beforeId)`; `held_on` is a date, so the id breaks ties. Returns `{ sessions, hasMore }` |
 | `POST /api/sessions/check` | trainer | dry run: the exact records that would be created, plus warnings |
 | `POST /api/sessions` | trainer | log a session; creates records atomically |
 | `GET /api/sessions/:id` | session | one session; `canEdit` reflects owner + edit window |

@@ -6,6 +6,7 @@ import { db, schema } from '@nuxthub/db'
 import { and, desc, eq, inArray, like, lt, or, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import { requirePermission } from '../../utils/auth'
+import { chunk } from '../../utils/d1'
 
 const querySchema = z.object({
   action: z.string().trim().max(60).optional(),
@@ -39,10 +40,13 @@ export default defineEventHandler(async (event) => {
   const page = rows.slice(0, limit)
 
   const actorIds = [...new Set(page.map(r => r.actorUserId).filter((id): id is string => Boolean(id)))]
-  const actors = actorIds.length
-    ? await db.select({ id: schema.users.id, name: schema.users.name })
-        .from(schema.users).where(inArray(schema.users.id, actorIds)).all()
-    : []
+  // A 200-row page can name more actors than D1 will bind at once (d1.ts).
+  const actors = (await Promise.all(
+    chunk(actorIds).map(batch =>
+      db.select({ id: schema.users.id, name: schema.users.name })
+        .from(schema.users).where(inArray(schema.users.id, batch)).all(),
+    ),
+  )).flat()
   const names = new Map(actors.map(a => [a.id, a.name]))
 
   // Distinct actions, for the filter — small and bounded by the code, so a

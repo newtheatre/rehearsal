@@ -20,15 +20,3 @@ export function requireHookAuth(event: H3Event): void {
 
   throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
 }
-
-/**
- * D1 caps bound parameters at 100 per statement — chunk any `in (…)` list
- * regardless of the caller's batch size.
- */
-export const D1_PARAM_CHUNK = 90
-
-export function chunk<T>(items: T[], size = D1_PARAM_CHUNK): T[][] {
-  const out: T[][] = []
-  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size))
-  return out
-}

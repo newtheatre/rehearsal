@@ -6,7 +6,8 @@
 import { db, schema } from '@nuxthub/db'
 import { inArray, eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { requireHookAuth, chunk } from '../../../utils/hookAuth'
+import { requireHookAuth } from '../../../utils/hookAuth'
+import { chunk } from '../../../utils/d1'
 
 const bodySchema = z.object({ userIds: z.array(z.string().min(1)).max(500) })
 
@@ -26,8 +27,8 @@ export default defineEventHandler(async (event) => {
     if (current === undefined || current === null || at > current) latest.set(userId, at)
   }
 
-  // D1 caps bound parameters at 100 — chunk regardless of the caller's batch
-  // size (hookAuth.ts). This is the endpoint that gets a big list.
+  // Chunked for D1's bound-parameter cap (d1.ts). This is the endpoint
+  // that gets a big list.
   for (const batch of chunk(userIds)) {
     const [records, attended, delivered] = await Promise.all([
       db.select({ userId: schema.records.userId, awardedAt: schema.records.awardedAt })

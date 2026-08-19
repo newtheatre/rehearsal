@@ -134,6 +134,26 @@ describe('live run', () => {
     expect(await db.select().from(schema.notificationLog).all()).toHaveLength(1)
   })
 
+  it('logs every record when one warning covers more than a chunk', async () => {
+    await setup()
+    for (let i = 0; i < 20; i++) {
+      const id = `TECH-2${String(i).padStart(2, '0')}`
+      await seedModule(id, { name: `Rigging ${i}` })
+      await seedRecord({ userId: 'alice', moduleId: id, expiresAt: '2026-09-30' })
+    }
+
+    const result = await runExpirySweep({ asOf: ASOF, force: 'live' })
+
+    expect(result.sent).toBe(1)
+    expect(await db.select().from(schema.notificationLog).all()).toHaveLength(20)
+
+    // The point of the ledger: a partial write would re-send tomorrow.
+    sent.length = 0
+    const second = await runExpirySweep({ asOf: ASOF, force: 'live' })
+    expect(sent).toEqual([])
+    expect(second.plan.warnings).toEqual([])
+  })
+
   it('still escalates to the urgent warning later in the month', async () => {
     await setup()
     await seedRecord({ userId: 'alice', moduleId: 'NNT-001', expiresAt: '2026-09-30' })

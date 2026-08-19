@@ -2,7 +2,7 @@
 
 import { db, schema } from '@nuxthub/db'
 import { requirePermission } from '../../../utils/auth'
-import { parseRequires } from '../../../utils/eligibility'
+import { tryParseRequires } from '../../../utils/eligibility'
 
 export default defineEventHandler(async (event) => {
   await requirePermission(event, 'config.manage')
@@ -15,7 +15,8 @@ export default defineEventHandler(async (event) => {
         key: rule.key,
         name: rule.name,
         description: rule.description,
-        requires: parseRequires(rule.requires),
+        // null means unreadable, so the admin can see which rule to repair.
+        requires: tryParseRequires(rule.requires),
         updatedAt: rule.updatedAt,
       }))
       .sort((a, b) => a.key.localeCompare(b.key)),

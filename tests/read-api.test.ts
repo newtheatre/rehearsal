@@ -222,6 +222,29 @@ describe('GET /api/v1/eligibility/:key', () => {
     expect(result).toMatchObject({ eligible: true, missing: [] })
   })
 
+  it('refuses to answer a rule it cannot read, rather than passing everyone', async () => {
+    await setup()
+    await db.update(schema.eligibilityRules)
+      .set({ requires: 'not json at all' })
+      .where(eq(schema.eligibilityRules.key, 'duty-manager'))
+
+    await expect(call(eligibilityHandler, apiEvent('/api/v1/eligibility/duty-manager', {
+      bearer: token, params: { key: 'duty-manager' }, query: { userId: 'alice' },
+    }))).rejects.toMatchObject({ statusCode: 503 })
+  })
+
+  it('refuses a rule that requires nothing, in either shape', async () => {
+    await setup()
+    await db.update(schema.eligibilityRules)
+      .set({ requires: JSON.stringify({ allOf: [], anyOf: [] }) })
+      .where(eq(schema.eligibilityRules.key, 'duty-manager'))
+
+    // Without a userId this would otherwise return the whole membership.
+    await expect(call(eligibilityHandler, apiEvent('/api/v1/eligibility/duty-manager', {
+      bearer: token, params: { key: 'duty-manager' },
+    }))).rejects.toMatchObject({ statusCode: 503 })
+  })
+
   it('flips back when a required module is revoked', async () => {
     await setup()
     await grantAll('alice')

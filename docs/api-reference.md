@@ -35,7 +35,7 @@ Query: `status=ACTIVE` (default) | `all` (includes DRAFT/RETIRED — for admin t
 
 → `{ key, userIds: [...] }` — everyone currently eligible (list form, for pre-filtering UIs). 404 unknown key.
 
-**Rule evaluation:** `requires` JSON has `allOf` (every module must be VALID/EXPIRING) and `anyOf` (at least one, if the array is non-empty). Rules are data, edited in `/admin`, audit-logged. **This system answers; consumers enforce** ([ADR-0006](decisions/0006-eligibility-rules-as-data.md)) — the rota's DM restriction lives in Proscenium behind its `isDMEligible()` seam, pointed at this endpoint.
+**Rule evaluation:** `requires` JSON has `allOf` (every module must be VALID/EXPIRING) and `anyOf` (at least one, if the array is non-empty). A rule that cannot be parsed, or that requires nothing at all, is answered with **503** rather than treated as satisfied: a consumer authorises on these answers, so the direction of failure is towards leaving access alone. Rules are data, edited in `/admin`, audit-logged. **This system answers; consumers enforce** ([ADR-0006](decisions/0006-eligibility-rules-as-data.md)) — the rota's DM restriction lives in Proscenium behind its `isDMEligible()` seam, pointed at this endpoint.
 
 ### `GET /api/health` — public, **not** under `/api/v1`
 
@@ -77,7 +77,7 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `POST /api/admin/leads` | admin | make someone a lead of a department; audit-logged ([ADR-0005](decisions/0005-department-leads-as-data.md)) |
 | `DELETE /api/admin/leads/:id` | admin | stand a lead down; audit-logged |
 | `GET /api/admin/audit` | admin | the audit trail, filtered and paged. Read-only — the table is append-only and nothing writes to it here. A null actor is the cron or an import and reads as "system" |
-| `GET /api/admin/eligibility-rules` | admin | rules and what they require |
+| `GET /api/admin/eligibility-rules` | admin | rules and what they require; `requires` is `null` for a rule stored in an unparseable form |
 | `PUT /api/admin/eligibility-rules` | admin | create or update a rule; audit-logged with before and after |
 
 **Session-flow status codes.** `POST /api/sessions` answers `409` when attendees are missing

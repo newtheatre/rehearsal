@@ -6,7 +6,7 @@ import { db, schema } from '@nuxthub/db'
 import { eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 import { requirePermission } from '../../../utils/auth'
-import { requiresSchema, parseRequires } from '../../../utils/eligibility'
+import { requiresSchema, tryParseRequires } from '../../../utils/eligibility'
 import { writeAudit } from '../../../utils/audit'
 
 const bodySchema = z.object({
@@ -72,7 +72,7 @@ export default defineEventHandler(async (event) => {
     action: existing ? 'eligibility-rule.update' : 'eligibility-rule.create',
     target: input.key,
     detail: {
-      from: existing ? parseRequires(existing.requires) : null,
+      from: existing ? tryParseRequires(existing.requires) : null,
       to: input.requires,
     },
   })

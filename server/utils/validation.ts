@@ -25,6 +25,25 @@ const expiryFields = {
  * `expiry_months` is required exactly when the mode is MONTHS. A refinement
  * rather than a wrapper: a wrapper widens the schema and loses inference.
  */
+/**
+ * The same rule as checkExpiry, applied to the row a partial update would
+ * leave behind rather than to the fields it submitted.
+ */
+export function assertExpiryConsistent(mode: string, months: number | null | undefined): void {
+  if (mode === 'MONTHS' && !months) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'A months-based expiry needs a number of months',
+    })
+  }
+  if (mode !== 'MONTHS' && months) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Only a months-based expiry may set a number of months',
+    })
+  }
+}
+
 function checkExpiry(
   value: { expiryMode?: string, expiryMonths?: number | null },
   ctx: z.RefinementCtx,

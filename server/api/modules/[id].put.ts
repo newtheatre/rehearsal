@@ -4,7 +4,7 @@
 
 import { db, schema } from '@nuxthub/db'
 import { eq } from 'drizzle-orm'
-import { moduleIdSchema, moduleUpdateSchema } from '../../utils/validation'
+import { assertExpiryConsistent, moduleIdSchema, moduleUpdateSchema } from '../../utils/validation'
 import { requireDepartmentSteward } from '../../utils/auth'
 import { useAbilities } from '../../utils/abilities'
 import { presentModule } from '../../utils/modules'
@@ -51,6 +51,14 @@ export default defineEventHandler(async (event) => {
     grantsSupervisor: input.grantsSupervisor ?? existing.grantsSupervisor,
     grantsTrainer: input.grantsTrainer ?? existing.grantsTrainer,
   })
+
+  // Validate the row the update would leave behind: the body's own schema
+  // only sees the fields it submitted (a lone expiryMonths passes it).
+  const resultingMode = merged.expiryMode ?? input.expiryMode ?? existing.expiryMode
+  const resultingMonths = merged.expiryMode
+    ? merged.expiryMonths
+    : input.expiryMonths !== undefined ? input.expiryMonths : existing.expiryMonths
+  assertExpiryConsistent(resultingMode, resultingMonths)
 
   const { prerequisites, kind: _kind, ...submitted } = input
   const fields = {

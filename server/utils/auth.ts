@@ -39,16 +39,20 @@ export async function requirePermission(event: H3Event, permission: Permission):
 }
 
 /**
- * Requires authority over `department`: its lead, or an admin. Lead authority
- * is app data, so only the admin fallback needs a staleness check.
+ * Requires authority over `department`: its lead, or an admin holding
+ * `permission`. Lead authority is app data, so only the fallback is checked.
  */
-export async function requireDepartmentSteward(event: H3Event, department: string): Promise<Abilities> {
+export async function requireDepartmentSteward(
+  event: H3Event,
+  department: string,
+  permission: Permission,
+): Promise<Abilities> {
   const abilities = await useAbilities(event)
 
   if (abilities.leadOf.includes(department)) return abilities
 
-  // Not a lead here — needs authority over every department instead.
-  await requirePermission(event, 'signoff.any')
+  // Not a lead here, so this needs authority over every department instead.
+  await requirePermission(event, permission)
   return abilities
 }
 

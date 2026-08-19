@@ -37,7 +37,7 @@ function startOfMonth(asOf: string): Date {
  * Briefs are excluded at the source: they recur per event, never expire and
  * never gate (ADR-0003).
  */
-export async function gatherSweepInputs(asOf: string, warningWindowDays: number) {
+export async function gatherSweepInputs(asOf: string, warningWindowDays: number, adminCacheDays = 90) {
   const recordRows = await db.select({
     recordId: schema.records.id,
     userId: schema.records.userId,
@@ -64,6 +64,7 @@ export async function gatherSweepInputs(asOf: string, warningWindowDays: number)
       email: schema.users.email,
       name: schema.users.name,
       isTrainingAdmin: schema.users.isTrainingAdmin,
+      mirrorUpdatedAt: schema.users.updatedAt,
     }).from(schema.users).all(),
     db.select({
       department: schema.departmentLeads.department,
@@ -91,6 +92,7 @@ export async function gatherSweepInputs(asOf: string, warningWindowDays: number)
     alreadyNotified: new Set(notified.map(n => `${n.recordId}:${n.type}`)),
     digestSentThisMonth: new Set(digestsThisMonth.map(d => d.userId)),
     isDigestDay: isDigestDay(asOf),
+    adminCacheDays,
   }
 }
 
@@ -99,8 +101,11 @@ export async function gatherSweepInputs(asOf: string, warningWindowDays: number)
  * entry, so an operator can look as often as they like.
  */
 export async function previewExpirySweep(asOf: string = today()): Promise<ExpiryPlan> {
-  const warningWindowDays = await getConfigNumber('warning_window_days')
-  return planExpirySweep(await gatherSweepInputs(asOf, warningWindowDays))
+  const [warningWindowDays, adminCacheDays] = await Promise.all([
+    getConfigNumber('warning_window_days'),
+    getConfigNumber('admin_cache_days'),
+  ])
+  return planExpirySweep(await gatherSweepInputs(asOf, warningWindowDays, adminCacheDays))
 }
 
 /**
@@ -111,13 +116,14 @@ export async function runExpirySweep({
   asOf = today(),
   force,
 }: { asOf?: string, force?: 'dry-run' | 'live' } = {}): Promise<SweepResult> {
-  const [warningWindowDays, configuredMode] = await Promise.all([
+  const [warningWindowDays, adminCacheDays, configuredMode] = await Promise.all([
     getConfigNumber('warning_window_days'),
+    getConfigNumber('admin_cache_days'),
     getConfig('notifications_mode'),
   ])
 
   const mode = force ?? (configuredMode === 'live' ? 'live' : 'dry-run')
-  const inputs = await gatherSweepInputs(asOf, warningWindowDays)
+  const inputs = await gatherSweepInputs(asOf, warningWindowDays, adminCacheDays)
   const plan = planExpirySweep(inputs)
 
   const failed: SweepResult['failed'] = []

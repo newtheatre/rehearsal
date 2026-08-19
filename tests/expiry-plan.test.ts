@@ -13,11 +13,14 @@ import {
   type SweepRecord,
 } from '../server/utils/expiryPlan'
 
+// The mirror saw everyone today, so the cached admin flag is fresh.
+const seenToday = new Date('2026-08-14T09:00:00Z')
+
 const people = [
-  { id: 'alice', email: 'alice@nnt.test', name: 'Alice Anderson', isTrainingAdmin: false },
-  { id: 'bob', email: 'bob@nnt.test', name: 'Bob Brown', isTrainingAdmin: false },
-  { id: 'ctd', email: 'ctd@nnt.test', name: 'Chris Tech', isTrainingAdmin: false },
-  { id: 'tm', email: 'tm@nnt.test', name: 'Tara Manager', isTrainingAdmin: true },
+  { id: 'alice', email: 'alice@nnt.test', name: 'Alice Anderson', isTrainingAdmin: false, mirrorUpdatedAt: seenToday },
+  { id: 'bob', email: 'bob@nnt.test', name: 'Bob Brown', isTrainingAdmin: false, mirrorUpdatedAt: seenToday },
+  { id: 'ctd', email: 'ctd@nnt.test', name: 'Chris Tech', isTrainingAdmin: false, mirrorUpdatedAt: seenToday },
+  { id: 'tm', email: 'tm@nnt.test', name: 'Tara Manager', isTrainingAdmin: true, mirrorUpdatedAt: seenToday },
 ]
 
 function record(overrides: Partial<SweepRecord> & { recordId: string, expiresAt: string }): SweepRecord {
@@ -40,6 +43,7 @@ function inputs(overrides: Partial<SweepInputs> = {}): SweepInputs {
     alreadyNotified: new Set(),
     digestSentThisMonth: new Set(),
     isDigestDay: false,
+    adminCacheDays: 90,
     ...overrides,
   }
 }
@@ -180,6 +184,35 @@ describe('monthly digests', () => {
     expect(admin.departments).toBeNull()
     expect(admin.expiring.map(r => r.recordId)).toEqual(['r1'])
     expect(admin.expired.map(r => r.recordId)).toEqual(['r2'])
+  })
+
+  it('drops an admin the mirror has not seen inside the cache window', () => {
+    // The committee turned over: their role was revoked in the auth service
+    // and they stopped signing in, so nothing here ever cleared the flag.
+    const departed = people.map(p =>
+      p.id === 'tm' ? { ...p, mirrorUpdatedAt: new Date('2026-01-01T09:00:00Z') } : p,
+    )
+
+    const plan = planExpirySweep(inputs({
+      people: departed,
+      records: [expiringSoon, techExpired],
+      isDigestDay: true,
+    }))
+
+    // No unscoped digest, so no membership-wide personal data leaves.
+    expect(plan.digests.find(d => d.userId === 'tm')).toBeUndefined()
+    // The lead, whose authority is a row rather than a cache, is unaffected.
+    expect(plan.digests.find(d => d.userId === 'ctd')).toBeDefined()
+  })
+
+  it('keeps an admin who is still using the system', () => {
+    const plan = planExpirySweep(inputs({
+      records: [expiringSoon],
+      isDigestDay: true,
+      adminCacheDays: 1,
+    }))
+
+    expect(plan.digests.find(d => d.userId === 'tm')?.departments).toBeNull()
   })
 
   it('sends an empty digest anyway, its absence is the alert', () => {

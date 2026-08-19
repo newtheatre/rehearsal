@@ -18,8 +18,3 @@ export function getResend(): Resend | null {
   client = new Resend(key)
   return client
 }
-
-/** Test seam — the client is memoised per isolate. */
-export function resetResendClient(): void {
-  client = undefined
-}

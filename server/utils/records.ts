@@ -4,10 +4,10 @@
  */
 
 import { db, schema } from '@nuxthub/db'
-import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { computeExpiresAt } from './expiry'
-import { validityState, type ValidityState } from './validity'
+import { notSupersededCondition, validityState, type ValidityState } from './validity'
 // The catalogue owns this row type (server/utils/modules.ts); importing it
 // rather than re-declaring keeps one name for one table.
 import type { ModuleRow } from './modules'
@@ -67,31 +67,6 @@ export function buildRecordInserts(options: {
   return inserts
 }
 
-/**
- * The latest non-revoked row per (user, module). Superseded rows stay as
- * history — re-training does not erase the earlier session.
- */
-function currentRecordIdsSql(userIds?: string[]) {
-  const scope = userIds?.length
-    ? sql`and r.user_id in ${userIds}`
-    : sql``
-
-  return sql`
-    select r.id from records r
-    where r.revoked_at is null ${scope}
-      and not exists (
-        select 1 from records later
-        where later.user_id = r.user_id
-          and later.module_id = r.module_id
-          and later.revoked_at is null
-          and (
-            later.awarded_at > r.awarded_at
-            or (later.awarded_at = r.awarded_at and later.created_at > r.created_at)
-          )
-      )
-  `
-}
-
 export interface PresentedRecord {
   id: string
   moduleId: string
@@ -136,21 +111,13 @@ export async function currentRecordsFor(
     .where(and(
       eq(schema.records.userId, userId),
       isNull(schema.records.revokedAt),
-      sql`${schema.records.id} in (${currentRecordIdsSql([userId])})`,
+      notSupersededCondition(),
     ))
     .all()
 
   return rows
     .map(({ record, module }) => present(record, module, warningWindowDays))
     .sort((a, b) => a.department.localeCompare(b.department) || a.moduleId.localeCompare(b.moduleId))
-}
-
-/** A person's full history for one module, newest first (leads/admins). */
-export async function recordHistoryFor(userId: string, moduleId: string): Promise<RecordRow[]> {
-  return db.select().from(schema.records)
-    .where(and(eq(schema.records.userId, userId), eq(schema.records.moduleId, moduleId)))
-    .orderBy(desc(schema.records.awardedAt), desc(schema.records.createdAt))
-    .all()
 }
 
 /** Everyone currently holding a module, with state — the find-a-supervisor query. */
@@ -169,7 +136,7 @@ export async function holdersOf(
     .where(and(
       eq(schema.records.moduleId, moduleId),
       isNull(schema.records.revokedAt),
-      sql`${schema.records.id} in (${currentRecordIdsSql()})`,
+      notSupersededCondition(),
     ))
     .all()
 
@@ -198,7 +165,7 @@ export async function currentRecordsForModules(
       eq(schema.records.userId, userId),
       inArray(schema.records.moduleId, moduleIds),
       isNull(schema.records.revokedAt),
-      sql`${schema.records.id} in (${currentRecordIdsSql([userId])})`,
+      notSupersededCondition(),
     ))
     .all()
 

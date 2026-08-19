@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
 
   assertIdMatchesDepartment(input.id, input.department)
   await assertDepartmentExists(input.department)
-  await requireDepartmentSteward(event, input.department)
+  await requireDepartmentSteward(event, input.department, 'module.manage')
 
   const existing = await db.select({ id: schema.modules.id })
     .from(schema.modules).where(eq(schema.modules.id, input.id)).get()

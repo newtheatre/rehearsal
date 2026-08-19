@@ -33,11 +33,11 @@ export default defineEventHandler(async (event) => {
 
   const input = await readValidatedBody(event, moduleUpdateSchema.parse)
 
-  await requireDepartmentSteward(event, existing.department)
+  await requireDepartmentSteward(event, existing.department, 'module.manage')
   if (input.department && input.department !== existing.department) {
     assertIdMatchesDepartment(id, input.department)
     await assertDepartmentExists(input.department)
-    await requireDepartmentSteward(event, input.department)
+    await requireDepartmentSteward(event, input.department, 'module.manage')
   }
 
   if (input.prerequisites) {

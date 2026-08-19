@@ -37,10 +37,6 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  if (module.status === 'RETIRED') {
-    throw createError({ statusCode: 400, statusMessage: `${module.id} is retired` })
-  }
-
   // Authority is per-department: the CTD signs off tech certifications, not
   // stage management's (ADR-0005).
   if (!canStewardDepartment(abilities, module.department)) {

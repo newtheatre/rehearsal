@@ -6,26 +6,6 @@
 import { db, schema } from '@nuxthub/db'
 import { eq, inArray } from 'drizzle-orm'
 
-type Kind = 'MODULE' | 'CERTIFICATION' | 'BRIEF'
-
-/**
- * Kind decides three flags, so they can never contradict each other
- * (ADR-0003).
- */
-export function applyKindRules<T extends { kind: Kind, grantsSupervisor?: boolean, grantsTrainer?: boolean }>(input: T) {
-  const isCertification = input.kind === 'CERTIFICATION'
-  const isBrief = input.kind === 'BRIEF'
-  return {
-    ...input,
-    signoffRequired: isCertification,
-    grantsSupervisor: isCertification && Boolean(input.grantsSupervisor),
-    grantsTrainer: isCertification && Boolean(input.grantsTrainer),
-    // Briefs never expire and never gate, so the machinery must not model
-    // something that recurs weekly.
-    ...(isBrief ? { expiryMode: 'NONE' as const, expiryMonths: null } : {}),
-  }
-}
-
 /** Every prerequisite must exist. Unknown ids are a 400, not a dangling FK. */
 export async function assertPrerequisitesExist(moduleId: string, prerequisites: string[]): Promise<void> {
   if (prerequisites.length === 0) return

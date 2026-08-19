@@ -92,7 +92,14 @@ describe('parseCatalogue — hard failures', () => {
 
   it('rejects a brief that claims to confer standing', () => {
     expect(() => parseCatalogue(csv('NNT,NNT-002,Get-In Brief,,,,Brief (recurring),,,trainer,,')))
-      .toThrow(/briefs never confer standing/)
+      .toThrow(/only certifications confer standing/)
+  })
+
+  it('rejects an ordinary module that claims to confer standing', () => {
+    // grants_trainer here would make every attendee of a routine session a
+    // trainer, with no sign-off (ADR-0004).
+    expect(() => parseCatalogue(csv('LEAD,LEAD-301,Deliver a Workshop,,,,Never,,,trainer,,')))
+      .toThrow(/only certifications confer standing/)
   })
 
   it('rejects a missing required column outright', () => {

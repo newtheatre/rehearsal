@@ -83,25 +83,6 @@ export async function createSession(options: {
   const { input } = options
   const modules = await loadModules(input.moduleIds)
 
-  // RETIRED modules are kept for history and are not offerable.
-  const retired = modules.filter(m => m.status === 'RETIRED')
-  if (retired.length > 0) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: `Cannot train retired module${retired.length > 1 ? 's' : ''}: ${retired.map(m => m.id).join(', ')}`,
-    })
-  }
-
-  // Certifications are earned by sign-off after a supervised practical, not
-  // handed out in a session (ADR-0003).
-  const certifications = modules.filter(m => m.signoffRequired)
-  if (certifications.length > 0) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: `${certifications.map(m => m.id).join(', ')} must be signed off, not logged in a session`,
-    })
-  }
-
   const sessionId = nanoid()
 
   const records = buildRecordInserts({

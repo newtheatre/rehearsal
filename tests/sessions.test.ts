@@ -8,6 +8,8 @@ import createSessionHandler from '../server/api/sessions/index.post'
 import checkSessionHandler from '../server/api/sessions/check.post'
 import updateSessionHandler from '../server/api/sessions/[id].put'
 import { db, schema } from './mocks/nuxthub-db'
+import { addDays } from '../server/utils/validity'
+import { today } from '../shared/utils/dates'
 import { eq } from 'drizzle-orm'
 import { makeEvent, signIn, type FakeEvent } from './setup'
 import { seedDepartments, seedLead, seedModule, seedRecord, seedUser } from './helpers/fixtures'
@@ -180,7 +182,9 @@ describe('session → records', () => {
 
   it('refuses to record training that has not happened yet', async () => {
     await setup()
-    const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)
+    // Derived in London, not UTC: during BST the UTC day-after is still today
+    // here, so a UTC-based tomorrow is a date the schema rightly accepts.
+    const tomorrow = addDays(today(), 1)
     const event = postEvent({ ...validSession, heldOn: tomorrow })
     signIn(event, { id: 'trainer' })
 

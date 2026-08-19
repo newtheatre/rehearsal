@@ -86,9 +86,6 @@ export const moduleListQuerySchema = z.object({
   q: z.string().trim().max(100).optional(),
 })
 
-export type ModuleCreateInput = z.infer<typeof moduleCreateSchema>
-export type ModuleUpdateInput = z.infer<typeof moduleUpdateSchema>
-
 // ── Records and sessions ────────────────────────────────────────────────────
 
 /** ISO calendar date. Stored as text so string comparison is date comparison. */
@@ -142,5 +139,3 @@ export const attendeeLookupSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
   name: z.string().trim().min(1).max(120).optional(),
 })
-
-export type SessionInputPayload = z.infer<typeof sessionInputSchema>

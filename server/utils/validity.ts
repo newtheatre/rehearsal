@@ -60,6 +60,23 @@ export function notRevokedCondition(): SQL {
   return sql`${records.revokedAt} is null`
 }
 
+/**
+ * The latest non-revoked row for its (user, module). Superseded rows stay as
+ * history: re-training does not erase the earlier session (ADR-0008).
+ */
+export function notSupersededCondition(): SQL {
+  return sql`not exists (
+    select 1 from records later
+    where later.user_id = ${records.userId}
+      and later.module_id = ${records.moduleId}
+      and later.revoked_at is null
+      and (
+        later.awarded_at > ${records.awardedAt}
+        or (later.awarded_at = ${records.awardedAt} and later.created_at > ${records.createdAt})
+      )
+  )`
+}
+
 /** Not revoked AND currently valid — the usual gate. */
 export function heldRecordCondition(asOf: string = today()): SQL {
   return and(notRevokedCondition(), validRecordCondition(asOf))!

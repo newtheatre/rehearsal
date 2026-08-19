@@ -9,21 +9,6 @@ import { useAbilities, type Abilities } from './abilities'
 import { can, type Permission } from '../../shared/utils/permissions'
 
 /**
- * 401 if there is no valid estate session.
- */
-export async function requireAuth(event: H3Event): Promise<User> {
-  const { user } = await getUserSession(event)
-  if (!user) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: 'Unauthorized',
-      message: 'You must be signed in to use the training system',
-    })
-  }
-  return user
-}
-
-/**
  * Requires a named permission from appManifest.ts. Staleness first, so a role
  * over 15 minutes old refreshes rather than silently failing the check.
  */

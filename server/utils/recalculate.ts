@@ -4,8 +4,9 @@
  */
 
 import { db, schema } from '@nuxthub/db'
-import { and, eq, isNull, sql } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { computeExpiresAt } from './expiry'
+import { notSupersededCondition } from './validity'
 
 export interface ExpiryChange {
   recordId: string
@@ -45,14 +46,7 @@ export async function planRecalculation(
       moduleId ? eq(schema.records.moduleId, moduleId) : undefined,
       // Current records only — rewriting a superseded row's expiry would
       // change history that nothing reads.
-      sql`not exists (
-        select 1 from records later
-        where later.user_id = ${schema.records.userId}
-          and later.module_id = ${schema.records.moduleId}
-          and later.revoked_at is null
-          and (later.awarded_at > ${schema.records.awardedAt}
-            or (later.awarded_at = ${schema.records.awardedAt} and later.created_at > ${schema.records.createdAt}))
-      )`,
+      notSupersededCondition(),
     ))
     .all()
 

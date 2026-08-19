@@ -28,7 +28,7 @@ const props = defineProps<{
   allModules: { id: string, name: string }[]
 }>()
 
-const emit = defineEmits<{ saved: [], close: [] }>()
+const emit = defineEmits<{ saved: [] }>()
 
 const open = defineModel<boolean>('open', { required: true })
 

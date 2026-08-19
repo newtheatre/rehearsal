@@ -4,7 +4,7 @@
  */
 
 import { db, schema } from '@nuxthub/db'
-import { and, eq, gte, isNotNull, isNull, ne, sql } from 'drizzle-orm'
+import { and, eq, gte, isNotNull, isNull, ne } from 'drizzle-orm'
 import {
   isDigestDay,
   planExpirySweep,
@@ -15,7 +15,7 @@ import {
 } from './expiryPlan'
 import { renderDigest, renderDryRunReport, renderMemberWarning, sendEmail } from './email'
 import { getConfig, getConfigNumber } from './siteConfig'
-import { today } from './validity'
+import { notSupersededCondition, today } from './validity'
 import { writeAudit } from './audit'
 import { chunk } from './d1'
 
@@ -53,14 +53,7 @@ export async function gatherSweepInputs(asOf: string, warningWindowDays: number)
       ne(schema.modules.kind, 'BRIEF'),
       // Current record only: a superseded row's expiry is history, and
       // warning about it would tell someone their renewed training expired.
-      sql`not exists (
-        select 1 from records later
-        where later.user_id = ${schema.records.userId}
-          and later.module_id = ${schema.records.moduleId}
-          and later.revoked_at is null
-          and (later.awarded_at > ${schema.records.awardedAt}
-            or (later.awarded_at = ${schema.records.awardedAt} and later.created_at > ${schema.records.createdAt}))
-      )`,
+      notSupersededCondition(),
     ))
     .all()
 

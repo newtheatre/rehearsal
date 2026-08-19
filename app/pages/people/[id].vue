@@ -28,13 +28,18 @@ const signableCertifications = computed(() => {
     .map(m => ({ label: `${m.id} · ${m.name}`, value: m.id }))
 })
 
+// Opt-in per module: only what the catalogue says may come from elsewhere.
 const externalModules = computed(() => {
   const departments = can.value?.signOffDepartments
   return (catalogue.value?.modules ?? [])
-    .filter(m => m.status !== 'RETIRED' && m.kind !== 'BRIEF')
+    .filter(m => m.status !== 'RETIRED' && m.kind !== 'BRIEF' && m.allowsExternal)
     .filter(m => departments === null || departments === undefined || departments.includes(m.department))
     .map(m => ({ label: `${m.id} · ${m.name}`, value: m.id }))
 })
+
+const externalEvidence = computed(() =>
+  (catalogue.value?.modules ?? []).find(m => m.id === external.value.moduleId)?.externalEvidence ?? null,
+)
 
 const todayIso = today()
 
@@ -468,6 +473,7 @@ async function submitRevoke() {
           </UFormField>
           <UFormField
             label="What the certificate is"
+            :description="externalEvidence ? `Accepted for this module: ${externalEvidence}` : undefined"
             required
           >
             <UInput

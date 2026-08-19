@@ -31,6 +31,8 @@ Module ids are the human ids (`TECH-111`, `LD-CERT`), they are the subcommittee'
 | `materials_url` text null | Drive doc/presentation/folder link; `https://` validated, nothing more |
 | `expiry_mode` text not null default `NONE` | `NONE` \| `MONTHS` \| `ACADEMIC_YEAR` |
 | `expiry_months` integer null | Required iff mode = `MONTHS` |
+| `allows_external` integer not null default 0 | Whether training done elsewhere may be recorded against this module. **Opt-in**: `POST /api/people/:id/external` refuses anything without it |
+| `external_evidence` text null | What the lead should accept, for example "FAW or EFAW certificate". Shown when recording; what was actually presented goes in `records.external_ref` |
 | `safety_critical` integer not null default 0 | Drives supervision copy + hard prerequisite blocks in the session flow |
 | `signoff_required` integer not null default 0 | 1 for certifications |
 | `grants_supervisor` / `grants_trainer` integer default 0 | Cert consequences ([records-and-expiry.md](records-and-expiry.md#kinds)) |

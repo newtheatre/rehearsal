@@ -41,6 +41,11 @@ export const modules = sqliteTable('modules', {
   expiryMode: text('expiry_mode', { enum: ['NONE', 'MONTHS', 'ACADEMIC_YEAR'] }).notNull().default('NONE'),
   expiryMonths: integer('expiry_months'), // required iff mode = MONTHS
 
+  // Opt-in per module: whether training done elsewhere may be recorded here,
+  // and what evidence the lead should accept (docs/records-and-expiry.md).
+  allowsExternal: integer('allows_external', { mode: 'boolean' }).notNull().default(false),
+  externalEvidence: text('external_evidence'),
+
   safetyCritical: integer('safety_critical', { mode: 'boolean' }).notNull().default(false),
   signoffRequired: integer('signoff_required', { mode: 'boolean' }).notNull().default(false),
   // Cert consequences: supervisor standing (display), trainer standing

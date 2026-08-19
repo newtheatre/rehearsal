@@ -57,7 +57,7 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `GET /api/people` | session | directory with per-person valid/expiring/expired counts and certifications |
 | `GET /api/people/:id` | session | one person's records; revoked history and actions for leads/admins |
 | `POST /api/people/:id/signoff` | lead (module's dept) or admin | certification sign-off; **422 with the gaps named** if prerequisites are unmet |
-| `POST /api/people/:id/external` | lead (module's dept) or admin | external certificate; its own expiry wins over module config |
+| `POST /api/people/:id/external` | lead (module's dept) or admin | external certificate; its own expiry wins over module config. 400 unless the module sets `allows_external` |
 | `POST /api/records/:id/revoke` | admin | revoke with a mandatory reason; idempotent |
 | `GET /api/sessions` | session | delivery log, newest first |
 | `POST /api/sessions/check` | trainer | dry run: the exact records that would be created, plus warnings |

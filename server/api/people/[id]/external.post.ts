@@ -41,6 +41,15 @@ export default defineEventHandler(async (event) => {
     await requirePermission(event, 'signoff.any')
   }
 
+  // Opt-in per module: recording training done elsewhere is only sanctioned
+  // where the catalogue says what evidence counts.
+  if (!module.allowsExternal) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: `${module.id} cannot be recorded from an external certificate. A lead can enable that on the module if it should be.`,
+    })
+  }
+
   if (input.expiresAt && input.expiresAt <= input.awardedAt) {
     throw createError({
       statusCode: 400,

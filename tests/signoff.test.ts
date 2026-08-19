@@ -35,7 +35,14 @@ async function setup() {
     name: 'Stage Manager',
     signoffRequired: true,
   })
-  await seedModule('SFTY-101', { department: 'NNT', name: 'First Aid', expiryMode: 'MONTHS', expiryMonths: 36 })
+  await seedModule('SFTY-101', {
+    department: 'NNT',
+    name: 'First Aid',
+    expiryMode: 'MONTHS',
+    expiryMonths: 36,
+    allowsExternal: true,
+    externalEvidence: 'FAW or EFAW certificate',
+  })
   await db.insert(schema.modulePrerequisites).values([
     { moduleId: 'LD-CERT', requiresModuleId: 'TECH-111' },
     { moduleId: 'LD-CERT', requiresModuleId: 'TECH-112' },
@@ -247,6 +254,36 @@ describe('external certificates', () => {
     signIn(event, { id: 'tm', roles: ['training:ADMIN'] })
     await expect(call(externalHandler, event)).rejects.toMatchObject({ statusCode: 400 })
   })
+  it('refuses a module that does not allow external certificates', async () => {
+    await setup()
+    // TECH-111 is ordinary training with no external route enabled.
+    const event = makeEvent({
+      method: 'POST',
+      path: '/api/people/alice/external',
+      params: { id: 'alice' },
+      body: { moduleId: 'TECH-111', awardedAt: '2026-08-01', externalRef: 'trust me' },
+    })
+    signIn(event, { id: 'tm', roles: ['training:ADMIN'] })
+
+    await expect(call(externalHandler, event)).rejects.toMatchObject({ statusCode: 400 })
+    expect(await db.select().from(schema.records).where(eq(schema.records.moduleId, 'TECH-111')).all())
+      .toHaveLength(0)
+  })
+
+  it('refuses a certification that does not allow external certificates', async () => {
+    await setup()
+    // The path that mattered: LD-CERT grants supervisor standing.
+    const event = makeEvent({
+      method: 'POST',
+      path: '/api/people/alice/external',
+      params: { id: 'alice' },
+      body: { moduleId: 'LD-CERT', awardedAt: '2026-08-01', externalRef: 'trust me' },
+    })
+    signIn(event, { id: 'tm', roles: ['training:ADMIN'] })
+
+    await expect(call(externalHandler, event)).rejects.toMatchObject({ statusCode: 400 })
+  })
+
   it('refuses an admin whose session is stale', async () => {
     await setup()
     const event = makeEvent({

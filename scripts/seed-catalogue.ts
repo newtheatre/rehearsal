@@ -48,8 +48,11 @@ export async function seedCatalogue(csvPath: string, db: ReturnType<typeof openL
       status: module.status,
       sort: module.sort,
     }
+    // status stays as it is: it is set operationally, and re-importing the
+    // catalogue must not unpublish what someone activated.
+    const { status: _status, ...syncable } = values
     await db.insert(schema.modules).values(values)
-      .onConflictDoUpdate({ target: schema.modules.id, set: { ...values, updatedAt: new Date() } })
+      .onConflictDoUpdate({ target: schema.modules.id, set: { ...syncable, updatedAt: new Date() } })
   }
 
   const ids = modules.map(m => m.id)

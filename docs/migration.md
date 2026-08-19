@@ -8,6 +8,8 @@ The one-off work that populates the system and retires the legacy Django app. **
 
 Input file: `data/catalogue.csv` (export the spreadsheet's sheets to one CSV with a leading `Department` column).
 
+Re-running an import **syncs content but never touches `status`**. Publishing and retiring are operational decisions made in `/admin`, so a regeneration of the catalogue must not unpublish what a lead activated. Each generated file also carries one `catalogue.import` row for `audit_log`, keyed on a hash of the CSV, so applying the same file twice records one entry rather than two and a later "why did the catalogue change?" has a trail.
+
 > ⚠️ **The committed `data/catalogue.csv` is a placeholder.** It was reconstructed from the module ids named across the design documents so that Phase 1 has something to render; it is **not** the subcommittee's catalogue. Names, descriptions, prerequisites and expiry policies in it are provisional and every row is `DRAFT`. Replace the whole file with the real export before the system carries any weight, then re-run `bun run seed:catalogue`. The open content questions (unfinished `STGE`/`COST`/`PROD` sheets, unnamed `AV-CERT`/`SM-CERT`, per-module expiry ratification) belong to the backstage subcommittee, not to IT.
 
 ## 2. Legacy archive

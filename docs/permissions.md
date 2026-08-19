@@ -64,4 +64,6 @@ Day one, nobody holds LEAD-CERT. Admins grant the first Trainer certs to the est
 | `/api/v1/*` | service token ([api-reference.md](api-reference.md)) |
 | `/api/health` | public |
 
-Global server middleware fails closed: everything requires a session except the explicit public list (`/api/health`, auth redirects). The middleware also runs `ensureLocalUser`.
+Global server middleware fails closed: everything requires a session except `/api/health` and the auth redirects. The middleware also runs `ensureLocalUser`.
+
+Two subtrees carry a different credential rather than a session, and each is enforced by its own middleware beside the global one, not by every route remembering: `/api/v1/**` needs a service token (`server/middleware/consumer-api.ts`, which also sets the consumer cache header) and `/api/_hooks/**` needs the auth service's shared secret (`server/middleware/hooks.ts`). A new route under either is therefore guarded the moment it exists.

@@ -6,7 +6,7 @@
 import { db, schema } from '@nuxthub/db'
 import { and, eq } from 'drizzle-orm'
 import { computeExpiresAt } from '../utils/expiry'
-import { today } from '../utils/validity'
+import { today } from '../../shared/utils/dates'
 
 export default defineEventHandler(async (event) => {
   if (!import.meta.dev) {

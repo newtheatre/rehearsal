@@ -5,13 +5,9 @@
 
 import { sql, and, type SQL } from 'drizzle-orm'
 import { records } from '../db/schema/training'
+import { today } from '../../shared/utils/dates'
 
 export type ValidityState = 'VALID' | 'EXPIRING' | 'EXPIRED'
-
-/** Today as an ISO date (YYYY-MM-DD) in UTC. */
-export function today(now: Date = new Date()): string {
-  return now.toISOString().slice(0, 10)
-}
 
 /** Add whole days to an ISO date, returning an ISO date. */
 export function addDays(isoDate: string, days: number): string {

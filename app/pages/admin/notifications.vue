@@ -45,16 +45,6 @@ const windowDays = computed({
   get: () => Number(config.value?.config.find(c => c.key === 'warning_window_days')?.value ?? 60),
   set: (value: number) => { setValue('warning_window_days', value) },
 })
-
-function formatDateTime(value: string | Date) {
-  const d = new Date(value)
-  return d.toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })
-}
-
-function formatDate(iso: string) {
-  const [year, month, day] = iso.split('-')
-  return `${day}/${month}/${year}`
-}
 </script>
 
 <template>

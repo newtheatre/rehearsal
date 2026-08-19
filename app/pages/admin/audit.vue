@@ -27,8 +27,8 @@ function nextPage() {
   if (last) before.value = new Date(last.createdAt).getTime()
 }
 
-function formatDateTime(value: string | Date) {
-  return new Date(value).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'medium' })
+function auditTime(value: string | Date) {
+  return formatDateTime(value, { seconds: true })
 }
 
 /** Colour by what the action does, not by which noun it acts on. */
@@ -112,7 +112,7 @@ function tone(actionName: string) {
           </div>
           <div class="flex items-center gap-3 shrink-0 text-xs text-muted">
             <span>{{ entry.actorName ?? 'system' }}</span>
-            <span>{{ formatDateTime(entry.createdAt) }}</span>
+            <span>{{ auditTime(entry.createdAt) }}</span>
             <UIcon
               :name="expanded === entry.id ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
               class="text-dimmed"

@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod'
+import { today } from '../../shared/utils/dates'
 
 /** `TECH-111` (DEPT-LCT) or `LD-CERT`. Matches the catalogue parser. */
 export const moduleIdSchema = z.string().trim().toUpperCase()
@@ -120,7 +121,7 @@ export const isoDateSchema = z.string().trim()
  * that has not happened would be valid to every gate in the system.
  */
 export const awardedAtSchema = isoDateSchema.refine(
-  value => value <= new Date().toISOString().slice(0, 10),
+  value => value <= today(),
   'Training cannot be recorded for a future date',
 )
 

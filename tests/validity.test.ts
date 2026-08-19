@@ -5,9 +5,24 @@
 
 import { describe, it, expect } from 'vitest'
 import { validityState, countsAsValid, isCurrentlyValid, addDays } from '../server/utils/validity'
+import { today } from '../shared/utils/dates'
 import { computeExpiresAt, nextAcademicYearEnd, addMonths } from '../server/utils/expiry'
 
 const asOf = '2026-08-14'
+
+describe('today()', () => {
+  it('is the London date, not the UTC one, during BST', () => {
+    // 00:30 on 1 July in London is still 30 June in UTC. Judging validity by
+    // the UTC date would keep a lapsed certification alive for that hour.
+    const earlyBst = new Date('2026-07-01T00:30:00+01:00')
+    expect(earlyBst.toISOString().slice(0, 10)).toBe('2026-06-30')
+    expect(today(earlyBst)).toBe('2026-07-01')
+  })
+
+  it('agrees with UTC outside BST', () => {
+    expect(today(new Date('2026-01-15T00:30:00Z'))).toBe('2026-01-15')
+  })
+})
 
 describe('validityState', () => {
   it('treats a null expiry as permanently valid', () => {

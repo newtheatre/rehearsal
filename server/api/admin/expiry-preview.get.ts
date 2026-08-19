@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { requirePermission } from '../../utils/auth'
 import { previewExpirySweep } from '../../utils/expirySweep'
 import { getConfig } from '../../utils/siteConfig'
-import { today } from '../../utils/validity'
+import { today } from '../../../shared/utils/dates'
 
 const querySchema = z.object({
   // Lets an operator answer "what will happen on 1 October?" without waiting.

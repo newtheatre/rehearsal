@@ -5,11 +5,6 @@ const { data: me } = useMe()
 const { data } = await useFetch('/api/sessions')
 
 const sessions = computed(() => data.value?.sessions ?? [])
-
-function formatDate(iso: string) {
-  const [year, month, day] = iso.split('-')
-  return `${day}/${month}/${year}`
-}
 </script>
 
 <template>

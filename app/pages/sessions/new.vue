@@ -11,10 +11,10 @@ const router = useRouter()
 const { data: catalogue } = await useFetch('/api/modules')
 const { data: directory, refresh: refreshDirectory } = await useFetch('/api/people')
 
-const today = new Date().toISOString().slice(0, 10)
+const todayIso = today()
 
 const form = ref({
-  heldOn: today,
+  heldOn: todayIso,
   moduleIds: [] as string[],
   attendeeIds: [] as string[],
   location: '',
@@ -149,18 +149,8 @@ async function submit() {
   }
 }
 
-function errorMessage(e: unknown, fallback: string): string {
-  const err = e as { statusMessage?: string, data?: { message?: string, statusMessage?: string } }
-  return err.data?.statusMessage || err.data?.message || err.statusMessage || fallback
-}
-
 const attendeeName = (id: string) =>
   (directory.value?.people ?? []).find(p => p.id === id)?.name ?? id
-
-function formatDate(iso: string) {
-  const [year, month, day] = iso.split('-')
-  return `${day}/${month}/${year}`
-}
 
 // Any edit invalidates the review — the confirm screen must always describe
 // what is actually about to be written.
@@ -198,7 +188,7 @@ watch(form, () => {
             <UInput
               v-model="form.heldOn"
               type="date"
-              :max="today"
+              :max="todayIso"
               class="w-full"
             />
           </UFormField>

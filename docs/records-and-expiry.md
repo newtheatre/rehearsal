@@ -22,6 +22,8 @@ A record says: *this person completed this module on this date, and here is the 
 | `ACADEMIC_YEAR` | The next 30 September strictly after `awarded_at` | Induction, FOH management, committee training — "everyone redoes it each year" |
 | *(external records)* | Typed in explicitly at recording, from the certificate itself | First Aid — the SU cert's own date wins |
 
+All dates are computed and displayed in `Europe/London` (`shared/utils/dates.ts`). The Worker runs in UTC, so an unpinned date is a day out for the first hour of every BST day, which would keep a lapsed record valid for that hour.
+
 `ACADEMIC_YEAR` is a fixed date, not a duration, so mid-year completions still expire with everyone else's — the 1 October mass-rollover of inductions is an emergent property, not special-case code. The boundary (`09-30`) lives in `site_config`.
 
 Changing a module's expiry config affects **future records only**. The explicit admin "recalculate current records" action (previewed diff, typed confirmation, audit log) is the sole retroactive path.

@@ -15,7 +15,8 @@ import {
 } from './expiryPlan'
 import { renderDigest, renderDryRunReport, renderMemberWarning, sendEmail } from './email'
 import { getConfig, getConfigNumber } from './siteConfig'
-import { notSupersededCondition, today } from './validity'
+import { notSupersededCondition } from './validity'
+import { today } from '../../shared/utils/dates'
 import { writeAudit } from './audit'
 import { chunk } from './d1'
 

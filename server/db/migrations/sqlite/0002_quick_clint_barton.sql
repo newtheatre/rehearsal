@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `anonymised_at` integer;

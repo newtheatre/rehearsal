@@ -16,5 +16,11 @@ export const users = sqliteTable('users', {
    */
   isTrainingAdmin: integer('is_training_admin', { mode: 'boolean' }).notNull().default(false),
 
+  /**
+   * Set by the erasure hook. The mirror upsert skips a row carrying it, so a
+   * still-valid session cannot write the person's name back.
+   */
+  anonymisedAt: integer('anonymised_at', { mode: 'timestamp_ms' }),
+
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()).$onUpdateFn(() => new Date()),
 })

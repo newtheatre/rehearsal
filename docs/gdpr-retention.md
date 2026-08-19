@@ -12,11 +12,15 @@ The training system's slice of the theatre's data-protection posture. Same hones
 | No-show/interest data | v2 only — assessed then | — |
 | Notification + audit metadata | `notification_log`, `audit_log` | Legitimate interest (operations) |
 
-Data minimisation: nothing beyond id/email/name about a person; no free-text fields *about* people except `revoke_reason` and session `notes` — both flagged to authors as visible-on-review, both in the anonymisation scrub list.
+Data minimisation: nothing beyond id/email/name about a person; the free-text fields *about* people are `revoke_reason`, session `notes` and `external_ref` (which carries both an external certificate's reference and a sign-off note) — all flagged to authors as visible-on-review, all in the anonymisation scrub list.
 
 ## Erasure — the estate hooks
 
-This app implements the auth service's hook contract ([api-reference.md](api-reference.md#inbound-gdpr-hooks-called-by-the-auth-service)). Anonymisation rewrites the mirror row (`deleted-<id>@anonymised.invalid`, "Deleted user") and scrubs `revoke_reason` / session `notes` mentions where flagged; **records and attendance survive as anonymous rows** — training and safety statistics outlive the person, the same stance as bookings (stage-door ADR-0008). Idempotent; audit-logged.
+This app implements the auth service's hook contract ([api-reference.md](api-reference.md#inbound-gdpr-hooks-called-by-the-auth-service)). Anonymisation rewrites the mirror row (`deleted-<id>@anonymised.invalid`, "Deleted user") and scrubs `revoke_reason`, `external_ref` and session `notes`; **records and attendance survive as anonymous rows** — training and safety statistics outlive the person, the same stance as bookings (stage-door ADR-0008). Idempotent; audit-logged.
+
+The row is stamped `anonymised_at`, and `ensureLocalUser` will not write over a row carrying it. Without that, the person's sealed session cookie — valid for up to 30 days after the erasure, and read locally without revalidation — would restore their real name and email on their next request from any open tab.
+
+Audit detail is **not** scrubbed, so nothing identifying may be written into it: `audit_log.detail` is searchable by substring from `/admin`, which would re-identify an anonymised row. Record ids and user ids only.
 
 One training-specific wrinkle: an anonymised *trainer* leaves sessions attributed to "Deleted user". Acceptable — the records those sessions produced remain valid; the evidence chain notes an anonymised trainer, which is true.
 

@@ -55,6 +55,28 @@ describe('ensureLocalUser', () => {
   })
 })
 
+describe('an erased person', () => {
+  it('is not written back over by a still-valid session', async () => {
+    await ensureLocalUser(sessionUser)
+
+    // What the erasure hook leaves behind.
+    await db.update(schema.users).set({
+      email: `deleted-${sessionUser.id}@anonymised.invalid`,
+      name: 'Deleted user',
+      anonymisedAt: new Date(),
+    }).where(eq(schema.users.id, sessionUser.id))
+
+    // The sealed cookie outlives the erasure, so this runs on any request.
+    resetMirrorDebounce()
+    await ensureLocalUser(sessionUser)
+
+    const row = await db.select().from(schema.users)
+      .where(eq(schema.users.id, sessionUser.id)).get()
+    expect(row!.name).toBe('Deleted user')
+    expect(row!.email).toBe(`deleted-${sessionUser.id}@anonymised.invalid`)
+  })
+})
+
 describe('global API middleware', () => {
   it('rejects an unauthenticated API request', async () => {
     const event = makeEvent({ path: '/api/modules' })

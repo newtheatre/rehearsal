@@ -18,8 +18,9 @@ export default defineEventHandler(async (event) => {
     await writeAudit({
       actorUserId: abilities.user.id,
       action: 'attendee.shadow-created',
+      // No email: audit_log is not scrubbed on erasure, and the detail is
+      // searchable, so it would re-identify an anonymised row.
       target: attendee.id,
-      detail: { email: input.email },
     })
   }
 

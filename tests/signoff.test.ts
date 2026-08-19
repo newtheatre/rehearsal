@@ -168,6 +168,19 @@ describe('sign-off authority', () => {
       .toHaveLength(1)
   })
 
+  it('refuses an admin whose session is stale, so a revoked role cannot sign off', async () => {
+    await setup()
+    const event = signoffEvent('alice', { moduleId: 'SM-CERT', awardedAt: TODAY })
+    signIn(event, { id: 'tm', roles: ['training:ADMIN'] }, { refreshedAt: Date.now() - 20 * 60_000 })
+
+    await expect(call(signoffHandler, event)).rejects.toMatchObject({
+      statusCode: 401,
+      data: { stale: true },
+    })
+    expect(await db.select().from(schema.records).where(eq(schema.records.moduleId, 'SM-CERT')).all())
+      .toHaveLength(0)
+  })
+
   it('refuses to sign off something that is not a certification', async () => {
     await setup()
     const event = signoffEvent('alice', { moduleId: 'TECH-111', awardedAt: TODAY })
@@ -233,6 +246,23 @@ describe('external certificates', () => {
     })
     signIn(event, { id: 'tm', roles: ['training:ADMIN'] })
     await expect(call(externalHandler, event)).rejects.toMatchObject({ statusCode: 400 })
+  })
+  it('refuses an admin whose session is stale', async () => {
+    await setup()
+    const event = makeEvent({
+      method: 'POST',
+      path: '/api/people/alice/external',
+      params: { id: 'alice' },
+      body: { moduleId: 'SFTY-101', awardedAt: '2026-08-01', externalRef: 'SU EFAW certificate' },
+    })
+    signIn(event, { id: 'tm', roles: ['training:ADMIN'] }, { refreshedAt: Date.now() - 20 * 60_000 })
+
+    await expect(call(externalHandler, event)).rejects.toMatchObject({
+      statusCode: 401,
+      data: { stale: true },
+    })
+    expect(await db.select().from(schema.records).where(eq(schema.records.moduleId, 'SFTY-101')).all())
+      .toHaveLength(0)
   })
 })
 

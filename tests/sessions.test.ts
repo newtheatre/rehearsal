@@ -326,6 +326,24 @@ describe('editing a session', () => {
     await expect(call(updateSessionHandler, edit)).rejects.toMatchObject({ statusCode: 400 })
   })
 
+  it('refuses an admin with a stale session editing someone else’s', async () => {
+    await setup()
+    const id = await logSession()
+
+    const edit = makeEvent({
+      method: 'PUT',
+      path: `/api/sessions/${id}`,
+      params: { id },
+      body: { ...validSession, attendeeIds: ['alice'] },
+    })
+    signIn(edit, { id: 'tm', roles: ['training:ADMIN'] }, { refreshedAt: Date.now() - 20 * 60_000 })
+
+    await expect(call(updateSessionHandler, edit)).rejects.toMatchObject({
+      statusCode: 401,
+      data: { stale: true },
+    })
+  })
+
   it('refuses a trainer editing someone else’s session', async () => {
     await setup()
     await seedUser('other-trainer', 'Other')

@@ -6,7 +6,8 @@ import { db, schema } from '@nuxthub/db'
 import { eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { signoffSchema } from '../../../utils/validation'
-import { useAbilities, canStewardDepartment } from '../../../utils/abilities'
+import { useAbilities } from '../../../utils/abilities'
+import { requirePermission } from '../../../utils/auth'
 import { getConfig, getConfigNumber } from '../../../utils/siteConfig'
 import { buildRecordInserts } from '../../../utils/records'
 import { checkPrerequisites, describeGaps } from '../../../utils/prerequisites'
@@ -37,13 +38,16 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Authority is per-department: the CTD signs off tech certifications, not
-  // stage management's (ADR-0005).
-  if (!canStewardDepartment(abilities, module.department)) {
-    throw createError({
-      statusCode: 403,
-      statusMessage: `Signing off ${module.id} is for the ${module.department} lead or an admin`,
-    })
+  // Per-department authority (ADR-0005); the admin fallback is
+  // staleness-checked so a revoked role cannot still sign off.
+  if (!abilities.leadOf.includes(module.department)) {
+    if (!abilities.isAdmin) {
+      throw createError({
+        statusCode: 403,
+        statusMessage: `Signing off ${module.id} is for the ${module.department} lead or an admin`,
+      })
+    }
+    await requirePermission(event, 'signoff.any')
   }
 
   const warningWindowDays = await getConfigNumber('warning_window_days')

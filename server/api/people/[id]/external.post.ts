@@ -5,7 +5,8 @@
 import { db, schema } from '@nuxthub/db'
 import { eq } from 'drizzle-orm'
 import { externalRecordSchema } from '../../../utils/validation'
-import { useAbilities, canStewardDepartment } from '../../../utils/abilities'
+import { useAbilities } from '../../../utils/abilities'
+import { requirePermission } from '../../../utils/auth'
 import { getConfig } from '../../../utils/siteConfig'
 import { buildRecordInserts } from '../../../utils/records'
 import { writeAudit } from '../../../utils/audit'
@@ -28,11 +29,16 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Module not found' })
   }
 
-  if (!canStewardDepartment(abilities, module.department)) {
-    throw createError({
-      statusCode: 403,
-      statusMessage: `Recording ${module.id} is for the ${module.department} lead or an admin`,
-    })
+  // The admin fallback is staleness-checked: a revoked role must not still
+  // be able to create records.
+  if (!abilities.leadOf.includes(module.department)) {
+    if (!abilities.isAdmin) {
+      throw createError({
+        statusCode: 403,
+        statusMessage: `Recording ${module.id} is for the ${module.department} lead or an admin`,
+      })
+    }
+    await requirePermission(event, 'signoff.any')
   }
 
   if (input.expiresAt && input.expiresAt <= input.awardedAt) {

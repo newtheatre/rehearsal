@@ -4,6 +4,7 @@
  */
 
 import { addDays, validityState } from './validity'
+import { daysBetween } from '../../shared/utils/dates'
 
 /**
  * A constant rather than config: the warning window is the operator's dial,
@@ -81,13 +82,6 @@ export interface SweepInputs {
   isDigestDay: boolean
   /** How long the cached admin flag is trusted for. */
   adminCacheDays: number
-}
-
-/** Whole days from `from` to `to`, both ISO dates. */
-export function daysBetween(from: string, to: string): number {
-  const a = Date.parse(`${from}T00:00:00Z`)
-  const b = Date.parse(`${to}T00:00:00Z`)
-  return Math.round((b - a) / 86_400_000)
 }
 
 export function planExpirySweep(input: SweepInputs): ExpiryPlan {

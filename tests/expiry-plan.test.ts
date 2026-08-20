@@ -5,13 +5,13 @@
 
 import { describe, it, expect } from 'vitest'
 import {
-  daysBetween,
   isDigestDay,
   planExpirySweep,
   FINAL_WARNING_DAYS,
   type SweepInputs,
   type SweepRecord,
 } from '../server/utils/expiryPlan'
+import { daysBetween } from '../shared/utils/dates'
 
 // The mirror saw everyone today, so the cached admin flag is fresh.
 const seenToday = new Date('2026-08-14T09:00:00Z')

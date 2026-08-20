@@ -55,7 +55,7 @@ describe('buildRecordInserts', () => {
     })
 
     expect(inserts.find(i => i.moduleId === 'TECH-111')!.expiresAt).toBeNull()
-    expect(inserts.find(i => i.moduleId === 'NNT-001')!.expiresAt).toBe('2027-09-30')
+    expect(inserts.find(i => i.moduleId === 'NNT-001')!.expiresAt).toBe('2027-08-31')
   })
 
   it('never expires a brief', async () => {

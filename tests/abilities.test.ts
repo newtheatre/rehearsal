@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { getAbilities, holdsTrainerCertification, leadDepartments, canSeeDrafts, canStewardDepartment } from '../server/utils/abilities'
-import { computeExpiresAt } from '../server/utils/expiry'
+import { addDays } from '../server/utils/validity'
 import { today } from '../shared/utils/dates'
 import { seedDepartments, seedLead, seedModule, seedRecord, seedUser } from './helpers/fixtures'
 
@@ -48,8 +48,9 @@ describe('trainer standing', () => {
   it('survives inside the warning window, the ability must not flicker off early', async () => {
     await seedTrainerCert()
     await seedUser('alice')
-    // Expiring within the 60-day window still counts as held.
-    const soon = computeExpiresAt({ expiryMode: 'ACADEMIC_YEAR' }, today())
+    // Explicit, not derived from policy: carry-over would push an academic-year
+    // date clear of the window and this would stop testing what it says.
+    const soon = addDays(today(), 30)
     await seedRecord({ userId: 'alice', moduleId: 'LEAD-CERT', expiresAt: soon })
 
     expect(await holdsTrainerCertification('alice')).toBe(true)

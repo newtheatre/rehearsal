@@ -21,14 +21,16 @@ A record says: *this person completed this module on this date, and here is the 
 |---|---|---|
 | `NONE` | `NULL` | Most skills modules |
 | `MONTHS` (+ `expiry_months`) | `awarded_at` + N calendar months | e.g. powered tools (12), intimacy & fight (24) |
-| `ACADEMIC_YEAR` | The next 30 September strictly after `awarded_at` | Induction, FOH management, committee training: "everyone redoes it each year" |
+| `ACADEMIC_YEAR` | The next boundary after `awarded_at`, or the one after that when the first is under 60 days away | Induction, FOH management, committee training: "everyone redoes it each year" |
 | *(external records)* | Typed in explicitly at recording, from the certificate itself | First Aid: the SU cert's own date wins |
 
 All dates are computed and displayed in `Europe/London` (`shared/utils/dates.ts`). The Worker runs in UTC, so an unpinned date is a day out for the first hour of every BST day, which would keep a lapsed record valid for that hour.
 
-`ACADEMIC_YEAR` is a fixed date, not a duration, so mid-year completions still expire with everyone else's: the 1 October mass-rollover of inductions is an emergent property, not special-case code. The boundary (`09-30`) lives in `site_config`.
+`ACADEMIC_YEAR` is a fixed date, not a duration, so completions still expire together rather than a year after each person's own award. The boundary (`08-31`) lives in `site_config`.
 
-Changing a module's expiry config affects **future records only**. The explicit admin "recalculate current records" action (previewed diff, typed confirmation, audit log) is the sole retroactive path.
+An award inside the last 60 days before that boundary runs to the **following** one instead ([ADR-0011](decisions/0011-academic-year-carry-over.md)), so no award is ever worth less than a term. This keeps the mode a fixed date: it chooses which boundary, never a duration. The consequence is that the 1 September rollover has two cohorts, and the people trained in the run-up to it are not in this year's.
+
+Changing a module's expiry config, or the boundary itself, affects **future records only**. The explicit admin "recalculate current records" action (previewed diff, typed confirmation, audit log) is the sole retroactive path.
 
 ## Validity states (derived, never stored)
 
@@ -75,6 +77,6 @@ Operational detail (dry-run semantics, who gets the digest, previewing a future 
 
 ## Worked examples
 
-- Induction (`ACADEMIC_YEAR`) taken 12 Oct 2026 → expires 30 Sep 2027; taken 15 Sep 2027 → expires 30 Sep 2027 (fifteen days later, correct: that's what an academic-year gate means; run inductions in October, not September).
+- Induction (`ACADEMIC_YEAR`) taken 12 Oct 2026 → expires 31 Aug 2027; taken 20 Aug 2027 → expires 31 Aug **2028**, because the coming boundary is 11 days away and an 11-day induction is worth nothing.
 - First Aid recorded 1 Nov 2026 with cert dated to 3 Mar 2028 → `EXTERNAL`, expires 3 Mar 2028 regardless of module config.
-- Trainer's LEAD-CERT (AY policy, if ratified) expires 30 Sep → their "log a session" ability greys out 1 Oct until re-approved; sessions they logged remain valid history.
+- Trainer's LEAD-CERT (AY policy, if ratified) expires 31 Aug → their "log a session" ability greys out 1 Sep until re-approved; sessions they logged remain valid history.

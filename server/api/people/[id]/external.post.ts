@@ -65,7 +65,7 @@ export default defineEventHandler(async (event) => {
     source: 'EXTERNAL',
     grantedBy: abilities.user.id,
     externalRef: input.externalRef,
-    externalExpiresAt: input.expiresAt ?? null,
+    override: input.expiresAt ? { expiresAt: input.expiresAt } : undefined,
     academicYearEnd,
   })
 

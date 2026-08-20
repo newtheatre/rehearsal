@@ -188,6 +188,76 @@ describe('sign-off authority', () => {
       .toHaveLength(0)
   })
 
+  async function readyForLdCert() {
+    await setup()
+    await seedRecord({ userId: 'alice', moduleId: 'TECH-111', expiresAt: null })
+    await seedRecord({ userId: 'alice', moduleId: 'TECH-112', expiresAt: null })
+    // LD-CERT is NONE mode, so give the expiry cases a module with a policy.
+    await seedModule('AY-CERT', {
+      department: 'TECH',
+      kind: 'CERTIFICATION',
+      name: 'Renewed Yearly',
+      signoffRequired: true,
+      expiryMode: 'ACADEMIC_YEAR',
+    })
+  }
+
+  it('stamps a signer\'s own expiry over module policy, and says it did', async () => {
+    await readyForLdCert()
+    const event = signoffEvent('alice', { moduleId: 'AY-CERT', awardedAt: TODAY, expiresAt: '2030-01-01' })
+    signIn(event, { id: 'ctd' })
+    await call(signoffHandler, event)
+
+    const [record] = await db.select().from(schema.records)
+      .where(eq(schema.records.moduleId, 'AY-CERT')).all()
+    expect(record!.expiresAt).toBe('2030-01-01')
+    expect(record!.expiryOverridden).toBe(true)
+  })
+
+  it('refuses an expiry on or before the award, and one a decade out', async () => {
+    await readyForLdCert()
+    const early = signoffEvent('alice', { moduleId: 'AY-CERT', awardedAt: TODAY, expiresAt: '2020-01-01' })
+    signIn(early, { id: 'ctd' })
+    await expect(call(signoffHandler, early)).rejects.toMatchObject({ statusCode: 400 })
+
+    const absurd = signoffEvent('alice', { moduleId: 'AY-CERT', awardedAt: TODAY, expiresAt: '2099-01-01' })
+    signIn(absurd, { id: 'ctd' })
+    await expect(call(signoffHandler, absurd)).rejects.toMatchObject({ statusCode: 400 })
+  })
+
+  it('refuses an expiry on a module whose policy says it never expires', async () => {
+    await readyForLdCert()
+    // LD-CERT is NONE, so an expiry here would be one signer inventing policy.
+    const event = signoffEvent('alice', { moduleId: 'LD-CERT', awardedAt: TODAY, expiresAt: '2030-01-01' })
+    signIn(event, { id: 'ctd' })
+    await expect(call(signoffHandler, event)).rejects.toMatchObject({ statusCode: 400 })
+  })
+
+  it('refuses "never expires" to a lead, and allows it to an admin', async () => {
+    await readyForLdCert()
+    const lead = signoffEvent('alice', { moduleId: 'AY-CERT', awardedAt: TODAY, neverExpires: true })
+    signIn(lead, { id: 'ctd' })
+    await expect(call(signoffHandler, lead)).rejects.toMatchObject({ statusCode: 403 })
+
+    const admin = signoffEvent('alice', { moduleId: 'AY-CERT', awardedAt: TODAY, neverExpires: true })
+    signIn(admin, { id: 'tm', roles: ['training:ADMIN'] })
+    await call(signoffHandler, admin)
+
+    const [record] = await db.select().from(schema.records)
+      .where(eq(schema.records.moduleId, 'AY-CERT')).all()
+    // Null like a NONE module, but flagged, so the recalculation leaves it be.
+    expect(record!.expiresAt).toBeNull()
+    expect(record!.expiryOverridden).toBe(true)
+  })
+
+  it('refuses "never expires" to an admin whose session is stale', async () => {
+    await readyForLdCert()
+    const event = signoffEvent('alice', { moduleId: 'AY-CERT', awardedAt: TODAY, neverExpires: true })
+    signIn(event, { id: 'tm', roles: ['training:ADMIN'] }, { refreshedAt: Date.now() - 20 * 60_000 })
+
+    await expect(call(signoffHandler, event)).rejects.toMatchObject({ statusCode: 401 })
+  })
+
   it('refuses to sign off something that is not a certification', async () => {
     await setup()
     const event = signoffEvent('alice', { moduleId: 'TECH-111', awardedAt: TODAY })

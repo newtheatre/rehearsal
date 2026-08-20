@@ -43,19 +43,25 @@ export function addMonths(isoDate: string, months: number): string {
   return target.toISOString().slice(0, 10)
 }
 
+/** Present means overridden; the date inside may be null for never (ADR-0012). */
+export interface ExpiryOverride {
+  expiresAt: string | null
+}
+
 /**
- * An EXTERNAL record's own certificate date always wins over the module's
- * configured policy.
+ * A certificate's or a signer's own date wins over the module's policy. The
+ * wrapper is what separates "no override" from "override to never".
  */
 export function computeExpiresAt(
   module: ExpiryPolicy,
   awardedAt: string,
-  { externalExpiresAt, academicYearEnd = ACADEMIC_YEAR_END }: { externalExpiresAt?: string | null, academicYearEnd?: string } = {},
+  { override, academicYearEnd = ACADEMIC_YEAR_END }: { override?: ExpiryOverride, academicYearEnd?: string } = {},
 ): string | null {
-  if (externalExpiresAt) return externalExpiresAt
-
   // Briefs recur per event; they never expire and never gate (ADR-0003).
+  // Ahead of the override, or an external brief could be given an expiry.
   if (module.kind === 'BRIEF') return null
+
+  if (override) return override.expiresAt
 
   switch (module.expiryMode) {
     case 'MONTHS':

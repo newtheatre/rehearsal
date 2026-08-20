@@ -61,7 +61,7 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `GET /api/people` | session | directory with per-person valid/expiring/expired counts and certifications. Paged: `limit` (default 50, max 100) with a keyset cursor `(afterName, afterId)`; `q` and `module` filter in SQL. Returns `{ people, hasMore }` |
 | `GET /api/directory` | session | id and name only, for the attendee and lead pickers. No record aggregation, so it can return the whole membership (`limit` default 500) |
 | `GET /api/people/:id` | session | one person's records; revoked history and actions for leads/admins |
-| `POST /api/people/:id/signoff` | lead (module's dept) or admin | certification sign-off; **422 with the gaps named** if prerequisites are unmet |
+| `POST /api/people/:id/signoff` | lead (module's dept) or admin | certification sign-off; **422 with the gaps named** if prerequisites are unmet. Optional `expiresAt` overrides module policy (after the award, within ten years, refused when the module never expires). `neverExpires: true` needs `record.manage` and is **API only on purpose**: it is break-glass against a lockout, not a routine choice, so no UI offers it |
 | `POST /api/people/:id/external` | lead (module's dept) or admin | external certificate; its own expiry wins over module config. 400 unless the module sets `allows_external` |
 | `POST /api/records/:id/revoke` | admin | revoke with a mandatory reason; idempotent |
 | `GET /api/sessions` | session | delivery log, newest first. Paged: `limit` (default 50, max 100) with a keyset cursor `(beforeHeldOn, beforeId)`; `held_on` is a date, so the id breaks ties. Returns `{ sessions, hasMore }` |
@@ -74,7 +74,7 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `PUT /api/admin/config` | admin | change one value; per-key validation; audit-logged |
 | `GET /api/admin/expiry-preview` | admin | what the next sweep would do; optional `asOf` date; sends and records nothing |
 | `GET /api/admin/notifications` | admin | what has actually been sent |
-| `POST /api/admin/recalculate` | admin | preview an expiry recalculation, or apply it by echoing the change count |
+| `POST /api/admin/recalculate` | admin | preview an expiry recalculation, or apply it by echoing the change count. Returns `{ changes, unchanged, skippedOverridden }`; records whose expiry was set explicitly are never recomputed |
 | `GET /api/admin/service-tokens` | admin | issued consumer tokens (never the tokens themselves) |
 | `POST /api/admin/service-tokens` | admin | issue one; the plaintext is in the response and nowhere else |
 | `DELETE /api/admin/service-tokens/:id` | admin | revoke; the consumer starts getting 401s immediately |

@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod'
+import { addMonths } from './expiry'
 import { today } from '../../shared/utils/dates'
 
 /** `TECH-111` (DEPT-LCT) or `LD-CERT`. Matches the catalogue parser. */
@@ -139,9 +140,28 @@ export const sessionInputSchema = z.object({
   acknowledgeWarnings: z.boolean().default(false),
 })
 
+/** An expiry not after the award, or a decade out, is a typo not a policy. */
+export function assertExpiryPlausible(awardedAt: string, expiresAt: string, message: string): void {
+  if (expiresAt <= awardedAt) {
+    throw createError({ statusCode: 400, statusMessage: message })
+  }
+  // 120 months is the catalogue's own cap, so an override cannot express a
+  // policy a module is not allowed to have.
+  if (expiresAt > addMonths(awardedAt, 120)) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'That expiry is more than ten years away: check the date',
+    })
+  }
+}
+
 export const signoffSchema = z.object({
   moduleId: moduleIdSchema,
   awardedAt: awardedAtSchema,
+  /** Only when the assessment itself carries a date; policy applies otherwise. */
+  expiresAt: isoDateSchema.optional(),
+  /** Admin only, and deliberately absent from the UI (ADR-0012). */
+  neverExpires: z.boolean().optional(),
   note: z.string().trim().max(500).nullable().optional(),
 })
 

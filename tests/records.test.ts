@@ -73,6 +73,60 @@ describe('buildRecordInserts', () => {
   })
 })
 
+describe('expiry overrides', () => {
+  it('marks an overridden record and leaves an ordinary one alone', async () => {
+    await setup()
+    const modules = await loadModules(['NNT-001'])
+
+    const [plain] = buildRecordInserts({
+      users: ['alice'], modules, awardedAt: '2026-10-12', source: 'SIGNOFF',
+    })
+    expect(plain!.expiresAt).toBe('2027-08-31')
+    expect(plain!.expiryOverridden).toBe(false)
+
+    const [overridden] = buildRecordInserts({
+      users: ['alice'], modules, awardedAt: '2026-10-12', source: 'SIGNOFF',
+      override: { expiresAt: '2030-01-01' },
+    })
+    expect(overridden!.expiresAt).toBe('2030-01-01')
+    expect(overridden!.expiryOverridden).toBe(true)
+  })
+
+  it('records "never expires" as an override, not as policy', async () => {
+    await setup()
+    const modules = await loadModules(['NNT-001'])
+
+    const [record] = buildRecordInserts({
+      users: ['alice'], modules, awardedAt: '2026-10-12', source: 'SIGNOFF',
+      override: { expiresAt: null },
+    })
+
+    // Same null as a NONE module, but the flag is what tells them apart.
+    expect(record!.expiresAt).toBeNull()
+    expect(record!.expiryOverridden).toBe(true)
+  })
+
+  it('refuses an override on a session, which awards many people at once', async () => {
+    await setup()
+    const modules = await loadModules(['NNT-001'])
+
+    expect(() => buildRecordInserts({
+      users: ['alice'], modules, awardedAt: '2026-10-12', source: 'SESSION',
+      override: { expiresAt: '2030-01-01' },
+    })).toThrow()
+  })
+
+  it('refuses an override that would apply to more than one record', async () => {
+    await setup()
+    const modules = await loadModules(['NNT-001', 'TECH-111'])
+
+    expect(() => buildRecordInserts({
+      users: ['alice'], modules, awardedAt: '2026-10-12', source: 'SIGNOFF',
+      override: { expiresAt: '2030-01-01' },
+    })).toThrow()
+  })
+})
+
 describe('current record resolution', () => {
   it('takes the latest award and keeps the earlier one as history', async () => {
     await setup()

@@ -50,6 +50,9 @@ export const records = sqliteTable('records', {
 
   awardedAt: text('awarded_at').notNull(), // ISO date: when training happened
   expiresAt: text('expires_at'), // ISO date; NULL = never expires
+  // Set when the date came from a certificate or a signer rather than policy.
+  // The recalculation skips these, and it is what makes NULL readable (ADR-0012).
+  expiryOverridden: integer('expiry_overridden', { mode: 'boolean' }).notNull().default(false),
 
   source: text('source', { enum: ['SESSION', 'SIGNOFF', 'EXTERNAL', 'LEGACY', 'ADMIN'] }).notNull(),
   sessionId: text('session_id').references(() => sessions.id), // set iff SESSION

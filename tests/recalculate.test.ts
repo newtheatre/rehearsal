@@ -66,13 +66,50 @@ describe('planning a recalculation', () => {
       expiresAt: '2028-03-03',
       source: 'EXTERNAL',
       externalRef: 'SU EFAW',
+      expiryOverridden: true,
     })
 
     const plan = await planRecalculation({ academicYearEnd: '09-30' })
 
     // The SU does not reissue a certificate because we changed a dropdown.
     expect(plan.changes.find(c => c.moduleId === 'SFTY-101')).toBeUndefined()
-    expect(plan.skippedExternal).toBe(1)
+    expect(plan.skippedOverridden).toBe(1)
+  })
+
+  it('skips a sign-off whose expiry was set explicitly, and moves its twin', async () => {
+    await setup()
+    await db.update(schema.modules)
+      .set({ expiryMode: 'MONTHS', expiryMonths: 12 })
+      .where(eq(schema.modules.id, 'TECH-121'))
+    await seedUser('bob', 'Bob')
+    // Two rows differing only in the marker, so this fails for any
+    // implementation still branching on source.
+    await seedRecord({
+      userId: 'bob', moduleId: 'TECH-121', awardedAt: '2026-01-15',
+      expiresAt: '2030-01-01', source: 'SIGNOFF', expiryOverridden: true,
+    })
+
+    const plan = await planRecalculation({ academicYearEnd: '08-31' })
+
+    expect(plan.skippedOverridden).toBe(1)
+    expect(plan.changes.find(c => c.userId === 'bob')).toBeUndefined()
+    expect(plan.changes.find(c => c.userId === 'alice')).toBeDefined()
+  })
+
+  it('leaves an explicit never-expires alone rather than giving it a date', async () => {
+    await setup()
+    await db.update(schema.modules)
+      .set({ expiryMode: 'MONTHS', expiryMonths: 12 })
+      .where(eq(schema.modules.id, 'TECH-121'))
+    await seedUser('bob', 'Bob')
+    await seedRecord({
+      userId: 'bob', moduleId: 'TECH-121', awardedAt: '2026-01-15',
+      expiresAt: null, source: 'SIGNOFF', expiryOverridden: true,
+    })
+
+    const plan = await planRecalculation({ academicYearEnd: '08-31' })
+
+    expect(plan.changes.find(c => c.userId === 'bob')).toBeUndefined()
   })
 
   it('ignores revoked and superseded records', async () => {

@@ -48,7 +48,7 @@ const todayIso = today()
 const signoffOpen = ref(false)
 const signoffBusy = ref(false)
 const signoffError = ref<string | null>(null)
-const signoff = ref({ moduleId: '', awardedAt: todayIso, note: '' })
+const signoff = ref({ moduleId: '', awardedAt: todayIso, expiresAt: '', note: '' })
 
 async function submitSignoff() {
   signoffBusy.value = true
@@ -59,12 +59,13 @@ async function submitSignoff() {
       body: {
         moduleId: signoff.value.moduleId,
         awardedAt: signoff.value.awardedAt,
+        expiresAt: signoff.value.expiresAt || undefined,
         note: signoff.value.note || null,
       },
     })
     toast.add({ title: 'Certification signed off', icon: 'i-lucide-check', color: 'success' })
     signoffOpen.value = false
-    signoff.value = { moduleId: '', awardedAt: todayIso, note: '' }
+    signoff.value = { moduleId: '', awardedAt: todayIso, expiresAt: '', note: '' }
     await refresh()
   }
   catch (e) {
@@ -270,6 +271,12 @@ async function submitRevoke() {
           </div>
 
           <div class="flex items-center gap-2 shrink-0">
+            <UIcon
+              v-if="record.expiryOverridden"
+              name="i-lucide-pin"
+              class="text-dimmed"
+              title="This expiry was set by hand, so the recalculation will not move it"
+            />
             <RecordState
               :state="record.state"
               :expires-at="record.expiresAt"
@@ -394,6 +401,17 @@ async function submitRevoke() {
             />
           </UFormField>
           <UFormField
+            label="Expires"
+            help="Only when the assessment itself carries a date. Otherwise the module's own policy applies."
+          >
+            <UInput
+              v-model="signoff.expiresAt"
+              type="date"
+              :min="signoff.awardedAt"
+              class="w-full"
+            />
+          </UFormField>
+          <UFormField
             label="Note"
             help="What the supervised practical was, for the record"
           >
@@ -468,6 +486,7 @@ async function submitRevoke() {
             <UInput
               v-model="external.expiresAt"
               type="date"
+              :min="external.awardedAt"
               class="w-full"
             />
           </UFormField>

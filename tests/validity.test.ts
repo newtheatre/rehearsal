@@ -110,13 +110,29 @@ describe('computeExpiresAt', () => {
     expect(computeExpiresAt({ expiryMode: 'ACADEMIC_YEAR' }, '2026-10-12')).toBe('2027-08-31')
   })
 
-  it('lets an external certificate\'s own date win over module config', () => {
+  it('lets an explicit date win over module config', () => {
     // The SU's certificate knows its expiry better than our config does.
     expect(computeExpiresAt(
       { expiryMode: 'MONTHS', expiryMonths: 36 },
       '2026-11-01',
-      { externalExpiresAt: '2028-03-03' },
+      { override: { expiresAt: '2028-03-03' } },
     )).toBe('2028-03-03')
+  })
+
+  it('separates "no override" from "override to never expires"', () => {
+    const module = { expiryMode: 'MONTHS' as const, expiryMonths: 36 }
+    // The distinction the wrapper exists for: absent falls through to policy.
+    expect(computeExpiresAt(module, '2026-11-01')).toBe('2029-11-01')
+    expect(computeExpiresAt(module, '2026-11-01', { override: { expiresAt: null } })).toBeNull()
+  })
+
+  it('never expires a brief, even when an override is supplied', () => {
+    // A brief recurs per event, so no override may give it a date (ADR-0003).
+    expect(computeExpiresAt(
+      { expiryMode: 'ACADEMIC_YEAR', kind: 'BRIEF' },
+      '2026-08-14',
+      { override: { expiresAt: '2030-01-01' } },
+    )).toBeNull()
   })
 
   it('never expires a brief, whatever the config says', () => {

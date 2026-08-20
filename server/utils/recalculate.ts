@@ -1,6 +1,6 @@
 /**
  * The single retroactive path (ADR-0002): previewed as a diff, confirmed by
- * typing, audit-logged. EXTERNAL and revoked records are never touched.
+ * typing, audit-logged. Overridden and revoked records are never touched.
  */
 
 import { db, schema } from '@nuxthub/db'
@@ -24,8 +24,8 @@ export interface ExpiryChange {
 export interface RecalculationPlan {
   changes: ExpiryChange[]
   unchanged: number
-  /** EXTERNAL records skipped on purpose, so the count is explainable. */
-  skippedExternal: number
+  /** Expiries set explicitly, so policy does not own them (ADR-0012). */
+  skippedOverridden: number
 }
 
 /**
@@ -54,11 +54,11 @@ export async function planRecalculation(
 
   const changes: ExpiryChange[] = []
   let unchanged = 0
-  let skippedExternal = 0
+  let skippedOverridden = 0
 
   for (const { record, module, userName } of rows) {
-    if (record.source === 'EXTERNAL') {
-      skippedExternal++
+    if (record.expiryOverridden) {
+      skippedOverridden++
       continue
     }
 
@@ -81,7 +81,7 @@ export async function planRecalculation(
   }
 
   changes.sort((a, b) => a.moduleId.localeCompare(b.moduleId) || a.userName.localeCompare(b.userName))
-  return { changes, unchanged, skippedExternal }
+  return { changes, unchanged, skippedOverridden }
 }
 
 /**

@@ -9,6 +9,7 @@ A record says: *this person completed this module on this date, and here is the 
 - `source`: `SESSION` (derived from a logged session, `session_id` set), `SIGNOFF` (manual certification/bootstrap grant, `granted_by` set), `EXTERNAL` (external certificate, `external_ref` documents it), `LEGACY` (the one-off import), `ADMIN` (other manual grant, discouraged, always with audit trail).
 - `awarded_at`: the date the training happened (not the date of data entry).
 - `expires_at`: stamped at creation ([ADR-0002](decisions/0002-expiry-stamped-at-award.md)); `NULL` = never expires.
+- `expiry_overridden`: the date came from a certificate or a signer rather than from policy, so the recalculation skips it ([ADR-0012](decisions/0012-explicit-expiry-marked-on-the-record.md)). It is also what makes a `NULL` readable: flagged means "explicitly never", unflagged means "policy says never".
 - `revoked_at`/`revoked_by`/`revoke_reason`: the correction mechanism. Revoked records stay visible in history.
 
 `EXTERNAL` is **opt-in per module**: `modules.allows_external` must be set, and `modules.external_evidence` says what the lead should accept ("FAW or EFAW certificate"). Without it the route refuses, so a certification conferring supervisor or trainer standing cannot be granted from an unverified certificate merely because the form offered it.
@@ -22,7 +23,7 @@ A record says: *this person completed this module on this date, and here is the 
 | `NONE` | `NULL` | Most skills modules |
 | `MONTHS` (+ `expiry_months`) | `awarded_at` + N calendar months | e.g. powered tools (12), intimacy & fight (24) |
 | `ACADEMIC_YEAR` | The next boundary after `awarded_at`, or the one after that when the first is under 60 days away | Induction, FOH management, committee training: "everyone redoes it each year" |
-| *(external records)* | Typed in explicitly at recording, from the certificate itself | First Aid: the SU cert's own date wins |
+| *(an override)* | Typed in explicitly at recording or sign-off | First Aid: the SU cert's own date wins; an assessor's own review date |
 
 All dates are computed and displayed in `Europe/London` (`shared/utils/dates.ts`). The Worker runs in UTC, so an unpinned date is a day out for the first hour of every BST day, which would keep a lapsed record valid for that hour.
 
@@ -78,5 +79,6 @@ Operational detail (dry-run semantics, who gets the digest, previewing a future 
 ## Worked examples
 
 - Induction (`ACADEMIC_YEAR`) taken 12 Oct 2026 → expires 31 Aug 2027; taken 20 Aug 2027 → expires 31 Aug **2028**, because the coming boundary is 11 days away and an 11-day induction is worth nothing.
-- First Aid recorded 1 Nov 2026 with cert dated to 3 Mar 2028 → `EXTERNAL`, expires 3 Mar 2028 regardless of module config.
+- First Aid recorded 1 Nov 2026 with cert dated to 3 Mar 2028 → `EXTERNAL`, expires 3 Mar 2028 regardless of module config, flagged `expiry_overridden`.
+- Signed off 1 Nov 2026 with the assessor's own review date of 1 Nov 2029 → stamped as given, flagged, and the recalculation will not move it.
 - Trainer's LEAD-CERT (AY policy, if ratified) expires 31 Aug → their "log a session" ability greys out 1 Sep until re-approved; sessions they logged remain valid history.

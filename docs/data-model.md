@@ -65,6 +65,7 @@ Nothing here is told when a role is revoked, so the flag is trusted only while `
 | `user_id` FK not null · `module_id` FK not null | |
 | `awarded_at` text (ISO date) not null | When the training happened |
 | `expires_at` text null | Stamped at creation: [records-and-expiry.md](records-and-expiry.md) |
+| `expiry_overridden` integer not null default 0 | The date was given explicitly rather than derived from policy. The recalculation skips these, and it is what distinguishes an explicit "never expires" from a `NONE` module |
 | `source` text not null | `SESSION` \| `SIGNOFF` \| `EXTERNAL` \| `LEGACY` \| `ADMIN` |
 | `session_id` FK null | Set iff `SESSION` |
 | `granted_by` FK null | Set for `SIGNOFF`/`EXTERNAL`/`ADMIN` |

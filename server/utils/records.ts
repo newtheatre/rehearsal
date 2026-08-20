@@ -6,7 +6,7 @@
 import { db, schema } from '@nuxthub/db'
 import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
-import { computeExpiresAt } from './expiry'
+import { computeExpiresAt, type ExpiryOverride } from './expiry'
 import { chunk } from './d1'
 import { notSupersededCondition, validityState, type ValidityState } from './validity'
 // The catalogue owns this row type (server/utils/modules.ts); importing it
@@ -26,6 +26,34 @@ export interface RecordInsert {
   sessionId?: string | null
   grantedBy?: string | null
   externalRef?: string | null
+  expiryOverridden: boolean
+}
+
+/**
+ * One expiry cannot describe a users by modules fan-out, so an override is
+ * only meaningful where exactly one record is being written (ADR-0012).
+ */
+function assertOverridable(options: {
+  override?: ExpiryOverride
+  source: RecordSource
+  users: string[]
+  modules: ModuleRow[]
+}): void {
+  if (!options.override) return
+
+  if (options.source === 'SESSION') {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'A session cannot set an expiry: it awards many people at once',
+    })
+  }
+
+  if (options.users.length !== 1 || options.modules.length !== 1) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'An expiry override applies to a single record',
+    })
+  }
 }
 
 /**
@@ -68,11 +96,12 @@ export function buildRecordInserts(options: {
   sessionId?: string | null
   grantedBy?: string | null
   externalRef?: string | null
-  /** An external certificate's own expiry, which always wins over config. */
-  externalExpiresAt?: string | null
+  /** A certificate's or a signer's own date, which wins over policy. */
+  override?: ExpiryOverride
   academicYearEnd?: string
 }): RecordInsert[] {
   assertAwardable(options.modules, options.source)
+  assertOverridable(options)
 
   const inserts: RecordInsert[] = []
 
@@ -84,13 +113,16 @@ export function buildRecordInserts(options: {
         moduleId: module.id,
         awardedAt: options.awardedAt,
         expiresAt: computeExpiresAt(module, options.awardedAt, {
-          externalExpiresAt: options.externalExpiresAt,
+          override: options.override,
           academicYearEnd: options.academicYearEnd,
         }),
         source: options.source,
         sessionId: options.sessionId ?? null,
         grantedBy: options.grantedBy ?? null,
         externalRef: options.externalRef ?? null,
+        // EXTERNAL unconditionally, so the recalculation keeps the promise
+        // the runbook makes about certificates (ADR-0012).
+        expiryOverridden: options.override !== undefined || options.source === 'EXTERNAL',
       })
     }
   }
@@ -111,6 +143,8 @@ export interface PresentedRecord {
   source: RecordSource
   sessionId: string | null
   safetyCritical: boolean
+  /** The date was set explicitly, so the recalculation will not move it. */
+  expiryOverridden: boolean
 }
 
 function present(row: RecordRow, module: ModuleRow, warningWindowDays: number): PresentedRecord {
@@ -128,6 +162,7 @@ function present(row: RecordRow, module: ModuleRow, warningWindowDays: number): 
     source: row.source,
     sessionId: row.sessionId,
     safetyCritical: module.safetyCritical,
+    expiryOverridden: row.expiryOverridden,
   }
 }
 

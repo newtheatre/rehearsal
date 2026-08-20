@@ -5,11 +5,12 @@
 import { db, schema } from '@nuxthub/db'
 import { eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
-import { signoffSchema } from '../../../utils/validation'
+import { assertExpiryPlausible, signoffSchema } from '../../../utils/validation'
 import { useAbilities } from '../../../utils/abilities'
 import { requirePermission } from '../../../utils/auth'
 import { getConfig, getConfigNumber } from '../../../utils/siteConfig'
 import { buildRecordInserts } from '../../../utils/records'
+import { computeExpiresAt } from '../../../utils/expiry'
 import { checkPrerequisites, describeGaps } from '../../../utils/prerequisites'
 import { writeAudit } from '../../../utils/audit'
 
@@ -61,6 +62,24 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  // Never-expires is break-glass against lockout, so it needs authority over
+  // records generally, staleness-checked, not just this department (ADR-0012).
+  if (input.neverExpires) await requirePermission(event, 'record.manage')
+
+  if (input.expiresAt) {
+    if (module.expiryMode === 'NONE' || module.kind === 'BRIEF') {
+      throw createError({
+        statusCode: 400,
+        statusMessage: `${module.id} does not expire. Change the module's policy if it should.`,
+      })
+    }
+    assertExpiryPlausible(input.awardedAt, input.expiresAt, 'The expiry is on or before the date it was awarded')
+  }
+
+  const override = input.neverExpires
+    ? { expiresAt: null }
+    : input.expiresAt ? { expiresAt: input.expiresAt } : undefined
+
   const academicYearEnd = await getConfig('academic_year_end')
   const [record] = buildRecordInserts({
     users: [person.id],
@@ -69,6 +88,7 @@ export default defineEventHandler(async (event) => {
     source: 'SIGNOFF',
     grantedBy: abilities.user.id,
     externalRef: input.note ?? null,
+    override,
     academicYearEnd,
   })
 
@@ -83,6 +103,9 @@ export default defineEventHandler(async (event) => {
       moduleId: module.id,
       awardedAt: input.awardedAt,
       expiresAt: record!.expiresAt,
+      expiryOverridden: record!.expiryOverridden,
+      // The date policy would have stamped, so "how much extra?" is answerable.
+      policyExpiresAt: computeExpiresAt(module, input.awardedAt, { academicYearEnd }),
       note: input.note ?? null,
     },
   })

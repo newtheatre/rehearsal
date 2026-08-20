@@ -29,6 +29,20 @@
       "when": 1787180692332,
       "tag": "0003_lush_landau",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1787219493102,
+      "tag": "0004_known_morgan_stark",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1787219505446,
+      "tag": "0005_backfill_expiry_overridden",
+      "breakpoints": true
     }
   ]
 }

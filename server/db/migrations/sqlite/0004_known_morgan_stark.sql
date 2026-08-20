@@ -1,0 +1,1 @@
+ALTER TABLE `records` ADD `expiry_overridden` integer DEFAULT false NOT NULL;

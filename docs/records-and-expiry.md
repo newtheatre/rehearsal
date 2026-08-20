@@ -11,6 +11,8 @@ A record says: *this person completed this module on this date, and here is the 
 - `expires_at`: stamped at creation ([ADR-0002](decisions/0002-expiry-stamped-at-award.md)); `NULL` = never expires.
 - `revoked_at`/`revoked_by`/`revoke_reason`: the correction mechanism. Revoked records stay visible in history.
 
+`EXTERNAL` is **opt-in per module**: `modules.allows_external` must be set, and `modules.external_evidence` says what the lead should accept ("FAW or EFAW certificate"). Without it the route refuses, so a certification conferring supervisor or trainer standing cannot be granted from an unverified certificate merely because the form offered it.
+
 **Current record** for (user, module) = latest non-revoked row by `awarded_at` (ties: latest `created_at`). Re-training supersedes naturally: a new record with a fresh expiry becomes current; the old one remains as history.
 
 ## Expiry modes (per module, config not code)

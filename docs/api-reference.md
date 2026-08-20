@@ -62,7 +62,7 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `GET /api/directory` | session | id and name only, for the attendee and lead pickers. No record aggregation, so it can return the whole membership (`limit` default 500) |
 | `GET /api/people/:id` | session | one person's records; revoked history and actions for leads/admins |
 | `POST /api/people/:id/signoff` | lead (module's dept) or admin | certification sign-off; **422 with the gaps named** if prerequisites are unmet |
-| `POST /api/people/:id/external` | lead (module's dept) or admin | external certificate; its own expiry wins over module config |
+| `POST /api/people/:id/external` | lead (module's dept) or admin | external certificate; its own expiry wins over module config. 400 unless the module sets `allows_external` |
 | `POST /api/records/:id/revoke` | admin | revoke with a mandatory reason; idempotent |
 | `GET /api/sessions` | session | delivery log, newest first. Paged: `limit` (default 50, max 100) with a keyset cursor `(beforeHeldOn, beforeId)`; `held_on` is a date, so the id breaks ties. Returns `{ sessions, hasMore }` |
 | `POST /api/sessions/check` | trainer | dry run: the exact records that would be created, plus warnings |

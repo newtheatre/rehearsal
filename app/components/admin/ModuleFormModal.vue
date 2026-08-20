@@ -15,6 +15,8 @@ interface ModuleFormValue {
   expiryMode: 'NONE' | 'MONTHS' | 'ACADEMIC_YEAR'
   expiryMonths: number | null
   safetyCritical: boolean
+  allowsExternal: boolean
+  externalEvidence: string | null
   grantsSupervisor: boolean
   grantsTrainer: boolean
   status: 'DRAFT' | 'ACTIVE' | 'RETIRED'
@@ -50,6 +52,8 @@ function emptyModule(): ModuleFormValue {
     expiryMode: 'NONE',
     expiryMonths: null,
     safetyCritical: false,
+    allowsExternal: false,
+    externalEvidence: '',
     grantsSupervisor: false,
     grantsTrainer: false,
     status: 'DRAFT',
@@ -79,6 +83,8 @@ watch(open, async (isOpen) => {
     expiryMode: module.expiryMode,
     expiryMonths: module.expiryMonths,
     safetyCritical: module.safetyCritical,
+    allowsExternal: module.allowsExternal,
+    externalEvidence: module.externalEvidence ?? '',
     grantsSupervisor: module.grantsSupervisor,
     grantsTrainer: module.grantsTrainer,
     status: module.status,
@@ -127,6 +133,8 @@ async function save() {
     expiryMode: isBrief.value ? 'NONE' : state.value.expiryMode,
     expiryMonths: !isBrief.value && state.value.expiryMode === 'MONTHS' ? state.value.expiryMonths : null,
     safetyCritical: state.value.safetyCritical,
+    allowsExternal: state.value.allowsExternal,
+    externalEvidence: state.value.externalEvidence?.trim() || null,
     grantsSupervisor: isCertification.value && state.value.grantsSupervisor,
     grantsTrainer: isCertification.value && state.value.grantsTrainer,
     status: state.value.status,
@@ -346,6 +354,22 @@ async function save() {
             label="Safety critical"
             description="Unmet prerequisites block a session rather than warning"
           />
+          <UCheckbox
+            v-model="state.allowsExternal"
+            label="Allow external certification"
+            description="Training done elsewhere may be recorded against this module"
+          />
+          <UFormField
+            v-if="state.allowsExternal"
+            label="Accepted external evidence"
+            description="Shown to the lead recording it, for example: FAW or EFAW certificate"
+          >
+            <UInput
+              v-model="state.externalEvidence"
+              placeholder="FAW or EFAW certificate"
+              class="w-full"
+            />
+          </UFormField>
           <template v-if="isCertification">
             <UCheckbox
               v-model="state.grantsSupervisor"

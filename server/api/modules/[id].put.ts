@@ -50,6 +50,7 @@ export default defineEventHandler(async (event) => {
     kind: input.kind ?? existing.kind,
     grantsSupervisor: input.grantsSupervisor ?? existing.grantsSupervisor,
     grantsTrainer: input.grantsTrainer ?? existing.grantsTrainer,
+    allowsExternal: input.allowsExternal ?? existing.allowsExternal,
   })
 
   // Validate the row the update would leave behind: the body's own schema
@@ -67,6 +68,8 @@ export default defineEventHandler(async (event) => {
     signoffRequired: merged.signoffRequired,
     grantsSupervisor: merged.grantsSupervisor,
     grantsTrainer: merged.grantsTrainer,
+    allowsExternal: merged.allowsExternal,
+    ...(merged.allowsExternal ? {} : { externalEvidence: null }),
     ...(merged.expiryMode ? { expiryMode: merged.expiryMode, expiryMonths: merged.expiryMonths } : {}),
     updatedAt: new Date(),
   }

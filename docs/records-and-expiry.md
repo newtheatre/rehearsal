@@ -12,7 +12,7 @@ A record says: *this person completed this module on this date, and here is the 
 - `expiry_overridden`: the date came from a certificate or a signer rather than from policy, so the recalculation skips it ([ADR-0012](decisions/0012-explicit-expiry-marked-on-the-record.md)). It is also what makes a `NULL` readable: flagged means "explicitly never", unflagged means "policy says never".
 - `revoked_at`/`revoked_by`/`revoke_reason`: the correction mechanism. Revoked records stay visible in history.
 
-`EXTERNAL` is **opt-in per module**: `modules.allows_external` must be set, and `modules.external_evidence` says what the lead should accept ("FAW or EFAW certificate"). Without it the route refuses, so a certification conferring supervisor or trainer standing cannot be granted from an unverified certificate merely because the form offered it.
+`EXTERNAL` is **opt-in per module**, and never available on a brief: a brief recurs per event, so nothing outside can evidence attending one, and `applyKindRules` clears the flag rather than trusting the form. `modules.allows_external` must be set, and `modules.external_evidence` says what the lead should accept ("FAW or EFAW certificate"). Without it the route refuses, so a certification conferring supervisor or trainer standing cannot be granted from an unverified certificate merely because the form offered it.
 
 **Current record** for (user, module) = latest non-revoked row by `awarded_at` (ties: latest `created_at`). Re-training supersedes naturally: a new record with a fresh expiry becomes current; the old one remains as history.
 

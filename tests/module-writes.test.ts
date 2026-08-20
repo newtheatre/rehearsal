@@ -154,6 +154,41 @@ describe('kind rules', () => {
     expect(created?.grantsSupervisor).toBe(false)
   })
 
+  it('refuses to let a brief allow external certification', async () => {
+    await setup()
+    const event = postEvent({
+      ...validModule,
+      kind: 'BRIEF',
+      allowsExternal: true,
+      externalEvidence: 'a certificate for attending a get-in?',
+    })
+    signIn(event, { id: 'ctd' })
+
+    await call(createModule, event)
+    const created = await db.select().from(schema.modules).where(eq(schema.modules.id, 'TECH-161')).get()
+
+    // Nothing outside can evidence attending a get-in brief (ADR-0003).
+    expect(created!.allowsExternal).toBe(false)
+    expect(created!.externalEvidence).toBeNull()
+  })
+
+  it('clears the external route when a module is demoted to a brief', async () => {
+    await setup()
+    await seedModule('TECH-171', {
+      name: 'Was A Module',
+      allowsExternal: true,
+      externalEvidence: 'FAW or EFAW certificate',
+    })
+
+    const event = putEvent('TECH-171', { kind: 'BRIEF' })
+    signIn(event, { id: 'ctd' })
+    await call(updateModule, event)
+
+    const updated = await db.select().from(schema.modules).where(eq(schema.modules.id, 'TECH-171')).get()
+    expect(updated!.allowsExternal).toBe(false)
+    expect(updated!.externalEvidence).toBeNull()
+  })
+
   it('forces a brief to never expire and to confer nothing', async () => {
     await setup()
     const event = postEvent({

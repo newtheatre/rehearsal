@@ -46,6 +46,8 @@ login at all.
 
 `bun run db:seed` loads the full module catalogue (same parser as the production seed, [migration.md](migration.md)) and a handful of users covering every ability: member, trainer, department lead, admin. It refuses to run in production or against a remote database.
 
+The seed writes every `site_config` default as a row, with `onConflictDoNothing`. So an existing `.data/` keeps the values it was first seeded with and will **not** pick up a changed default: after `academic_year_end` moved to `08-31`, a database seeded before that keeps `09-30` and stamps different expiries from a fresh one. Delete the row, or delete `.data/` and reseed, if local dates look wrong.
+
 **There are no credentials to print**: this app has no passwords, ever. The seeded users share their ids with the ones `/dev-login` creates, so seeding and signing in agree. The trainer's standing is seeded as a real `SIGNOFF` record rather than a flag, because deriving it from a record is the whole point of [ADR-0004](decisions/0004-trainer-standing-from-records.md).
 
 Once Phase 2 lands, the seed will also carry fixture records covering every state: VALID, EXPIRING, EXPIRED, revoked, BRIEF attendance, external cert.
@@ -60,14 +62,14 @@ bun run test           # vitest: unit + integration (h3 app, in-memory SQLite)
 
 High-value suites, keep these green and comprehensive; they encode the safety posture:
 
-- **Expiry stamping**: each mode; `ACADEMIC_YEAR` boundary cases (award on 29/30 Sep, 1 Oct); external-date precedence; config change affecting future records only.
+- **Expiry stamping**: each mode; `ACADEMIC_YEAR` boundary cases (award on the boundary, either side of the 60-day carry-over threshold); external-date precedence; config change affecting future records only.
 - **Validity derivation**: state at boundaries (expires today = EXPIRED); warning window edges; BRIEF exclusion; the SQL fragment and the util agreeing on fixtures.
 - **Sign-off gating**: unmet prerequisite blocks with named modules; EXPIRING counts; revoked doesn't; server-side even when the UI wouldn't offer it.
 - **Trainer derivation**: valid cert passes, expired fails, revoked fails, admin bypass works.
 - **Session → records**: attendee × module fan-out; transactionality (partial failure creates nothing); edit-window re-derivation; add-by-email path.
 - **Eligibility**: allOf/anyOf truth table; unknown key/user; list form matches per-user form on fixtures.
 - **API auth**: valid/invalid/missing token; email never in any payload (assert on serialisers).
-- **Cron**: dry-run produces the exactly-expected send list on fixtures incl. a mocked 30 Sep rollover; idempotency (running twice sends nothing new).
+- **Cron**: dry-run produces the exactly-expected send list on fixtures incl. a mocked 31 Aug rollover; idempotency (running twice sends nothing new).
 
 Suites for phases not yet built are listed here deliberately: they are the acceptance criteria for those phases, not a claim that they exist.
 

@@ -59,19 +59,32 @@ describe('addDays', () => {
 })
 
 describe('nextAcademicYearEnd', () => {
-  it('returns the next 30 September strictly after the award', () => {
-    expect(nextAcademicYearEnd('2026-10-12')).toBe('2027-09-30')
-    expect(nextAcademicYearEnd('2027-01-15')).toBe('2027-09-30')
-  })
-
-  it('gives a mid-September award only days of validity, that is what an academic-year gate means', () => {
-    expect(nextAcademicYearEnd('2027-09-15')).toBe('2027-09-30')
+  it('returns the next 31 August after the award', () => {
+    expect(nextAcademicYearEnd('2026-10-12')).toBe('2027-08-31')
+    expect(nextAcademicYearEnd('2027-01-15')).toBe('2027-08-31')
   })
 
   it('rolls to the following year when awarded ON the boundary', () => {
-    // "Strictly after": a 30 Sep award must not expire the same day.
-    expect(nextAcademicYearEnd('2027-09-30')).toBe('2028-09-30')
-    expect(nextAcademicYearEnd('2027-10-01')).toBe('2028-09-30')
+    // "Strictly after": a 31 Aug award must not expire the same day.
+    expect(nextAcademicYearEnd('2027-08-31')).toBe('2028-08-31')
+    expect(nextAcademicYearEnd('2027-09-01')).toBe('2028-08-31')
+  })
+
+  it('carries over when the coming boundary is too close to be worth holding', () => {
+    // 59 days: below the threshold, so this expiry would be near worthless.
+    expect(nextAcademicYearEnd('2026-07-03')).toBe('2027-08-31')
+    // Late-August training is the case that motivated ADR-0011.
+    expect(nextAcademicYearEnd('2026-08-20')).toBe('2027-08-31')
+  })
+
+  it('does not carry over at exactly the threshold, or beyond it', () => {
+    // 60 days exactly, and 61: both keep the coming boundary.
+    expect(nextAcademicYearEnd('2027-07-02')).toBe('2027-08-31')
+    expect(nextAcademicYearEnd('2026-07-01')).toBe('2026-08-31')
+  })
+
+  it('leaves a September award alone, which is when induction actually runs', () => {
+    expect(nextAcademicYearEnd('2026-09-05')).toBe('2027-08-31')
   })
 })
 
@@ -94,7 +107,7 @@ describe('computeExpiresAt', () => {
 
   it('stamps months and academic years', () => {
     expect(computeExpiresAt({ expiryMode: 'MONTHS', expiryMonths: 36 }, '2026-08-14')).toBe('2029-08-14')
-    expect(computeExpiresAt({ expiryMode: 'ACADEMIC_YEAR' }, '2026-10-12')).toBe('2027-09-30')
+    expect(computeExpiresAt({ expiryMode: 'ACADEMIC_YEAR' }, '2026-10-12')).toBe('2027-08-31')
   })
 
   it('lets an external certificate\'s own date win over module config', () => {

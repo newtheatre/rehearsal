@@ -12,6 +12,13 @@ export function today(now: Date = new Date()): string {
   return isoFormatter.format(now)
 }
 
+/** Whole days from `from` to `to`, both ISO dates. */
+export function daysBetween(from: string, to: string): number {
+  const a = Date.parse(`${from}T00:00:00Z`)
+  const b = Date.parse(`${to}T00:00:00Z`)
+  return Math.round((b - a) / 86_400_000)
+}
+
 /** A stored ISO date (YYYY-MM-DD) as DD/MM/YYYY. */
 export function formatDate(iso: string): string {
   const [year, month, day] = iso.split('-')

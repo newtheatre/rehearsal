@@ -3,6 +3,9 @@
  * module's policy affects future awards only.
  */
 
+import { CONFIG_DEFAULTS } from '../../shared/utils/configDefaults'
+import { daysBetween } from '../../shared/utils/dates'
+
 export interface ExpiryPolicy {
   expiryMode: 'NONE' | 'MONTHS' | 'ACADEMIC_YEAR'
   expiryMonths?: number | null
@@ -10,16 +13,24 @@ export interface ExpiryPolicy {
 }
 
 /** Default academic-year boundary; overridable via site_config. */
-export const ACADEMIC_YEAR_END = '09-30'
+export const ACADEMIC_YEAR_END = CONFIG_DEFAULTS.academic_year_end
 
 /**
- * The next academic-year boundary strictly after `awardedAt`. A fixed date,
- * not a duration, so the October mass rollover is emergent.
+ * A constant rather than config, like FINAL_WARNING_DAYS: a second dial
+ * invites it being set inconsistently with the warning window (ADR-0011).
+ */
+export const ACADEMIC_YEAR_CARRY_OVER_DAYS = 60
+
+/**
+ * The next academic-year boundary after `awardedAt`, carrying over to the
+ * following one when this one is too close to be worth holding (ADR-0011).
  */
 export function nextAcademicYearEnd(awardedAt: string, boundary: string = ACADEMIC_YEAR_END): string {
   const year = Number(awardedAt.slice(0, 4))
-  const candidate = `${year}-${boundary}`
-  return candidate > awardedAt ? candidate : `${year + 1}-${boundary}`
+  const candidate = `${year}-${boundary}` > awardedAt ? `${year}-${boundary}` : `${year + 1}-${boundary}`
+
+  if (daysBetween(awardedAt, candidate) >= ACADEMIC_YEAR_CARRY_OVER_DAYS) return candidate
+  return `${Number(candidate.slice(0, 4)) + 1}-${boundary}`
 }
 
 /** `awardedAt` plus N calendar months, clamped to the end of a short month. */

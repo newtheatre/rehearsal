@@ -14,6 +14,7 @@ Why the system is the way it is. One decision per file, numbered, never edited a
 | [0008](0008-records-revoked-never-deleted.md) | Records are revoked, never deleted | Accepted |
 | [0009](0009-atomic-writes-use-batch-not-transactions.md) | Multi-row writes are atomic via `db.batch()`, not transactions | Accepted |
 | [0010](0010-auth-service-holds-a-snapshot.md) | The auth service holds a long-lived snapshot of our answers | Accepted |
+| [0011](0011-academic-year-carry-over.md) | The academic year ends 31 August, and an award near the boundary carries over | Accepted |
 
 ## Template
 

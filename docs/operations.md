@@ -89,7 +89,7 @@ Members get two warnings per record: one on entering the warning window (`warnin
 
 **A dry run records nothing as sent.** That is deliberate: flipping to live afterwards still delivers everything the dry run described, rather than silently swallowing a round of warnings. The same applies to a failed send: nothing is logged, so the next morning retries it.
 
-**Preview before switching.** `/admin/notifications` shows exactly what the next sweep would do and takes an "as of" date, so you can ask what happens on 1 October without waiting for it. The preview sends and records nothing at all.
+**Preview before switching.** `/admin/notifications` shows exactly what the next sweep would do and takes an "as of" date, so you can ask what happens on 1 September without waiting for it. The preview sends and records nothing at all.
 
 ### Who receives the digest
 
@@ -109,7 +109,7 @@ Editing a module's expiry affects future awards only ([ADR-0002](decisions/0002-
 4. Confirm the `duty-manager` rule still matches committee policy; confirm expiry policies survived any summer catalogue changes.
 5. Rotate: all training API tokens, `NUXT_AUTH_SERVICE_TOKEN`, Resend key.
 6. Backup-restore drill; review a month of `audit_log`; read this doc top to bottom and fix drift.
-7. Expect the 1 October induction rollover: everyone's induction expires 30 Sep **by design**. September's digest is the schedule-inductions warning shot.
+7. Expect the 1 September induction rollover: everyone's induction expires 31 Aug **by design**. August's digest is the schedule-inductions warning shot. Anyone trained in the preceding 60 days is not in this year's rollover, by design ([ADR-0011](decisions/0011-academic-year-carry-over.md)).
 
 ## Incidents
 

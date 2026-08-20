@@ -146,7 +146,7 @@ const windowDays = computed({
 
       <p class="text-sm text-muted mb-4">
         A preview sends nothing and records nothing. Set a date to ask what happens
-        on, say, 1 October.
+        on, say, 1 September.
       </p>
 
       <UAlert

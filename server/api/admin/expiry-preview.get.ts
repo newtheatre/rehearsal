@@ -9,7 +9,7 @@ import { getConfig } from '../../utils/siteConfig'
 import { today } from '../../../shared/utils/dates'
 
 const querySchema = z.object({
-  // Lets an operator answer "what will happen on 1 October?" without waiting.
+  // Lets an operator answer "what will happen on 1 September?" without waiting.
   asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 })
 

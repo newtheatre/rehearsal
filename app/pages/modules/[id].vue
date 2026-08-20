@@ -18,7 +18,7 @@ const expiryDescription = computed(() => {
   }
   switch (module.value.expiryMode) {
     case 'ACADEMIC_YEAR':
-      return 'Expires on 30 September following the date it was awarded, so everyone renews together at the start of the academic year.'
+      return 'Expires at the end of the academic year, so everyone renews together. Training done in the last two months runs to the following year instead, rather than expiring almost immediately.'
     case 'MONTHS':
       return `Expires ${module.value.expiryMonths} months after the date it was awarded.`
     default:

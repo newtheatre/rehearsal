@@ -279,7 +279,7 @@ async function save() {
               v-model="state.expiryMode"
               :items="[
                 { label: 'Never expires', value: 'NONE' },
-                { label: 'Every academic year (30 Sep)', value: 'ACADEMIC_YEAR' },
+                { label: 'Every academic year', value: 'ACADEMIC_YEAR' },
                 { label: 'Every N months', value: 'MONTHS' },
               ]"
               class="w-full"

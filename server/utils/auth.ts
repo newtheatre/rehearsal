@@ -5,6 +5,7 @@
 
 import type { H3Event } from 'h3'
 import type { User } from '#auth-utils'
+import { isStale } from '@newtheatre/auth-types'
 import { useAbilities, type Abilities } from './abilities'
 import { can, type Permission } from '../../shared/utils/permissions'
 

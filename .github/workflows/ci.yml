@@ -10,6 +10,9 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v4
 
@@ -17,8 +20,11 @@ jobs:
         with:
           bun-version: latest
 
+      # GH_PACKAGES_TOKEN reads @newtheatre/auth-types from GitHub Packages (ADR-0025).
       - name: Install
         run: bun install --frozen-lockfile
+        env:
+          GH_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Test
         run: bun run test

@@ -2,6 +2,8 @@
  * Admin pages: estate session plus `training:ADMIN`, which needs a fresh
  * session. Lead surfaces use steward.ts and need no staleness dance.
  */
+import { hasRole, isStale } from '@newtheatre/auth-types'
+
 export default defineNuxtRouteMiddleware((to) => {
   const { loggedIn, user, session } = useUserSession()
   const config = useRuntimeConfig()

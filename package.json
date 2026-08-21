@@ -19,6 +19,7 @@
     "typecheck": "nuxt typecheck"
   },
   "dependencies": {
+    "@newtheatre/auth-types": "^1.0.0",
     "@nuxt/eslint": "1.15.1",
     "@nuxt/ui": "4.4.0",
     "@nuxthub/core": "0.10.8",

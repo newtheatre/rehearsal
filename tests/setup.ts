@@ -5,7 +5,7 @@
 
 import { beforeEach, vi } from 'vitest'
 import { resetDb } from './mocks/nuxthub-db'
-import { hasRole, hasAnyRole, isStale, ROLE_STALENESS_MS } from '../shared/utils/nntAuth'
+import { hasRole, hasAnyRole, isStale, ROLE_STALENESS_MS } from '@newtheatre/auth-types'
 import { APP_MANIFEST } from '../shared/utils/appManifest'
 import { ensureLocalUser, resetMirrorDebounce } from '../server/utils/ensureLocalUser'
 import { writeAudit } from '../server/utils/audit'

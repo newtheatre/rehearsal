@@ -6,7 +6,7 @@
 import { db, schema } from '@nuxthub/db'
 import { isNull } from 'drizzle-orm'
 import type { User } from '#auth-utils'
-import { hasRole } from '../../shared/utils/nntAuth'
+import { hasRole } from '@newtheatre/auth-types'
 import { ROLE_NAMESPACE } from './abilities'
 
 const lastUpserted = new Map<string, number>()

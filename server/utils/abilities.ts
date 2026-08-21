@@ -7,6 +7,7 @@ import { db, schema } from '@nuxthub/db'
 import { and, eq } from 'drizzle-orm'
 import type { H3Event } from 'h3'
 import type { User } from '#auth-utils'
+import { hasRole } from '@newtheatre/auth-types'
 import { heldRecordCondition } from './validity'
 import { APP_MANIFEST } from '../../shared/utils/appManifest'
 

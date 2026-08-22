@@ -9,7 +9,7 @@ import { seedCatalogue } from './seed-catalogue'
 import { openLocalDb, schema } from './lib/localDb'
 import { computeExpiresAt } from '../server/utils/expiry'
 import { CONFIG_DEFAULTS } from '../shared/utils/configDefaults'
-import { today } from '../server/utils/validity'
+import { today } from '../shared/utils/dates'
 
 const db = openLocalDb()
 

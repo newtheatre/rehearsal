@@ -43,6 +43,34 @@
       "when": 1787219505446,
       "tag": "0005_backfill_expiry_overridden",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1787411735983,
+      "tag": "0006_youthful_talkback",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1787412677447,
+      "tag": "0007_young_avengers",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1787413280217,
+      "tag": "0008_heavy_wither",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1787413620806,
+      "tag": "0009_tranquil_yellow_claw",
+      "breakpoints": true
     }
   ]
 }

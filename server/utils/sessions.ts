@@ -4,12 +4,13 @@
  */
 
 import { db, schema } from '@nuxthub/db'
-import { and, desc, eq, inArray, lt, or, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, lt, ne, or, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { buildRecordInserts, loadModules } from './records'
 import type { ModuleRow } from './modules'
 import { checkPrerequisitesForCohort, type PrerequisiteGap } from './prerequisites'
 import { runAtomic } from './batch'
+import { closeSessionWindowStatements } from './practice'
 
 export type SessionRow = typeof schema.sessions.$inferSelect
 
@@ -115,6 +116,73 @@ export async function createSession(options: {
   return { sessionId, recordCount: records.length }
 }
 
+export interface RegisterMark {
+  userId: string
+  present: boolean
+}
+
+/**
+ * Marking the register is what awards (ADR-0013). One batch: the marks, the
+ * status, and a record for everybody present and nobody else.
+ */
+export async function deliverSession(options: {
+  session: SessionRow
+  marks: RegisterMark[]
+  actorUserId: string
+  academicYearEnd?: string
+}): Promise<{ sessionId: string, recordCount: number, present: string[], absent: string[] }> {
+  const { session } = options
+  const modules = await loadModules(await sessionModuleIds(session.id))
+
+  const present = options.marks.filter(mark => mark.present).map(mark => mark.userId)
+  const absent = options.marks.filter(mark => !mark.present).map(mark => mark.userId)
+
+  const records = buildRecordInserts({
+    users: present,
+    modules,
+    awardedAt: session.heldOn,
+    source: 'SESSION',
+    sessionId: session.id,
+    academicYearEnd: options.academicYearEnd,
+  })
+
+  const now = new Date()
+
+  await runAtomic([
+    db.update(schema.sessions).set({
+      status: 'DELIVERED',
+      deliveredAt: now,
+      updatedAt: now,
+    }).where(eq(schema.sessions.id, session.id)),
+
+    ...options.marks.map(mark =>
+      db.update(schema.sessionAttendees).set({
+        status: mark.present ? 'ATTENDED' : 'ABSENT',
+        markedAt: now,
+        markedByUserId: options.actorUserId,
+      }).where(and(
+        eq(schema.sessionAttendees.sessionId, session.id),
+        eq(schema.sessionAttendees.userId, mark.userId),
+      )),
+    ),
+
+    // The lesson is over, so the sandbox closes with it.
+    ...closeSessionWindowStatements(session.id, options.actorUserId, now),
+
+    ...records.map(record => db.insert(schema.records).values(record)),
+  ])
+
+  return { sessionId: session.id, recordCount: records.length, present, absent }
+}
+
+async function sessionModuleIds(sessionId: string): Promise<string[]> {
+  const rows = await db.select({ moduleId: schema.sessionModules.moduleId })
+    .from(schema.sessionModules)
+    .where(eq(schema.sessionModules.sessionId, sessionId))
+    .all()
+  return rows.map(row => row.moduleId)
+}
+
 /**
  * Records from the session are revoked, not deleted (ADR-0008), so removing
  * an attendee leaves a visible withdrawal rather than a gap.
@@ -178,7 +246,10 @@ export async function applySessionEdit(options: {
   return { revoked: existingRecords.length, created: records.length }
 }
 
-/** Sessions newest first, with their modules and attendee counts. */
+/**
+ * Delivered sessions newest first: the log is what was taught, so a scheduled
+ * one is not in it until its register is submitted (ADR-0013).
+ */
 export async function listSessions(
   { limit = 50, before }: { limit?: number, before?: { heldOn: string, id: string } } = {},
 ) {
@@ -196,7 +267,7 @@ export async function listSessions(
   })
     .from(schema.sessions)
     .innerJoin(schema.users, eq(schema.sessions.trainerUserId, schema.users.id))
-    .where(cursor)
+    .where(and(eq(schema.sessions.status, 'DELIVERED'), cursor))
     .orderBy(desc(schema.sessions.heldOn), desc(schema.sessions.id))
     // One extra row says whether there is another page without counting.
     .limit(limit + 1)
@@ -220,7 +291,8 @@ export async function listSessions(
       ...session,
       trainerName,
       moduleIds: modules.filter(m => m.sessionId === session.id).map(m => m.moduleId),
-      attendeeCount: attendees.filter(a => a.sessionId === session.id).length,
+      // Present, not signed up: an absentee got no record and did not attend.
+      attendeeCount: attendees.filter(a => a.sessionId === session.id && a.status === 'ATTENDED').length,
     })),
     hasMore,
   }
@@ -244,10 +316,19 @@ export async function getSessionDetail(sessionId: string) {
       .from(schema.sessionModules)
       .innerJoin(schema.modules, eq(schema.sessionModules.moduleId, schema.modules.id))
       .where(eq(schema.sessionModules.sessionId, sessionId)).all(),
-    db.select({ id: schema.users.id, name: schema.users.name })
+    db.select({
+      id: schema.users.id,
+      name: schema.users.name,
+      status: schema.sessionAttendees.status,
+      signedUpAt: schema.sessionAttendees.signedUpAt,
+      attendeeId: schema.sessionAttendees.id,
+    })
       .from(schema.sessionAttendees)
       .innerJoin(schema.users, eq(schema.sessionAttendees.userId, schema.users.id))
-      .where(eq(schema.sessionAttendees.sessionId, sessionId)).all(),
+      .where(and(
+        eq(schema.sessionAttendees.sessionId, sessionId),
+        ne(schema.sessionAttendees.status, 'CANCELLED'),
+      )).all(),
     db.select().from(schema.records).where(eq(schema.records.sessionId, sessionId)).all(),
   ])
 

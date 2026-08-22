@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
     return { mirrored: false }
   }
 
-  const [records, attended, delivered] = await Promise.all([
+  const [records, attended, delivered, requests] = await Promise.all([
     db.select({
       module: schema.records.moduleId,
       moduleName: schema.modules.name,
@@ -40,10 +40,14 @@ export default defineEventHandler(async (event) => {
       .orderBy(desc(schema.records.awardedAt))
       .all(),
 
+    // Every row about this person, attendance and sign-ups alike. Being
+    // marked absent is a fact recorded about them, so it is in the bundle.
     db.select({
       sessionId: schema.sessions.id,
       heldOn: schema.sessions.heldOn,
       location: schema.sessions.location,
+      status: schema.sessionAttendees.status,
+      signedUpAt: schema.sessionAttendees.signedUpAt,
     })
       .from(schema.sessionAttendees)
       .innerJoin(schema.sessions, eq(schema.sessionAttendees.sessionId, schema.sessions.id))
@@ -61,13 +65,29 @@ export default defineEventHandler(async (event) => {
       .where(eq(schema.sessions.trainerUserId, userId))
       .orderBy(desc(schema.sessions.heldOn))
       .all(),
+
+    db.select({
+      moduleId: schema.moduleRequests.moduleId,
+      note: schema.moduleRequests.note,
+      status: schema.moduleRequests.status,
+      declineReason: schema.moduleRequests.declineReason,
+      createdAt: schema.moduleRequests.createdAt,
+    })
+      .from(schema.moduleRequests)
+      .where(eq(schema.moduleRequests.userId, userId))
+      .orderBy(desc(schema.moduleRequests.createdAt))
+      .all(),
   ])
 
   return {
     mirrored: true,
     account: { id: user.id, email: user.email, name: user.name },
     trainingRecords: records,
-    sessionsAttended: attended,
+    // Kept to its own meaning: a sign-up they did not turn up to is not
+    // attendance, and sessionSignups is where that lives.
+    sessionsAttended: attended.filter(row => row.status === 'ATTENDED'),
+    sessionSignups: attended,
     sessionsDelivered: delivered,
+    moduleRequests: requests,
   }
 })

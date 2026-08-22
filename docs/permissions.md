@@ -39,7 +39,14 @@ outcome into something someone has to remember to revoke.
 |---|---|---|---|---|
 | Browse catalogue, people, own dashboard | ✓ | ✓ | ✓ | ✓ |
 | See DRAFT modules / admin notes | | | ✓ | ✓ |
+| Sign up to a session, or withdraw | ✓ | ✓ | ✓ | ✓ |
+| Ask for a module to be taught, or withdraw the ask | ✓ | ✓ | ✓ | ✓ |
+| See the demand board, decline a request | | | ✓ | ✓ |
+| Open or close a practice window by hand | | ✓ | ✓ | ✓ |
+| Edit practice targets | | | | ✓ |
 | Log / edit (≤14 d) a session | | ✓ | ✓* | ✓ |
+| Schedule, open, amend or cancel a session | | ✓† | ✓ | ✓ |
+| Take and mark a register, add a walk-in | | ✓† | ✓ | ✓ |
 | Sign off a certification | | | ✓ | ✓ |
 | Edit modules (CRUD, status, expiry config, materials, prereqs) | | | ✓ | ✓ |
 | Record external certs | | | ✓ | ✓ |
@@ -47,6 +54,8 @@ outcome into something someone has to remember to revoke.
 | Manage leads, rules, tokens, config; imports; recalc; audit log | | | | ✓ |
 
 \* a lead who isn't themselves a trainer logging a session is unusual but permitted: they carry more authority, not less; the session records them as trainer.
+
+† a trainer may schedule freely, but may only open, amend or cancel a session they are running or created. A department lead may steward anyone's.
 
 ## Bootstrap
 
@@ -56,10 +65,11 @@ Day one, nobody holds LEAD-CERT. Admins grant the first Trainer certs to the est
 
 | Route | Guard |
 |---|---|
-| `/` `/modules*` `/people*` | authenticated |
-| `/sessions/new`, session edit | trainer-or-better (derived check) |
+| `/` `/modules*` `/people*` `/requests` | authenticated |
+| `/sessions/new`, `/sessions/schedule`, session edit | trainer-or-better (derived check) |
 | person-page sign-off / external-cert actions | lead (matching dept) or admin |
 | `/admin` module & lead sections | lead (scoped to own dept) or admin |
+| `/admin/practice-targets` | admin (`config.manage`) |
 | `/admin` everything else | admin |
 | `/api/v1/*` | service token ([api-reference.md](api-reference.md)) |
 | `/api/health` | public |

@@ -26,7 +26,13 @@ One training-specific wrinkle: an anonymised *trainer* leaves sessions attribute
 
 ## Access
 
-The `export` hook returns this app's contribution to a subject-access bundle: mirror row, all records (current and historical, with sources and dates), sessions attended and delivered. Assembled and delivered by the auth service's flow.
+The `export` hook returns this app's contribution to a subject-access bundle: mirror row, all records (current and historical, with sources and dates), sessions attended, sessions signed up to, and sessions delivered. Assembled and delivered by the auth service's flow.
+
+Practice windows are scratch: an anonymised person's `reason` text is scrubbed with the rest, and the windows themselves expire and close on their own.
+
+Module requests are included too: the note somebody wrote asking for training is their own words about themselves.
+
+`sessionsAttended` means attended. `sessionSignups` is every row held about them, including sessions they signed up to and did not turn up to, and the withdrawals: being marked absent is a fact recorded about a person, so it is disclosed rather than quietly filtered out of a legal document.
 
 ## Retention
 

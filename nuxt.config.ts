@@ -69,6 +69,8 @@ export default defineNuxtConfig({
       // The task name comes from the FILE PATH, not `meta.name`. Get it wrong and
       // the cron fires into the void with no error anywhere.
       '0 6 * * *': ['expiry-sweep'],
+      // Late morning, so a reminder for tomorrow lands in waking hours.
+      '0 9 * * *': ['session-sweep'],
     },
     rollupConfig: {
       plugins: [
@@ -116,8 +118,10 @@ export default defineNuxtConfig({
             enabled: true,
           },
         },
+        // Every expression scheduledTasks uses needs a trigger here too, or
+        // the task exists and never fires.
         triggers: {
-          crons: ['0 6 * * *'],
+          crons: ['0 6 * * *', '0 9 * * *'],
         },
       },
     },

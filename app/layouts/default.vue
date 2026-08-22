@@ -26,6 +26,7 @@ const links = computed(() => [
   { label: 'Catalogue', to: '/modules', icon: 'i-lucide-book-open' },
   { label: 'People', to: '/people', icon: 'i-lucide-users' },
   { label: 'Sessions', to: '/sessions', icon: 'i-lucide-calendar-check' },
+  { label: 'Requests', to: '/requests', icon: 'i-lucide-hand' },
 ])
 </script>
 

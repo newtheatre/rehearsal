@@ -8,9 +8,21 @@ Same conventions as the auth roadmap: each item states problem, sketch, and touc
 
 Phases 2–6 of the project plan are committed work, not roadmap candidates: sessions and records, expiry and notifications, the read API and rota integration, the legacy migration, and handover docs. They are listed in the README's build-status table; their acceptance criteria live in the plan (§8) and the test list in [development.md](development.md#testing).
 
-## R1, Scheduling & sign-ups *(committed direction, full design exists; build after a term of v1)*
+## R1, Scheduling & sign-ups *(**picked up**, August 2026)*
 
-The complete design is maintained as its own document (project doc *"NNT Training System, Scheduling & Sign-ups (v2 design)"*; lands in-repo as `docs/scheduling-design.md` when picked up). Summary: sessions gain `PLANNED→OPEN→FULL→DELIVERED|CANCELLED` states, capacity and waitlists with auto-promotion, self-service sign-up with prerequisite awareness, a phone register view where marking attendance *is* record creation, register-interest demand signals, ICS reminders, and a paste-a-link rooms tie-in. Deliberately second: a term of v1 expiry digests teaches us how NNT sessions actually get organised before we encode a workflow. **Touches:** data-model (additive), api-reference (two read endpoints), permissions (one row), operations (nag/undelivered procedures).
+Graduated. The design is now in-repo as [scheduling-design.md](scheduling-design.md), with
+[ADR-0013](decisions/0013-a-scheduled-session-is-the-same-row.md) (a scheduled session is the same
+row as a delivered one; attendance is what awards) and
+[ADR-0014](decisions/0014-practice-targets-are-data.md) (practice targets are data, and are not
+eligibility rules).
+
+Picked up ahead of the "after a term of v1" gate because Proscenium's training modes need practice
+windows, which only exist once sessions can be scheduled and signed up to. The trade the original
+parking accepted is therefore still open: we are encoding a workflow before a term of digests taught
+us how NNT sessions actually get organised. §11 of the design doc keeps the questions a term of use
+should answer, and answering them is a revisit rather than a rebuild.
+
+ICS attachments are the one part of the original sketch deferred; the rest is in the design.
 
 ## R2: Cert auto-suspension on lapsed constituents *(committee decision needed)*
 

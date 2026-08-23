@@ -3,6 +3,8 @@
  * (ADR-0013). The absence tests are the point of the feature.
  */
 
+import { today } from '../shared/utils/dates'
+
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const sent: { to: string, subject: string }[] = []
@@ -36,7 +38,7 @@ const editHandler = (await import('../server/api/sessions/[id].put')).default
 type Handler = (event: FakeEvent) => Promise<unknown>
 const call = (handler: unknown, event: FakeEvent) => (handler as Handler)(event)
 
-const TODAY = new Date().toISOString().slice(0, 10)
+const TODAY = today()
 
 async function setup() {
   await seedDepartments()

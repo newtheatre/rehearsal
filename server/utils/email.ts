@@ -31,6 +31,18 @@ export async function sendEmail({ to, subject, html }: SendEmailOptions): Promis
   }
 }
 
+/**
+ * Everything interpolated into an email body goes through this: names, module
+ * names and a lead's free text are all user input.
+ */
+function esc(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
 function layout(body: string): string {
   return `
     <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #1a1a1a;">
@@ -49,7 +61,7 @@ function recordList(records: SweepRecord[]): string {
     <ul style="padding-left: 18px;">
       ${records.map(record => `
         <li style="margin-bottom: 6px;">
-          <strong>${record.moduleId}</strong> ${record.moduleName}
+          <strong>${esc(record.moduleId)}</strong> ${esc(record.moduleName)}
          : ${formatDate(record.expiresAt)}
         </li>
       `).join('')}
@@ -67,7 +79,7 @@ export function renderMemberWarning(warning: MemberWarning): { subject: string, 
       ? `Your NNT training expires soon`
       : `A heads-up about your NNT training`,
     html: layout(`
-      <p>Hello ${warning.name.split(' ')[0]},</p>
+      <p>Hello ${esc(warning.name.split(' ')[0] ?? '')},</p>
       <p>
         ${soon
           ? `This is a reminder that ${noun} you hold ${count === 1 ? 'expires' : 'expire'} within the next fortnight:`
@@ -93,7 +105,7 @@ export function renderDigest(digest: Digest, asOf: string): { subject: string, h
   return {
     subject: `NNT training digest: ${digest.expiring.length} expiring, ${digest.expired.length} expired`,
     html: layout(`
-      <p>Hello ${digest.name.split(' ')[0]},</p>
+      <p>Hello ${esc(digest.name.split(' ')[0] ?? '')},</p>
       <p>Monthly training summary ${scope}, as of ${formatDate(asOf)}.</p>
 
       ${nothing
@@ -138,9 +150,9 @@ function sessionCard(session: SessionEmailSummary): string {
 
   return `
     <div style="border-left: 3px solid #8b2f8b; padding-left: 12px; margin: 16px 0;">
-      <p style="margin: 0; font-weight: 600;">${session.moduleNames.join(', ')}</p>
+      <p style="margin: 0; font-weight: 600;">${esc(session.moduleNames.join(', '))}</p>
       <p style="margin: 4px 0 0; color: #444;">${when}</p>
-      ${session.location ? `<p style="margin: 4px 0 0; color: #444;">${session.location}</p>` : ''}
+      ${session.location ? `<p style="margin: 4px 0 0; color: #444;">${esc(session.location)}</p>` : ''}
     </div>
   `
 }
@@ -158,7 +170,7 @@ export function renderSignupConfirmation(options: {
       ? `You're signed up: ${session.moduleNames.join(', ')}`
       : `You're on the waitlist: ${session.moduleNames.join(', ')}`,
     html: layout(`
-      <p>Hello ${firstName(options.name)},</p>
+      <p>Hello ${esc(firstName(options.name))},</p>
       <p>${hasPlace
         ? 'You have a place at this training session.'
         : `This session is full, so you are number ${waitlistPosition} on the waitlist.`}</p>
@@ -177,7 +189,7 @@ export function renderWaitlistPromotion(options: {
   return {
     subject: `A place has come free: ${options.session.moduleNames.join(', ')}`,
     html: layout(`
-      <p>Hello ${firstName(options.name)},</p>
+      <p>Hello ${esc(firstName(options.name))},</p>
       <p>Somebody has withdrawn, so you now have a place at this session.</p>
       ${sessionCard(options.session)}
       <p>Nothing to do: you are on the list. If you cannot make it after all, please withdraw so the
@@ -194,10 +206,10 @@ export function renderSessionCancelled(options: {
   return {
     subject: `Cancelled: ${options.session.moduleNames.join(', ')}`,
     html: layout(`
-      <p>Hello ${firstName(options.name)},</p>
+      <p>Hello ${esc(firstName(options.name))},</p>
       <p>This session has been cancelled, so there is nothing to turn up to.</p>
       ${sessionCard(options.session)}
-      <p><strong>Reason given:</strong> ${options.reason}</p>
+      <p><strong>Reason given:</strong> ${esc(options.reason)}</p>
       <p>Your training record is unchanged. Keep an eye on the schedule for the next one, or ask for
       the module to be taught again and we will know there is demand for it.</p>
     `),
@@ -218,7 +230,7 @@ export function renderMissedYou(options: {
   return {
     subject: `Sorry we missed you: ${session.moduleNames.join(', ')}`,
     html: layout(`
-      <p>Hello ${firstName(options.name)},</p>
+      <p>Hello ${esc(firstName(options.name))},</p>
       <p>You were signed up for this session and we did not see you there, so there is nothing on
       your training record for it.</p>
       ${sessionCard(session)}
@@ -240,7 +252,7 @@ export function renderSessionReminder(options: {
   return {
     subject: `Tomorrow: ${options.session.moduleNames.join(', ')}`,
     html: layout(`
-      <p>Hello ${firstName(options.name)},</p>
+      <p>Hello ${esc(firstName(options.name))},</p>
       <p>${options.hasPlace
         ? 'A reminder that you have a place at this session tomorrow.'
         : 'A reminder about this session tomorrow. You are on the waitlist, so you do not have a place, but people often withdraw on the day and it is worth coming along.'}</p>
@@ -262,7 +274,7 @@ export function renderRegisterNag(options: {
   return {
     subject: `Unmarked register: ${options.session.moduleNames.join(', ')}`,
     html: layout(`
-      <p>Hello ${firstName(options.name)},</p>
+      <p>Hello ${esc(firstName(options.name))},</p>
       <p>This session was ${options.daysAgo} day${options.daysAgo === 1 ? '' : 's'} ago and its
       register has not been marked, so <strong>nobody has been given a record for it</strong>.</p>
       ${sessionCard(options.session)}
@@ -298,7 +310,7 @@ export function renderDryRunReport(summary: {
         ? `<h3 style="font-size: 15px;">Member warnings (${summary.warnings.length})</h3>
            <ul style="padding-left: 18px;">
              ${summary.warnings.map(w => `
-               <li><strong>${w.name}</strong> (${w.type}): ${w.records.map(r => r.moduleId).join(', ')}</li>
+               <li><strong>${esc(w.name)}</strong> (${esc(w.type)}): ${esc(w.records.map(r => r.moduleId).join(', '))}</li>
              `).join('')}
            </ul>`
         : '<p>No member warnings due.</p>'}
@@ -307,7 +319,7 @@ export function renderDryRunReport(summary: {
         ? `<h3 style="font-size: 15px;">Digests (${summary.digests.length})</h3>
            <ul style="padding-left: 18px;">
              ${summary.digests.map(d => `
-               <li><strong>${d.name}</strong>, ${d.departments === null ? 'all departments' : d.departments.join(', ')}:
+               <li><strong>${esc(d.name)}</strong>, ${d.departments === null ? 'all departments' : esc(d.departments.join(', '))}:
                  ${d.expiring.length} expiring, ${d.expired.length} expired</li>
              `).join('')}
            </ul>`

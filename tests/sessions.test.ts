@@ -17,7 +17,7 @@ import { seedDepartments, seedLead, seedModule, seedRecord, seedUser } from './h
 type Handler = (event: FakeEvent) => Promise<unknown>
 const call = (handler: unknown, event: FakeEvent) => (handler as Handler)(event)
 
-const TODAY = new Date().toISOString().slice(0, 10)
+const TODAY = today()
 
 /** A catalogue with a trainer certification and a prerequisite chain. */
 async function setup() {

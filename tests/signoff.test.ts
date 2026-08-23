@@ -3,6 +3,8 @@
  * prerequisite block is server-side, whatever the UI offered.
  */
 
+import { today } from '../shared/utils/dates'
+
 import { describe, it, expect } from 'vitest'
 import signoffHandler from '../server/api/people/[id]/signoff.post'
 import externalHandler from '../server/api/people/[id]/external.post'
@@ -16,7 +18,7 @@ import { currentRecordsFor } from '../server/utils/records'
 type Handler = (event: FakeEvent) => Promise<unknown>
 const call = (handler: unknown, event: FakeEvent) => (handler as Handler)(event)
 
-const TODAY = new Date().toISOString().slice(0, 10)
+const TODAY = today()
 
 async function setup() {
   await seedDepartments()

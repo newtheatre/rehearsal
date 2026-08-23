@@ -3,6 +3,8 @@
  * most modules have no sandbox and must open nothing.
  */
 
+import { today } from '../shared/utils/dates'
+
 import { describe, it, expect, beforeEach } from 'vitest'
 import { db, schema } from './mocks/nuxthub-db'
 import { makeEvent, signIn, runtimeConfig, type FakeEvent } from './setup'
@@ -22,7 +24,7 @@ type Handler = (event: FakeEvent) => Promise<unknown>
 const call = (handler: unknown, event: FakeEvent) => (handler as Handler)(event)
 
 const SERVICE_TOKEN = `${TOKEN_PREFIX}practice-token`
-const TODAY = new Date().toISOString().slice(0, 10)
+const TODAY = today()
 
 async function setup() {
   await seedDepartments()

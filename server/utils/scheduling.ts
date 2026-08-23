@@ -119,12 +119,16 @@ export async function scheduleSession(options: {
   return { sessionId }
 }
 
-/** Amend a session that has not been delivered. Modules are replaced wholesale. */
+/**
+ * Amend a session that has not been delivered, and report who a capacity
+ * change moved into a place. Modules are replaced wholesale.
+ */
 export async function updateSchedule(options: {
-  sessionId: string
+  session: SessionRow
   input: Partial<ScheduleInput>
-}): Promise<void> {
-  const { sessionId, input } = options
+}): Promise<{ promoted: AttendeeRow[] }> {
+  const { session, input } = options
+  const sessionId = session.id
   const statements: BatchStatement[] = []
 
   const fields: Partial<typeof schema.sessions.$inferInsert> = { updatedAt: new Date() }
@@ -146,7 +150,19 @@ export async function updateSchedule(options: {
     ))
   }
 
+  const signups = await signupsFor(sessionId)
+  const heldBefore = new Set(splitByCapacity(signups, session.capacity).confirmed.map(row => row.id))
+
+  // The badge is recomputed here too: raising capacity otherwise leaves the
+  // schedule advertising a session as full when it no longer is (§3.3).
+  const capacity = input.capacity === undefined ? session.capacity : input.capacity
+  const badge = badgeStatement({ ...session, capacity }, signups.length)
+  if (badge) statements.push(badge)
+
   await runAtomic(statements)
+
+  const heldAfter = splitByCapacity(signups, capacity).confirmed
+  return { promoted: heldAfter.filter(row => !heldBefore.has(row.id)) }
 }
 
 /** Put a planned session in front of members. */
@@ -199,6 +215,16 @@ export function signupBlockedReason(session: SessionRow, now: Date = new Date())
   if (session.registerOpenedAt) return 'The register for that session is already open'
   if (session.signupsCloseAt && now > session.signupsCloseAt) return 'Sign-ups for that session have closed'
   if (session.heldOn < today(now)) return 'That session is in the past'
+  return null
+}
+
+/**
+ * Withdrawal has its own reasons: an open register no longer blocks it, since
+ * the register refuses an incomplete submission and the lead simply reloads.
+ */
+export function withdrawBlockedReason(session: SessionRow): string | null {
+  if (session.status === 'CANCELLED') return 'That session was cancelled'
+  if (session.status === 'DELIVERED') return 'That session has already been taught'
   return null
 }
 

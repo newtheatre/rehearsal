@@ -44,6 +44,13 @@ export default defineEventHandler(async (event) => {
     leadsGranted: await count('department_leads', 'granted_by'),
     rulesUpdated: await count('eligibility_rules', 'updated_by'),
     notifications: await count('notification_log', 'user_id'),
+    moduleRequests: await count('module_requests', 'user_id'),
+    requestsResolved: await count('module_requests', 'resolved_by'),
+    registersMarked: await count('session_attendees', 'marked_by_user_id'),
+    practiceWindows: await count('practice_windows', 'user_id'),
+    practiceWindowsOpened: await count('practice_windows', 'opened_by'),
+    practiceWindowsClosed: await count('practice_windows', 'closed_by'),
+    practiceTargets: await count('practice_targets', 'updated_by'),
   }
 
   if (!loser || dryRun) {
@@ -70,6 +77,20 @@ export default defineEventHandler(async (event) => {
       db.select({ sessionId: schema.sessionAttendees.sessionId })
         .from(schema.sessionAttendees)
         .where(eq(schema.sessionAttendees.userId, toUserId)),
+    ),
+  ))
+
+  await db.delete(schema.moduleRequests).where(and(
+    eq(schema.moduleRequests.userId, fromUserId),
+    eq(schema.moduleRequests.status, 'OPEN'),
+    inArray(
+      schema.moduleRequests.moduleId,
+      db.select({ moduleId: schema.moduleRequests.moduleId })
+        .from(schema.moduleRequests)
+        .where(and(
+          eq(schema.moduleRequests.userId, toUserId),
+          eq(schema.moduleRequests.status, 'OPEN'),
+        )),
     ),
   ))
 
@@ -111,6 +132,25 @@ export default defineEventHandler(async (event) => {
   await db.update(schema.notificationLog).set({ userId: toUserId })
     .where(eq(schema.notificationLog.userId, fromUserId))
 
+  await db.update(schema.sessionAttendees).set({ markedByUserId: toUserId })
+    .where(eq(schema.sessionAttendees.markedByUserId, fromUserId))
+
+  await db.update(schema.moduleRequests).set({ userId: toUserId })
+    .where(eq(schema.moduleRequests.userId, fromUserId))
+  await db.update(schema.moduleRequests).set({ resolvedBy: toUserId })
+    .where(eq(schema.moduleRequests.resolvedBy, fromUserId))
+
+  await db.update(schema.practiceWindows).set({ userId: toUserId })
+    .where(eq(schema.practiceWindows.userId, fromUserId))
+  await db.update(schema.practiceWindows).set({ openedBy: toUserId })
+    .where(eq(schema.practiceWindows.openedBy, fromUserId))
+  await db.update(schema.practiceWindows).set({ closedBy: toUserId })
+    .where(eq(schema.practiceWindows.closedBy, fromUserId))
+
+  await db.update(schema.practiceTargets).set({ updatedBy: toUserId })
+    .where(eq(schema.practiceTargets.updatedBy, fromUserId))
+
+  // Last: every column above must already point elsewhere or this throws.
   await db.delete(schema.users).where(eq(schema.users.id, fromUserId))
 
   await writeAudit({

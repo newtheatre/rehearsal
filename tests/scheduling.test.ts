@@ -32,6 +32,8 @@ const cancelHandler = (await import('../server/api/sessions/[id]/cancel.post')).
 const signupHandler = (await import('../server/api/sessions/[id]/signup.post')).default
 const withdrawHandler = (await import('../server/api/sessions/[id]/signup.delete')).default
 const logHandler = (await import('../server/api/sessions/index.get')).default
+const reschedule = (await import('../server/api/sessions/[id]/schedule.put')).default
+const openRegisterHandler = (await import('../server/api/sessions/[id]/register/open.post')).default
 const editHandler = (await import('../server/api/sessions/[id].put')).default
 
 type Handler = (event: FakeEvent) => Promise<unknown>
@@ -228,6 +230,18 @@ describe('places are derived from sign-up order', () => {
     expect(sent[0]!.subject).toContain('place has come free')
   })
 
+  it('still lets somebody withdraw once the register is open', async () => {
+    const id = await openSession()
+    await signUpAs(id, 'alice')
+
+    const open = makeEvent({ method: 'POST', path: '/x', params: { id } })
+    signIn(open, { id: 'trainer' })
+    await call(openRegisterHandler, open)
+
+    // Otherwise they have no way out of being marked absent.
+    await expect(withdrawAs(id, 'alice')).resolves.toMatchObject({ promoted: 0 })
+  })
+
   it('promotes nobody when the person leaving was on the waitlist', async () => {
     const id = await openSession({ capacity: 1 })
     await signUpAs(id, 'alice')
@@ -258,6 +272,40 @@ describe('places are derived from sign-up order', () => {
     const id = await openSession()
     await signUpAs(id, 'alice')
     await expect(signUpAs(id, 'alice')).rejects.toMatchObject({ statusCode: 409 })
+  })
+})
+
+describe('changing capacity', () => {
+  it('emails whoever it moved into a place, and clears the full badge', async () => {
+    const id = await openSession({ capacity: 1 })
+    await signUpAs(id, 'alice')
+    await signUpAs(id, 'bob')
+    expect((await db.select().from(schema.sessions).where(eq(schema.sessions.id, id)).get())!.status).toBe('FULL')
+    sent.length = 0
+
+    const event = makeEvent({ method: 'PUT', path: '/x', params: { id }, body: { capacity: 3 } })
+    signIn(event, { id: 'trainer' })
+    await call(reschedule, event)
+
+    expect(sent).toHaveLength(1)
+    expect(sent[0]!.to).toBe('bob@dev.newtheatre.org.uk')
+    expect(sent[0]!.subject).toContain('place has come free')
+    // The schedule must stop advertising it as full.
+    expect((await db.select().from(schema.sessions).where(eq(schema.sessions.id, id)).get())!.status).toBe('OPEN')
+  })
+
+  it('keeps free text out of the audit trail', async () => {
+    const id = await openSession()
+    const event = makeEvent({ method: 'PUT', path: '/x', params: { id }, body: {
+      notes: 'Moved because Sam is injured',
+    } })
+    signIn(event, { id: 'trainer' })
+    await call(reschedule, event)
+
+    const entry = await db.select().from(schema.auditLog)
+      .where(eq(schema.auditLog.action, 'session.reschedule')).get()
+    expect(entry!.detail).not.toContain('Sam')
+    expect(entry!.detail).toContain('notes')
   })
 })
 

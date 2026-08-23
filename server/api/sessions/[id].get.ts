@@ -1,7 +1,7 @@
 /** GET /api/sessions/:id: one session, scheduled or delivered. */
 
 import { getSessionDetail, withinEditWindow } from '../../utils/sessions'
-import { signupBlockedReason, splitByCapacity } from '../../utils/scheduling'
+import { signupBlockedReason, splitByCapacity, withdrawBlockedReason } from '../../utils/scheduling'
 import { maySteward } from '../../utils/sessionAuth'
 import { useAbilities } from '../../utils/abilities'
 import { getConfigNumber } from '../../utils/siteConfig'
@@ -66,6 +66,8 @@ export default defineEventHandler(async (event): Promise<SessionDetail> => {
     recordCount: session.recordCount,
     canSignUp: blocked === null && !signups.some(item => item.userId === abilities.user.id),
     signupBlockedReason: blocked,
+    canWithdraw: withdrawBlockedReason(session) === null
+      && signups.some(item => item.userId === abilities.user.id),
     canSteward,
     canEdit: (abilities.isAdmin || isOwnSession)
       && session.status === 'DELIVERED'

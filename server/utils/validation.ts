@@ -142,11 +142,15 @@ export const sessionInputSchema = z.object({
 
 // ── Scheduling ──────────────────────────────────────────────────────────────
 
+/** The largest capacity a lead may set. A session may still exceed it via the
+ * waitlist and walk-ins, which is what MAX_REGISTER bounds. */
+export const MAX_SESSION_CAPACITY = 60
+
 /**
  * Submitting a register writes one statement per attendee per module in one
- * batch, so the cohort is bounded here (docs/scheduling-design.md §5.3).
+ * batch, so the register itself is bounded (docs/scheduling-design.md §5.3).
  */
-export const MAX_SESSION_CAPACITY = 60
+export const MAX_REGISTER = 200
 
 /** A timestamp on the wire. Stored as epoch ms, so this is the parse point. */
 const timestampSchema = z.coerce.date()
@@ -213,7 +217,7 @@ export const registerSchema = z.object({
   marks: z.array(z.object({
     userId: z.string().trim().min(1),
     present: z.boolean(),
-  })).min(1, 'Mark at least one person').max(MAX_SESSION_CAPACITY),
+  })).min(1, 'Mark at least one person').max(MAX_REGISTER),
   /** Set once the trainer has seen and accepted the prerequisite warnings. */
   acknowledgeWarnings: z.boolean().default(false),
 })

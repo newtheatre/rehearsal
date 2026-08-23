@@ -1,6 +1,6 @@
 /** POST /api/sessions/:id/register: mark it, which is what awards records. */
 
-import { registerSchema } from '../../../../utils/validation'
+import { MAX_REGISTER, registerSchema } from '../../../../utils/validation'
 import { requireTrainer } from '../../../../utils/auth'
 import { getConfig, getConfigNumber } from '../../../../utils/siteConfig'
 import { loadModules } from '../../../../utils/records'
@@ -30,17 +30,36 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 409, statusMessage: 'That session was cancelled' })
   }
 
+  // Read before the body is parsed, so an over-long register is refused with
+  // something a lead can act on rather than a bare validation error.
+  const register = await registerFor(session)
+  if (register.length > MAX_REGISTER) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: `That register has ${register.length} people on it, more than the ${MAX_REGISTER} that can be marked at once. Split the session.`,
+    })
+  }
+
   const input = await readValidatedBody(event, registerSchema.parse)
 
-  // Nobody can be marked who is not on the register: a stale phone must not
-  // be able to award somebody who withdrew.
-  const register = await registerFor(session)
+  // The marks must match the register in both directions. A stale phone must
+  // not award somebody who withdrew, nor silently skip somebody it never saw.
   const known = new Set(register.map(entry => entry.userId))
   const strangers = input.marks.filter(mark => !known.has(mark.userId))
   if (strangers.length > 0) {
     throw createError({
       statusCode: 409,
       statusMessage: 'Somebody on your register is no longer signed up. Reload it.',
+    })
+  }
+
+  const marked = new Set(input.marks.map(mark => mark.userId))
+  const unmarked = register.filter(entry => !marked.has(entry.userId))
+  if (unmarked.length > 0) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: `${unmarked.map(entry => entry.name).join(', ')} ${unmarked.length === 1 ? 'is' : 'are'} on the register but not marked. Reload it.`,
+      data: { unmarked: unmarked.map(entry => entry.userId) },
     })
   }
 

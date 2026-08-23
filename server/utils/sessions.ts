@@ -202,6 +202,13 @@ export async function applySessionEdit(options: {
       sql`${schema.records.revokedAt} is null`,
     )).all()
 
+  // Attendee rows carry the register's outcome, so they are amended in place.
+  // Deleting and re-inserting would reset every mark to the ATTENDED default.
+  const existingAttendees = await db.select().from(schema.sessionAttendees)
+    .where(eq(schema.sessionAttendees.sessionId, sessionId)).all()
+  const keep = new Set(input.attendeeIds)
+  const already = new Map(existingAttendees.map(row => [row.userId, row]))
+
   const records = buildRecordInserts({
     users: input.attendeeIds,
     modules,
@@ -222,14 +229,34 @@ export async function applySessionEdit(options: {
     }).where(eq(schema.sessions.id, sessionId)),
 
     db.delete(schema.sessionModules).where(eq(schema.sessionModules.sessionId, sessionId)),
-    db.delete(schema.sessionAttendees).where(eq(schema.sessionAttendees.sessionId, sessionId)),
 
     ...input.moduleIds.map(moduleId =>
       db.insert(schema.sessionModules).values({ sessionId, moduleId }),
     ),
-    ...input.attendeeIds.map(userId =>
-      db.insert(schema.sessionAttendees).values({ sessionId, userId }),
-    ),
+
+    // The edit asserts who attended, so everyone listed is marked present and
+    // keeps the sign-up they already had.
+    ...input.attendeeIds.map((userId) => {
+      const row = already.get(userId)
+      return row
+        ? db.update(schema.sessionAttendees)
+            .set({ status: 'ATTENDED', markedAt: now, markedByUserId: options.actorUserId })
+            .where(eq(schema.sessionAttendees.id, row.id))
+        : db.insert(schema.sessionAttendees).values({
+            sessionId,
+            userId,
+            status: 'ATTENDED',
+            markedAt: now,
+            markedByUserId: options.actorUserId,
+          })
+    }),
+
+    // An absence is the record of a no-show and survives the edit; anyone else
+    // dropped from the list simply goes.
+    ...existingAttendees
+      .filter(row => !keep.has(row.userId) && row.status !== 'ABSENT')
+      .map(row => db.delete(schema.sessionAttendees)
+        .where(eq(schema.sessionAttendees.id, row.id))),
 
     // Supersede the old records rather than deleting them.
     ...existingRecords.map(record =>

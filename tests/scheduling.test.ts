@@ -18,7 +18,7 @@ vi.mock('../server/utils/email', async () => {
   }
 })
 
-const { db, schema } = await import('./mocks/nuxthub-db')
+const { db, schema, resetQueryCount, widestBoundStatement } = await import('./mocks/nuxthub-db')
 const { makeEvent, signIn } = await import('./setup')
 type FakeEvent = import('./setup').FakeEvent
 const { seedDepartments, seedModule, seedRecord, seedUser } = await import('./helpers/fixtures')
@@ -358,6 +358,34 @@ describe('sign-up gating', () => {
   it('refuses once sign-ups have closed', async () => {
     const id = await openSession({ signupsCloseAt: new Date(Date.now() - 1000).toISOString() })
     await expect(signUpAs(id, 'alice')).rejects.toMatchObject({ statusCode: 409 })
+  })
+})
+
+describe('D1 parameter limits', () => {
+  it('lists a schedule larger than D1 can bind in one statement', async () => {
+    // 120 sessions: an IN list of the ids just returned would bind 121
+    // parameters, over the cap of 100.
+    const day = tomorrow()
+    for (let n = 0; n < 120; n++) {
+      const event = makeEvent({ method: 'POST', path: '/api/sessions/schedule', body: {
+        heldOn: day,
+        moduleIds: ['NNT-001'],
+        openNow: true,
+      } })
+      signIn(event, { id: 'trainer' })
+      await call(scheduleHandler, event)
+    }
+
+    resetQueryCount()
+    const view = makeEvent({ method: 'GET', path: '/api/sessions/upcoming' })
+    signIn(view, { id: 'alice' })
+    const result = await call(upcomingHandler, view) as { sessions: { moduleIds: string[] }[] }
+
+    // The rule itself: no statement's parameter count tracks the row count.
+    expect(widestBoundStatement()).toBeLessThan(100)
+    // And the scoping did not silently drop the follow-up query.
+    expect(result.sessions).toHaveLength(100)
+    expect(result.sessions.every(session => session.moduleIds.length === 1)).toBe(true)
   })
 })
 

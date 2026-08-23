@@ -447,19 +447,27 @@ export async function listUpcoming(
 
   if (rows.length === 0) return []
 
-  const ids = rows.map(row => row.session.id)
-  // Scoped by the same status predicate rather than by the ids just returned,
-  // so neither statement's parameter count tracks the rows (ADR-0006 estate).
+  // A subquery, never the ids just returned: an IN list built from a result
+  // set binds one parameter per row and blows D1's cap of 100.
+  const visibleSessions = db.select({ id: schema.sessions.id })
+    .from(schema.sessions)
+    .where(and(
+      inArray(schema.sessions.status, [...visible]),
+      gte(schema.sessions.heldOn, today()),
+    ))
+    .orderBy(asc(schema.sessions.heldOn), asc(schema.sessions.startsAt))
+    .limit(limit)
+
   const [modules, signups] = await Promise.all([
     db.select().from(schema.sessionModules)
-      .where(inArray(schema.sessionModules.sessionId, ids)).all(),
+      .where(inArray(schema.sessionModules.sessionId, visibleSessions)).all(),
     db.select({
       sessionId: schema.sessionAttendees.sessionId,
       count: sql<number>`count(*)`.as('count'),
     })
       .from(schema.sessionAttendees)
       .where(and(
-        inArray(schema.sessionAttendees.sessionId, ids),
+        inArray(schema.sessionAttendees.sessionId, visibleSessions),
         eq(schema.sessionAttendees.status, 'SIGNED_UP'),
       ))
       .groupBy(schema.sessionAttendees.sessionId)

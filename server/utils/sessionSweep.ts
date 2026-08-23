@@ -10,6 +10,7 @@ import { addressableUsers, sessionEmailSummary, type Recipient } from './session
 import { registerFor } from './scheduling'
 import { sweepExpiredWindows } from './practice'
 import { getConfig, getConfigNumber } from './siteConfig'
+import { chunk } from './d1'
 import { today } from '../../shared/utils/dates'
 
 export type SessionNotificationType = 'session.reminder' | 'session.nag'
@@ -36,15 +37,21 @@ const NAG_INTERVAL_DAYS = 7
 /** When each notification last went out, so a re-run sends nothing new. */
 async function lastSent(sessionIds: string[]): Promise<Map<string, Date>> {
   if (sessionIds.length === 0) return new Map()
-  const rows = await db.select({
-    sessionId: schema.notificationLog.sessionId,
-    userId: schema.notificationLog.userId,
-    type: schema.notificationLog.type,
-    sentAt: schema.notificationLog.sentAt,
-  })
-    .from(schema.notificationLog)
-    .where(inArray(schema.notificationLog.sessionId, sessionIds))
-    .all()
+
+  // Chunked: the sweep's session set is unbounded, and one parameter per id
+  // would blow D1's cap of 100 on a busy term (d1.ts).
+  const rows = []
+  for (const batch of chunk(sessionIds)) {
+    rows.push(...await db.select({
+      sessionId: schema.notificationLog.sessionId,
+      userId: schema.notificationLog.userId,
+      type: schema.notificationLog.type,
+      sentAt: schema.notificationLog.sentAt,
+    })
+      .from(schema.notificationLog)
+      .where(inArray(schema.notificationLog.sessionId, batch))
+      .all())
+  }
 
   const latest = new Map<string, Date>()
   for (const row of rows) {

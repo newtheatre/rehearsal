@@ -95,22 +95,21 @@ export async function demandBoard(departments: string[] | null): Promise<DemandR
     .where(and(eq(schema.moduleRequests.status, 'OPEN'), scope))
     .all()
 
-  const byModule = new Map<string, DemandRow>()
+  const byModule = new Map<string, Omit<DemandRow, 'openCount'>>()
   for (const row of rows) {
     const entry = byModule.get(row.moduleId) ?? {
       moduleId: row.moduleId,
       moduleName: row.moduleName,
       department: row.department,
-      openCount: 0,
       requesters: [],
     }
-    entry.openCount++
     entry.requesters.push({ id: row.userId, name: row.userName, note: row.note })
     byModule.set(row.moduleId, entry)
   }
 
-  return [...byModule.values()].sort((a, b) =>
-    b.openCount - a.openCount || a.moduleId.localeCompare(b.moduleId))
+  return [...byModule.values()]
+    .map(entry => ({ ...entry, openCount: entry.requesters.length }))
+    .sort((a, b) => b.openCount - a.openCount || a.moduleId.localeCompare(b.moduleId))
 }
 
 /** Open request counts per module, for the catalogue pages. */
@@ -161,13 +160,15 @@ export async function resolveRequestsFor(options: {
   if (open.length === 0) return []
 
   const now = new Date()
-  await runAtomic(open.map(row =>
+  // Scoped by the ids the select saw, chunked, so the batch's statement count
+  // does not grow with the number of requesters.
+  await runAtomic(chunk(open.map(row => row.id)).map(ids =>
     db.update(schema.moduleRequests).set({
       status: 'SCHEDULED',
       resolvedSessionId: options.sessionId,
       resolvedAt: now,
       resolvedBy: options.actorUserId,
-    }).where(eq(schema.moduleRequests.id, row.id)),
+    }).where(inArray(schema.moduleRequests.id, ids)),
   ))
 
   return [...new Set(open.map(row => row.userId))]

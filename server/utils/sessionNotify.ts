@@ -5,7 +5,7 @@
 
 import { db, schema } from '@nuxthub/db'
 import { eq, inArray, isNull, and } from 'drizzle-orm'
-import { sendEmail, type SessionEmailSummary } from './email'
+import { renderRequestAnswered, sendEmail, type SessionEmailSummary } from './email'
 import { chunk } from './d1'
 
 export interface Recipient {
@@ -52,6 +52,24 @@ export async function addressableUsers(userIds: string[]): Promise<Recipient[]> 
     found.push(...rows)
   }
   return found
+}
+
+/**
+ * Tell whoever asked for a module that it is now scheduled. The design says
+ * requesters are told, and a request nobody hears back about is a dead end.
+ */
+export async function tellRequesters(sessionId: string, userIds: string[]): Promise<number> {
+  if (userIds.length === 0) return 0
+
+  const summary = await sessionEmailSummary(sessionId)
+  if (!summary) return 0
+
+  const recipients = await addressableUsers(userIds)
+  const { sent } = await sendEach(recipients, recipient => renderRequestAnswered({
+    name: recipient.name,
+    session: summary,
+  }))
+  return sent
 }
 
 /**

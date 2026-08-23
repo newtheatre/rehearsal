@@ -150,6 +150,9 @@ because somebody can sign up in October and lose one to expiry before the sessio
 Everybody marked absent gets no record and one email. A waitlisted person marked present is awarded
 normally: the waitlist decides who to expect, not who was taught.
 
+Whoever asked is emailed when their request is answered, which is the whole
+value of asking.
+
 **Requests resolve when a session becomes visible, not when it is created.** Opening sign-ups for a
 session (whether at `POST /api/sessions/schedule` with `openNow`, or later at
 `POST /api/sessions/:id/open`) marks the matching open requests `SCHEDULED` and links them to it. A

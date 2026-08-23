@@ -4,7 +4,7 @@
  */
 
 import { db, schema } from '@nuxthub/db'
-import { and, eq, gt, isNull, lte } from 'drizzle-orm'
+import { and, desc, eq, gt, isNull, lte } from 'drizzle-orm'
 import { runAtomic, type BatchStatement } from './batch'
 import { getConfigNumber } from './siteConfig'
 
@@ -96,9 +96,19 @@ export function closeSessionWindowStatements(sessionId: string, closedBy: string
 }
 
 /**
- * The one question consumers ask. Open means not closed, inside its window,
- * and on a target that has not been retired underneath it.
+ * Open means not closed, inside its window, and on a target that has not been
+ * retired underneath it. Both readers below use this one definition.
  */
+function openWindowFilter(now: Date) {
+  return and(
+    eq(schema.practiceTargets.status, 'ACTIVE'),
+    isNull(schema.practiceWindows.closedAt),
+    lte(schema.practiceWindows.opensAt, now),
+    gt(schema.practiceWindows.expiresAt, now),
+  )
+}
+
+/** The one question consumers ask. */
 export async function hasOpenWindow(
   userId: string,
   targetKey: string,
@@ -110,11 +120,10 @@ export async function hasOpenWindow(
     .where(and(
       eq(schema.practiceWindows.userId, userId),
       eq(schema.practiceWindows.targetKey, targetKey),
-      eq(schema.practiceTargets.status, 'ACTIVE'),
-      isNull(schema.practiceWindows.closedAt),
-      lte(schema.practiceWindows.opensAt, now),
-      gt(schema.practiceWindows.expiresAt, now),
+      openWindowFilter(now),
     ))
+    // Longest-lived first, so holding two windows never shortens the answer.
+    .orderBy(desc(schema.practiceWindows.expiresAt), desc(schema.practiceWindows.id))
     .get()
     .then(row => row?.window)
 }
@@ -132,10 +141,9 @@ export async function openWindows(now: Date = new Date()) {
   })
     .from(schema.practiceWindows)
     .innerJoin(schema.users, eq(schema.practiceWindows.userId, schema.users.id))
-    .where(and(
-      isNull(schema.practiceWindows.closedAt),
-      gt(schema.practiceWindows.expiresAt, now),
-    ))
+    .innerJoin(schema.practiceTargets, eq(schema.practiceWindows.targetKey, schema.practiceTargets.key))
+    .where(openWindowFilter(now))
+    .orderBy(desc(schema.practiceWindows.expiresAt))
     .all()
 }
 
@@ -171,24 +179,15 @@ export async function closeWindow(id: string, closedBy: string): Promise<void> {
 
 /** Tidy up anything left open past its expiry. Closing is not a sanction. */
 export async function sweepExpiredWindows(now: Date = new Date()): Promise<number> {
-  const stale = await db.select({ id: schema.practiceWindows.id })
-    .from(schema.practiceWindows)
-    .where(and(
-      isNull(schema.practiceWindows.closedAt),
-      lte(schema.practiceWindows.expiresAt, now),
-    ))
-    .all()
-
-  if (stale.length === 0) return 0
-
-  await db.update(schema.practiceWindows)
+  const closed = await db.update(schema.practiceWindows)
     .set({ closedAt: now })
     .where(and(
       isNull(schema.practiceWindows.closedAt),
       lte(schema.practiceWindows.expiresAt, now),
     ))
+    .returning({ id: schema.practiceWindows.id })
 
-  return stale.length
+  return closed.length
 }
 
 /** Targets that name a module, so the catalogue page can say a sandbox exists. */

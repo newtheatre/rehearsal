@@ -198,6 +198,22 @@ export function renderWaitlistPromotion(options: {
   }
 }
 
+export function renderRequestAnswered(options: {
+  name: string
+  session: SessionEmailSummary
+}): { subject: string, html: string } {
+  return {
+    subject: `Now scheduled: ${options.session.moduleNames.join(', ')}`,
+    html: layout(`
+      <p>Hello ${esc(firstName(options.name))},</p>
+      <p>You asked to be taught this, and it is now in the diary.</p>
+      ${sessionCard(options.session)}
+      <p>Asking put it there, so thank you for saying. A place is not reserved for
+      you: sign up on the schedule and it is yours.</p>
+    `),
+  }
+}
+
 export function renderSessionCancelled(options: {
   name: string
   session: SessionEmailSummary

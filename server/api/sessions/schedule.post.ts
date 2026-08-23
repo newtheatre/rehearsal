@@ -5,6 +5,7 @@ import { requireTrainer } from '../../utils/auth'
 import { assertAwardable, loadModules } from '../../utils/records'
 import { scheduleSession } from '../../utils/scheduling'
 import { resolveRequestsFor } from '../../utils/moduleRequests'
+import { tellRequesters } from '../../utils/sessionNotify'
 import { writeAudit } from '../../utils/audit'
 import { today } from '../../../shared/utils/dates'
 
@@ -52,6 +53,9 @@ export default defineEventHandler(async (event) => {
       requestsAnswered: answered.length,
     },
   })
+
+  // After the audit: scheduling is the fact, the email is the courtesy.
+  await tellRequesters(sessionId, answered)
 
   setResponseStatus(event, 201)
   return {

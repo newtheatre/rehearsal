@@ -19,6 +19,7 @@ export interface FakeEvent {
   params?: Record<string, string>
   context: Record<string, unknown>
   statusCode?: number
+  responseHeaders?: Record<string, string>
   redirectedTo?: { url: string, status: number }
 }
 
@@ -51,7 +52,11 @@ g.getRequestHeader = (event: FakeEvent, name: string) => event.headers?.[name.to
 g.setResponseStatus = (event: FakeEvent, code: number) => {
   event.statusCode = code
 }
-g.setHeader = () => {}
+g.setHeader = (event: FakeEvent, name: string, value: string) => {
+  // Recorded, not discarded: Cache-Control is a contract with consumers.
+  event.responseHeaders ??= {}
+  event.responseHeaders[name] = value
+}
 g.sendRedirect = (event: FakeEvent, url: string, status = 302) => {
   event.redirectedTo = { url, status }
 }

@@ -41,6 +41,18 @@ Query: `status=ACTIVE` (default) | `all` (includes DRAFT/RETIRED, for admin tool
 
 **Rule evaluation:** `requires` JSON has `allOf` (every module must be VALID/EXPIRING) and `anyOf` (at least one, if the array is non-empty). A rule that cannot be parsed, or that requires nothing at all, is answered with **503** rather than treated as satisfied: a consumer authorises on these answers, so the direction of failure is towards leaving access alone. Rules are data, edited in `/admin`, audit-logged. **This system answers; consumers enforce** ([ADR-0006](decisions/0006-eligibility-rules-as-data.md)): the rota's DM restriction lives in Proscenium behind its `isDMEligible()` seam, pointed at this endpoint.
 
+### `GET /practice/:key?userId=<id>` <a name="practice"></a>
+
+→ `{ key, userId, active: boolean, expiresAt: string | null, sessionId: string | null }`
+
+Is this person being taught this **right now**? For consumer apps with a training mode: a sandbox reachable only while somebody is actually being taught the thing ([ADR-0014](decisions/0014-practice-targets-are-data.md), [scheduling-design.md](scheduling-design.md) §7).
+
+`:key` is a **practice target**, not an eligibility rule. Different namespace, different table, deliberately: the `bar` rule *requires* the general induction, and teaching the general induction must not open the till.
+
+**This endpoint alone answers `Cache-Control: no-store`**, breaking the five-minute rule above. A window closes the moment a lead marks the register, and a cached `true` would keep a consumer's sandbox open after the lesson ended, which is exactly the reset the feature promises. Consumers ask when a run starts and when it resumes, not per request, and `expiresAt` tells them when to stop.
+
+404 on an unknown or retired key, and on an unknown user. A 404 is a configuration break across two repos and must be surfaced loudly rather than read as "not practising". Consumers are asked to **fail closed** here, which is the opposite of the direction the rota chose for eligibility and is argued in [consuming-the-api.md](consuming-the-api.md#practice).
+
 ### `GET /api/health`: public, **not** under `/api/v1`
 
 `{ ok: true, version }`.
@@ -64,11 +76,26 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `POST /api/people/:id/signoff` | lead (module's dept) or admin | certification sign-off; **422 with the gaps named** if prerequisites are unmet. Optional `expiresAt` overrides module policy (after the award, within ten years, refused when the module never expires). `neverExpires: true` needs `record.manage` and is **API only on purpose**: it is break-glass against a lockout, not a routine choice, so no UI offers it |
 | `POST /api/people/:id/external` | lead (module's dept) or admin | external certificate; its own expiry wins over module config. 400 unless the module sets `allows_external` |
 | `POST /api/records/:id/revoke` | admin | revoke with a mandatory reason; idempotent |
-| `GET /api/sessions` | session | delivery log, newest first. Paged: `limit` (default 50, max 100) with a keyset cursor `(beforeHeldOn, beforeId)`; `held_on` is a date, so the id breaks ties. Returns `{ sessions, hasMore }` |
+| `GET /api/sessions` | session | delivery log, newest first. **`DELIVERED` only**: a scheduled session is not in the log until its register is submitted. Paged: `limit` (default 50, max 100) with a keyset cursor `(beforeHeldOn, beforeId)`; `held_on` is a date, so the id breaks ties. Returns `{ sessions, hasMore }` |
 | `POST /api/sessions/check` | trainer | dry run: the exact records that would be created, plus warnings |
-| `POST /api/sessions` | trainer | log a session; creates records atomically |
-| `GET /api/sessions/:id` | session | one session; `canEdit` reflects owner + edit window |
-| `PUT /api/sessions/:id` | trainer (own session) or admin | re-derive records inside the edit window |
+| `POST /api/sessions` | trainer | log a session already taught; creates records atomically |
+| `GET /api/sessions/:id` | session | one session, scheduled or delivered. `attendees` is `null` for anybody who may not steward it; `mine` says where the caller stands |
+| `PUT /api/sessions/:id` | trainer (own session) or admin | re-derive records inside the edit window. **409 unless the session is `DELIVERED`**: there are no records to re-derive otherwise |
+| `GET /api/sessions/upcoming` | session | the schedule, soonest first. `PLANNED` sessions are visible only to trainers and leads |
+| `POST /api/sessions/schedule` | trainer | put a session in the diary. **Creates no records.** `openNow: true` skips `PLANNED` |
+| `PUT /api/sessions/:id/schedule` | steward | amend a session that has not been taught; 409 once it is `DELIVERED` or `CANCELLED` |
+| `POST /api/sessions/:id/open` | steward | open sign-ups; 409 unless the session is `PLANNED` |
+| `POST /api/sessions/:id/cancel` | steward | cancel with a mandatory reason, and email everyone signed up. Creates and touches no records |
+| `POST /api/sessions/:id/signup` | session | take a place, or join the waitlist. Returns `{ hasPlace, waitlistPosition, warnings }` |
+| `DELETE /api/sessions/:id/signup` | session | withdraw. Returns how many people that moved into a place |
+| `POST /api/sessions/:id/attendees` | steward | add a walk-in. Bypasses the sign-up prerequisite gate on purpose; the register-time check still applies |
+| `POST /api/sessions/:id/register/open` | steward | start taking the register. Idempotent, and **closes sign-ups** |
+| `GET /api/sessions/:id/register` | steward | who to mark off, in sign-up order, waitlist marked |
+| `POST /api/sessions/:id/register` | steward | **mark it, which creates the records.** 409 if already marked |
+| `GET /api/module-requests` | session | your own requests, plus the demand board if you lead a department |
+| `POST /api/module-requests` | session | ask for a module to be taught. 409 if you already have one open, 400 if it is not `ACTIVE` |
+| `DELETE /api/module-requests/:id` | session (own) | withdraw, which frees you to ask again later |
+| `POST /api/module-requests/:id/decline` | lead (module's dept) or admin | reply with a reason, which the requester is shown |
 | `POST /api/attendees/lookup` | trainer | resolve an email to a canonical id, creating a shadow account if needed |
 | `GET /api/admin/config` | admin | operator-tunable values, with defaults and whether each is stored |
 | `PUT /api/admin/config` | admin | change one value; per-key validation; audit-logged |
@@ -84,12 +111,46 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `GET /api/admin/audit` | admin | the audit trail, filtered and paged. Paging is a keyset cursor on `(before, beforeId)`, both taken from the last row of the previous page; `created_at` alone is not unique. Read-only: the table is append-only and nothing writes to it here. A null actor is the cron or an import and reads as "system" |
 | `GET /api/admin/eligibility-rules` | admin | rules and what they require; `requires` is `null` for a rule stored in an unparseable form |
 | `PUT /api/admin/eligibility-rules` | admin | create or update a rule; audit-logged with before and after |
+| `GET /api/admin/practice-targets` | admin | targets, and every window open right now |
+| `PUT /api/admin/practice-targets` | admin | create or update a target; module ids validated; audit-logged |
+| `POST /api/practice-windows` | trainer or lead | open a sandbox by hand for ad-hoc coaching; a reason is required |
+| `DELETE /api/practice-windows/:id` | trainer or lead | shut one early |
+
+**"Steward"** above means the trainer running the session, whoever created it, any department
+lead, or an admin.
 
 **Session-flow status codes.** `POST /api/sessions` answers `409` when attendees are missing
 ordinary prerequisites (retry with `acknowledgeWarnings: true`), and `422` when they are
 missing prerequisites for a **safety-critical** module, which no acknowledgement overrides.
 `POST /api/people/:id/signoff` answers `422` for any unmet prerequisite; certification
 sign-off has no override at all.
+
+**Sign-up never fails for being full.** Past capacity `POST /api/sessions/:id/signup` returns
+`hasPlace: false` with a `waitlistPosition`, and `201` either way. It answers `409` for a session
+that is not open (planned, cancelled, delivered, past, sign-ups closed, register already open, or
+already signed up) and `422` when the member is missing a prerequisite for a **safety-critical**
+module. Ordinary prerequisite gaps come back as `warnings` alongside a successful sign-up rather
+than blocking it: the gap may well be closed by the time the session runs.
+
+A place is **derived** from sign-up order against capacity, never stored, so `hasPlace` can change
+without anybody being written to ([ADR-0013](decisions/0013-a-scheduled-session-is-the-same-row.md)).
+
+**Marking the register is the only thing that awards a scheduled session's records.** `POST
+/api/sessions/:id/register` takes a full set of `marks` and creates records for the present cohort
+only. It answers `409` if the register has already been marked (a double tap, a retry, or a second
+lead on a second phone must not award the same training twice), `409` if a mark names somebody no
+longer signed up, `422` for a safety-critical prerequisite gap among the people **present**, and
+`409` for ordinary gaps until `acknowledgeWarnings: true`. Prerequisites are checked again here
+because somebody can sign up in October and lose one to expiry before the session runs.
+
+Everybody marked absent gets no record and one email. A waitlisted person marked present is awarded
+normally: the waitlist decides who to expect, not who was taught.
+
+**Requests resolve when a session becomes visible, not when it is created.** Opening sign-ups for a
+session (whether at `POST /api/sessions/schedule` with `openNow`, or later at
+`POST /api/sessions/:id/open`) marks the matching open requests `SCHEDULED` and links them to it. A
+`PLANNED` session answers nobody, because nobody can see it. Nothing on a timer ever resolves a
+request: one nobody acts on stays open and keeps appearing on the board, which is the point of it.
 
 ## Inbound GDPR hooks (called by the auth service)
 

@@ -3,6 +3,14 @@ definePageMeta({ title: 'Sessions' })
 
 const { data: me } = useMe()
 
+const { data: schedule } = await useFetch('/api/sessions/upcoming')
+const upcoming = computed(() => schedule.value?.sessions ?? [])
+
+/** A time is only worth printing when the session says one. */
+function whenLine(session: { heldOn: string, startsAt: string | null }): string {
+  return session.startsAt ? formatDateTime(session.startsAt) : formatDate(session.heldOn)
+}
+
 const { data } = await useFetch('/api/sessions')
 type SessionsPage = NonNullable<typeof data.value>
 
@@ -42,17 +50,94 @@ async function loadMore() {
           Sessions
         </h1>
         <p class="text-muted mt-1">
-          Every session logged, and who delivered it.
+          What is coming up, and every session already delivered.
         </p>
       </div>
 
-      <UButton
+      <div
         v-if="me?.isTrainer"
-        to="/sessions/new"
-        icon="i-lucide-clipboard-pen"
-        label="Log a session"
-      />
+        class="flex flex-wrap gap-2"
+      >
+        <UButton
+          to="/sessions/schedule"
+          icon="i-lucide-calendar-plus"
+          label="Schedule a session"
+        />
+        <UButton
+          to="/sessions/new"
+          icon="i-lucide-clipboard-pen"
+          color="neutral"
+          variant="outline"
+          label="Log one already taught"
+        />
+      </div>
     </div>
+
+    <section
+      v-if="upcoming.length"
+      class="space-y-3"
+    >
+      <h2 class="font-semibold">
+        Coming up
+      </h2>
+
+      <div class="divide-y divide-default border border-default rounded-lg overflow-hidden">
+        <NuxtLink
+          v-for="session in upcoming"
+          :key="session.id"
+          :to="`/sessions/${session.id}`"
+          class="flex items-center justify-between gap-4 p-4 hover:bg-elevated/50 transition-colors"
+        >
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-medium">{{ whenLine(session) }}</span>
+              <UBadge
+                v-for="moduleId in session.moduleIds"
+                :key="moduleId"
+                color="neutral"
+                variant="subtle"
+                size="sm"
+                :label="moduleId"
+              />
+              <UBadge
+                v-if="session.status === 'PLANNED'"
+                color="neutral"
+                variant="outline"
+                size="sm"
+                label="Not open yet"
+              />
+              <UBadge
+                v-if="session.signedUp"
+                color="success"
+                variant="subtle"
+                size="sm"
+                label="You are signed up"
+              />
+            </div>
+            <p class="text-xs text-muted mt-0.5">
+              {{ session.trainerName }}<span v-if="session.location"> · {{ session.location }}</span>
+            </p>
+          </div>
+
+          <div class="flex items-center gap-3 text-sm shrink-0 text-muted">
+            <span v-if="session.placesLeft === null">{{ session.signupCount }} signed up</span>
+            <span v-else-if="session.placesLeft > 0">{{ session.placesLeft }} place{{ session.placesLeft === 1 ? '' : 's' }} left</span>
+            <span v-else>Waitlist</span>
+            <UIcon
+              name="i-lucide-chevron-right"
+              class="text-dimmed"
+            />
+          </div>
+        </NuxtLink>
+      </div>
+    </section>
+
+    <h2
+      v-if="sessions.length"
+      class="font-semibold"
+    >
+      Already delivered
+    </h2>
 
     <UAlert
       v-if="!sessions.length"
@@ -61,8 +146,8 @@ async function loadMore() {
       variant="subtle"
       title="No sessions yet"
       :description="me?.isTrainer
-        ? 'Log the first one: records are created from it.'
-        : 'Sessions logged by trainers appear here.'"
+        ? 'Schedule one, or log the first one already taught.'
+        : 'Sessions delivered by trainers appear here.'"
     />
 
     <div

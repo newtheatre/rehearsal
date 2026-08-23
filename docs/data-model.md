@@ -55,7 +55,43 @@ Nothing here is told when a role is revoked, so the flag is trusted only while `
 
 ### `sessions` / `session_modules` / `session_attendees`
 
-`sessions`: `id` · `held_on` (ISO date, the training date) · `trainer_user_id` FK · `location` null · `notes` null · `created_by` FK · timestamps. Junction tables `session_modules` (`session_id` cascade, `module_id`) and `session_attendees` (`session_id` cascade, `user_id`), unique pairs. Sessions are editable by their trainer/admin for 14 days (`site_config.session_edit_window_days`); edits re-derive that session's records in a transaction. After the window: corrections via revoke + grant.
+A scheduled session and a delivered one are the **same row** ([ADR-0013](decisions/0013-a-scheduled-session-is-the-same-row.md)); the design is [scheduling-design.md](scheduling-design.md).
+
+`sessions`: `id` · `held_on` (ISO date, the training date) · `trainer_user_id` FK · `location` null · `notes` null · `created_by` FK · timestamps, plus the lifecycle:
+
+| Column | Notes |
+|---|---|
+| `status` text not null default `DELIVERED` | `PLANNED` \| `OPEN` \| `FULL` \| `DELIVERED` \| `CANCELLED`. **Only `DELIVERED` has records.** The default backfills existing rows and makes a forgetful writer create something finished rather than an unwatched sign-up sheet |
+| `starts_at` / `ends_at` null | Wall-clock. `held_on` stays the date the records are stamped from |
+| `capacity` integer null | Null is uncapped; capped at 60 in validation ([scheduling-design.md](scheduling-design.md#53-capacity-is-capped-at-60)) |
+| `signups_close_at` null | |
+| `register_opened_at` null | Stamped on the day. Opens practice windows rather than changing status |
+| `delivered_at` null | Stamped when the register is submitted |
+| `cancelled_at` null · `cancel_reason` text null | Scrub list |
+| `description` text null | Shown to anybody deciding whether to sign up. Scrub list |
+
+`FULL` is a **cached badge** for the schedule list, recomputed on every sign-up and withdrawal. Nothing authoritative reads it: a sign-up decides on the live count, and if the two disagree the count is right.
+
+Junction tables `session_modules` (`session_id` cascade, `module_id`) and `session_attendees` (`session_id` cascade, `user_id`), unique pairs. `session_attendees` also carries:
+
+| Column | Notes |
+|---|---|
+| `status` text not null default `ATTENDED` | `SIGNED_UP` \| `CANCELLED` \| `ATTENDED` \| `ABSENT`. Same backfill and fail-safe reasoning as `sessions.status` |
+| `signed_up_at` null | The waitlist ordering. Null for anybody logged rather than signed up |
+| `source` text not null default `LEAD` | `SELF` \| `LEAD` |
+| `marked_at` null · `marked_by_user_id` FK null | Who marked the register, and when |
+
+**There is no `WAITLISTED` status.** Whether a `SIGNED_UP` person holds a place is derived from `signed_up_at` order against `capacity`, by one helper in `server/utils/scheduling.ts`. Storing it would let two simultaneous sign-ups both take the last place, and would put "am I in" in two places at once (CLAUDE.md invariant 4).
+
+Delivered sessions are editable by their trainer/admin for 14 days (`site_config.session_edit_window_days`); edits re-derive that session's records in one batch. After the window: corrections via revoke + grant. `PUT /api/sessions/:id` refuses a session that has not been delivered, because it has no records to re-derive.
+
+### `module_requests`
+
+`id` · `user_id` FK · `module_id` FK · `note` null (scrub list) · `status` (`OPEN`|`SCHEDULED`|`WITHDRAWN`|`DECLINED`) · `resolved_session_id` FK null · `resolved_at` null · `resolved_by` FK null · `decline_reason` null (scrub list) · `created_at`.
+
+A demand signal, and nothing else: no queue position, no promise, and no effect on who may sign up to anything. **One open request per person per module**, held by a partial unique index (`WHERE status = 'OPEN'`) rather than by a check in the handler, so withdrawing frees them to ask again.
+
+Opening sign-ups on a session marks the matching open requests `SCHEDULED`; a `PLANNED` session resolves nothing, because nobody can see it. Nothing on a timer resolves a request ([scheduling-design.md](scheduling-design.md) §4).
 
 ### `records`
 
@@ -75,6 +111,16 @@ Nothing here is told when a role is revoked, so the flag is trusted only while `
 
 Index `(user_id, module_id, awarded_at)`. Never hard-deleted, including by migrations.
 
+### `practice_targets` / `practice_windows`
+
+Which modules have a sandbox in a consumer app, and who currently has one open ([ADR-0014](decisions/0014-practice-targets-are-data.md), [scheduling-design.md](scheduling-design.md) §7).
+
+`practice_targets`: `key` PK (e.g. `bar-till`, hardcoded by a consumer, so **never rename one**) · `name` · `description` · `consumer` (a label for the admin list, never authorisation) · `module_ids` JSON · `grace_hours` null · `status` (`ACTIVE`|`RETIRED`) · `updated_by` · `updated_at`. Ships **empty**: nothing opens a sandbox until somebody creates a target, which is the safe default.
+
+`practice_windows`: `id` · `user_id` FK · `target_key` FK · `session_id` FK null (null for an ad-hoc grant) · `opened_by` FK · `opens_at` · `expires_at` · `closed_at` null · `closed_by` FK null · `reason` null (scrub list).
+
+Opening a register inserts one window per signed-up attendee per matching `ACTIVE` target. Marking the register closes them, as does cancelling the session, a lead closing one by hand, expiry, and the daily sweep. **A target's `module_ids` is not `eligibility_rules.requires`**: one says what teaching a module lets you practise, the other what you need before you may do a job, and conflating them would open the till to everybody taught the general induction.
+
 ### `eligibility_rules`
 
 `key` text PK (e.g. `duty-manager`) · `name` · `description` · `requires` text (JSON: `{"allOf": [...], "anyOf": [...]}`) · `updated_by` FK · `updated_at`. Evaluation: [api-reference.md](api-reference.md#eligibility). Every change audit-logged.
@@ -83,11 +129,11 @@ Index `(user_id, module_id, awarded_at)`. Never hard-deleted, including by migra
 
 `service_tokens`: `id` · `name` unique (consumer app) · `token_hash` (SHA-256) · `scopes` (`read`) · `created_at` · `last_used_at`. Plaintext `nnt_trn_…` shown once at creation.
 
-`site_config`: `key` PK · `value`, `warning_window_days` (60), `academic_year_end` (`08-31`), `session_edit_window_days` (14), `notifications_mode` (`dry-run`|`live`). Rows are written by the seed, but every read falls back to the same defaults in `shared/utils/configDefaults.ts`, a missing config row must never change safety semantics.
+`site_config`: `key` PK · `value`, `warning_window_days` (60), `academic_year_end` (`08-31`), `session_edit_window_days` (14), `notifications_mode` (`dry-run`|`live`), `admin_cache_days` (90), `session_reminder_days` (1), `register_nag_days` (2), `practice_window_grace_hours` (4). Rows are written by the seed, but every read falls back to the same defaults in `shared/utils/configDefaults.ts`, a missing config row must never change safety semantics.
 
 `audit_log`: `id` · `actor_user_id` null (null = cron/import) · `action` · `target` · `detail` JSON · `created_at`. Append-only.
 
-`notification_log`: `user_id` · `type` · `record_id`/`module_id` · `sent_at`: idempotency for the cron ([operations.md](operations.md#notifications)).
+`notification_log`: `user_id` · `type` · `record_id`/`module_id` · `session_id` · `sent_at`: idempotency for both crons ([operations.md](operations.md#notifications)). `session_id` is set for `session.reminder` and `session.nag`; the nag repeats weekly, so the check is on the most recent row rather than on any row existing.
 
 ## Writing atomically
 

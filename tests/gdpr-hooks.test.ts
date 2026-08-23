@@ -93,6 +93,25 @@ describe('export', () => {
     expect(result.sessionsAttended).toHaveLength(1)
   })
 
+  it('keeps a no-show out of sessionsAttended but in the bundle', async () => {
+    await setup()
+    await seedSession('s1', '2026-02-01', 'trainer', ['alice'])
+    await db.update(schema.sessionAttendees)
+      .set({ status: 'ABSENT' })
+      .where(eq(schema.sessionAttendees.userId, 'alice'))
+
+    const result = await call(exportHandler, hookEvent({ userId: 'alice' })) as {
+      sessionsAttended: unknown[]
+      sessionSignups: { status: string }[]
+    }
+
+    // Being marked absent is a fact held about them, so it is disclosed; it
+    // is just not attendance.
+    expect(result.sessionsAttended).toHaveLength(0)
+    expect(result.sessionSignups).toHaveLength(1)
+    expect(result.sessionSignups[0]!.status).toBe('ABSENT')
+  })
+
   it('says so when the person never used the training system', async () => {
     await setup()
     const result = await call(exportHandler, hookEvent({ userId: 'stranger' })) as { mirrored: boolean }

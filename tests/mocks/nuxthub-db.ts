@@ -10,6 +10,7 @@ import { drizzle } from 'drizzle-orm/libsql'
 import * as catalogueSchema from '../../server/db/schema/catalogue'
 import * as userSchema from '../../server/db/schema/user'
 import * as trainingSchema from '../../server/db/schema/training'
+import * as practiceSchema from '../../server/db/schema/practice'
 import * as serviceSchema from '../../server/db/schema/service'
 import * as auditSchema from '../../server/db/schema/audit'
 
@@ -17,6 +18,7 @@ export const schema = {
   ...catalogueSchema,
   ...userSchema,
   ...trainingSchema,
+  ...practiceSchema,
   ...serviceSchema,
   ...auditSchema,
 }
@@ -62,7 +64,11 @@ export async function resetDb(): Promise<void> {
   for (const table of [
     'notification_log',
     'audit_log',
+    'practice_windows',
+    'practice_targets',
     'records',
+    // Before sessions and modules: it references both.
+    'module_requests',
     'session_attendees',
     'session_modules',
     'sessions',

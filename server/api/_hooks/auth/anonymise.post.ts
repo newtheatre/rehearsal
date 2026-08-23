@@ -38,6 +38,12 @@ export default defineEventHandler(async (event) => {
   await db.update(schema.sessions).set({ notes: null })
     .where(eq(schema.sessions.trainerUserId, userId))
 
+  await db.update(schema.moduleRequests).set({ note: null, declineReason: null })
+    .where(eq(schema.moduleRequests.userId, userId))
+
+  await db.update(schema.practiceWindows).set({ reason: null })
+    .where(eq(schema.practiceWindows.userId, userId))
+
   await writeAudit({
     actorUserId: null, // the auth service acting on the person's behalf
     action: 'user.anonymise',

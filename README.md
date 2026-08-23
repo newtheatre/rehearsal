@@ -46,6 +46,7 @@ First success in under five minutes: sign in at `/dev-login?trainer=1`, log a se
 | 4 | Read API + eligibility rules | **done** (rota integration blocked, the rota isn't built) |
 | 5 | Legacy migration + Heroku shutdown | not started |
 | 6 | Docs + handover | not started |
+| 7 | Scheduling, sign-ups, registers and practice windows | designed, not started ([docs/scheduling-design.md](docs/scheduling-design.md)) |
 
 Phase definitions and acceptance criteria: the project plan (§8) and [docs/roadmap.md](docs/roadmap.md).
 
@@ -63,7 +64,8 @@ Phase definitions and acceptance criteria: the project plan (§8) and [docs/road
 | [docs/operations.md](docs/operations.md) | something is on fire, or it's handover, or you're issuing a token |
 | [docs/gdpr-retention.md](docs/gdpr-retention.md) | erasure, subject access, how long records live |
 | [docs/migration.md](docs/migration.md) | the catalogue seed and the one-off legacy import (historical after cutover) |
-| [docs/roadmap.md](docs/roadmap.md) | future work: scheduling & sign-ups (designed), candidates |
+| [docs/scheduling-design.md](docs/scheduling-design.md) | **you're building scheduling, sign-ups, registers or practice windows**: the spec for phase 7 |
+| [docs/roadmap.md](docs/roadmap.md) | future work: what is parked, and why |
 | [docs/decisions/](docs/decisions/) | you're about to ask "why on earth is it done this way?" |
 | [CLAUDE.md](CLAUDE.md) | you are Claude Code (or pairing with it) |
 

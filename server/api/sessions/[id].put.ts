@@ -22,6 +22,15 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Session not found' })
   }
 
+  // This route revokes and re-grants records, so it only makes sense once a
+  // session has some. A scheduled one is amended through its own route.
+  if (session.status !== 'DELIVERED') {
+    throw createError({
+      statusCode: 409,
+      statusMessage: 'That session has not been delivered yet: amend the schedule instead',
+    })
+  }
+
   // Both admin fallbacks below are staleness-checked: editing someone else's
   // session, or one past its window, amends records for another person.
   const isOwnSession = session.trainerUserId === abilities.user.id || session.createdBy === abilities.user.id

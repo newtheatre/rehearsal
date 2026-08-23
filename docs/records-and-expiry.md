@@ -16,6 +16,19 @@ A record says: *this person completed this module on this date, and here is the 
 
 **Current record** for (user, module) = latest non-revoked row by `awarded_at` (ties: latest `created_at`). Re-training supersedes naturally: a new record with a fresh expiry becomes current; the old one remains as history.
 
+### Where a `SESSION` record comes from
+
+Two paths, and only two:
+
+1. **The delivery log.** A trainer types up a session that has already happened, and the records are written in the same batch. This is the original path and it is unchanged.
+2. **A marked register.** A scheduled session awards nothing until somebody marks its register, and then only for the people marked present ([ADR-0013](decisions/0013-a-scheduled-session-is-the-same-row.md), [scheduling-design.md](scheduling-design.md) §6).
+
+Both stamp `awarded_at` from the session's `held_on` and compute expiry from module policy at that moment, so a record does not carry which path made it.
+
+**Somebody marked absent gets nothing.** Not a record with a flag, not a revoked record: nothing at all. That is what makes the whole thing work, because every gate in the system already refuses a person who does not hold the module, and certification sign-off refuses them with no new code. It also means a no-show leaves no trace in `records`; the evidence that they were expected is the `ABSENT` row in `session_attendees`.
+
+**Nothing on a timer ever marks a register.** A session whose date has passed unmarked has awarded nothing, and stays that way until a human does it; the daily sweep only nags them (CLAUDE.md invariant 10).
+
 ## Expiry modes (per module, config not code)
 
 | Mode | `expires_at` at award | Used for |

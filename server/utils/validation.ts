@@ -140,6 +140,106 @@ export const sessionInputSchema = z.object({
   acknowledgeWarnings: z.boolean().default(false),
 })
 
+// ── Scheduling ──────────────────────────────────────────────────────────────
+
+/**
+ * Submitting a register writes one statement per attendee per module in one
+ * batch, so the cohort is bounded here (docs/scheduling-design.md §5.3).
+ */
+export const MAX_SESSION_CAPACITY = 60
+
+/** A timestamp on the wire. Stored as epoch ms, so this is the parse point. */
+const timestampSchema = z.coerce.date()
+
+/**
+ * `heldOn` is deliberately not awardedAtSchema: a scheduled session is in the
+ * future, which is exactly what that schema refuses.
+ */
+export const sessionScheduleSchema = z.object({
+  heldOn: isoDateSchema,
+  moduleIds: z.array(moduleIdSchema).min(1, 'A session must cover at least one module').max(20),
+  startsAt: timestampSchema.nullable().optional(),
+  endsAt: timestampSchema.nullable().optional(),
+  signupsCloseAt: timestampSchema.nullable().optional(),
+  capacity: z.number().int().min(1).max(MAX_SESSION_CAPACITY).nullable().optional(),
+  location: z.string().trim().max(120).nullable().optional(),
+  description: z.string().trim().max(4000).nullable().optional(),
+  notes: z.string().trim().max(4000).nullable().optional(),
+  /** Skip PLANNED and put it in front of members straight away. */
+  openNow: z.boolean().default(false),
+}).superRefine(checkSchedule)
+
+export const sessionScheduleUpdateSchema = z.object({
+  heldOn: isoDateSchema.optional(),
+  moduleIds: z.array(moduleIdSchema).min(1).max(20).optional(),
+  startsAt: timestampSchema.nullable().optional(),
+  endsAt: timestampSchema.nullable().optional(),
+  signupsCloseAt: timestampSchema.nullable().optional(),
+  capacity: z.number().int().min(1).max(MAX_SESSION_CAPACITY).nullable().optional(),
+  location: z.string().trim().max(120).nullable().optional(),
+  description: z.string().trim().max(4000).nullable().optional(),
+  notes: z.string().trim().max(4000).nullable().optional(),
+}).superRefine(checkSchedule)
+
+export const moduleRequestSchema = z.object({
+  moduleId: moduleIdSchema,
+  note: z.string().trim().max(500).nullable().optional(),
+})
+
+export const declineRequestSchema = z.object({
+  // The requester is shown this, so it is a reply rather than a rejection.
+  reason: z.string().trim().min(3, 'Say why: the person who asked is shown it').max(500),
+})
+
+export const practiceTargetSchema = z.object({
+  key: z.string().trim().toLowerCase()
+    .regex(/^[a-z][a-z0-9-]{1,40}$/, 'Use a lower-case key like bar-till'),
+  name: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(1000).nullable().optional(),
+  consumer: z.string().trim().max(60).nullable().optional(),
+  moduleIds: z.array(moduleIdSchema).max(40).default([]),
+  graceHours: z.number().int().min(0).max(48).nullable().optional(),
+  status: z.enum(['ACTIVE', 'RETIRED']).default('ACTIVE'),
+})
+
+export const grantPracticeSchema = z.object({
+  userId: z.string().trim().min(1),
+  targetKey: z.string().trim().min(1).max(40),
+  hours: z.number().int().min(1).max(24).default(4),
+  reason: z.string().trim().min(3, 'Say why: an ad-hoc sandbox is a deliberate act').max(500),
+})
+
+export const registerSchema = z.object({
+  marks: z.array(z.object({
+    userId: z.string().trim().min(1),
+    present: z.boolean(),
+  })).min(1, 'Mark at least one person').max(MAX_SESSION_CAPACITY),
+  /** Set once the trainer has seen and accepted the prerequisite warnings. */
+  acknowledgeWarnings: z.boolean().default(false),
+})
+
+export const addAttendeeSchema = z.object({
+  userId: z.string().trim().min(1),
+})
+
+export const cancelSessionSchema = z.object({
+  // Everyone signed up is told this, so it is not optional.
+  reason: z.string().trim().min(3, 'Give a reason: everyone signed up will be told it').max(500),
+})
+
+function checkSchedule(
+  value: { startsAt?: Date | null, endsAt?: Date | null },
+  ctx: z.RefinementCtx,
+): void {
+  if (value.startsAt && value.endsAt && value.endsAt <= value.startsAt) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['endsAt'],
+      message: 'A session cannot end before it starts',
+    })
+  }
+}
+
 /** An expiry not after the award, or a decade out, is a typo not a policy. */
 export function assertExpiryPlausible(awardedAt: string, expiresAt: string, message: string): void {
   if (expiresAt <= awardedAt) {

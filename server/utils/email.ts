@@ -1,10 +1,10 @@
 /**
- * Expiry warnings and monthly digests. Copy is a nudge, not a disciplinary
- * notice: never imply the person has done something wrong.
+ * Every email this app sends. Copy is a nudge, not a disciplinary notice:
+ * never imply the person has done something wrong.
  */
 
 import { getResend } from './resend'
-import { formatDate } from '../../shared/utils/dates'
+import { formatDate, formatDateTime } from '../../shared/utils/dates'
 import type { Digest, MemberWarning, SweepRecord } from './expiryPlan'
 
 interface SendEmailOptions {
@@ -113,6 +113,163 @@ export function renderDigest(digest: Digest, asOf: string): { subject: string, h
         : ''}
 
       ${!nothing ? '<p>Worth scheduling a session if these are piling up.</p>' : ''}
+    `),
+  }
+}
+
+// ── Sessions ────────────────────────────────────────────────────────────────
+
+export interface SessionEmailSummary {
+  id: string
+  heldOn: string
+  startsAt: Date | null
+  location: string | null
+  moduleNames: string[]
+}
+
+function firstName(name: string): string {
+  return name.split(' ')[0] ?? name
+}
+
+function sessionCard(session: SessionEmailSummary): string {
+  const when = session.startsAt
+    ? formatDateTime(session.startsAt)
+    : formatDate(session.heldOn)
+
+  return `
+    <div style="border-left: 3px solid #8b2f8b; padding-left: 12px; margin: 16px 0;">
+      <p style="margin: 0; font-weight: 600;">${session.moduleNames.join(', ')}</p>
+      <p style="margin: 4px 0 0; color: #444;">${when}</p>
+      ${session.location ? `<p style="margin: 4px 0 0; color: #444;">${session.location}</p>` : ''}
+    </div>
+  `
+}
+
+export function renderSignupConfirmation(options: {
+  name: string
+  session: SessionEmailSummary
+  hasPlace: boolean
+  waitlistPosition: number | null
+}): { subject: string, html: string } {
+  const { session, hasPlace, waitlistPosition } = options
+
+  return {
+    subject: hasPlace
+      ? `You're signed up: ${session.moduleNames.join(', ')}`
+      : `You're on the waitlist: ${session.moduleNames.join(', ')}`,
+    html: layout(`
+      <p>Hello ${firstName(options.name)},</p>
+      <p>${hasPlace
+        ? 'You have a place at this training session.'
+        : `This session is full, so you are number ${waitlistPosition} on the waitlist.`}</p>
+      ${sessionCard(session)}
+      <p>${hasPlace
+        ? 'If you can no longer make it, please withdraw so somebody on the waitlist can take the place.'
+        : 'If somebody withdraws we will email you straight away. It is worth turning up either way if you can: places often come free on the day.'}</p>
+    `),
+  }
+}
+
+export function renderWaitlistPromotion(options: {
+  name: string
+  session: SessionEmailSummary
+}): { subject: string, html: string } {
+  return {
+    subject: `A place has come free: ${options.session.moduleNames.join(', ')}`,
+    html: layout(`
+      <p>Hello ${firstName(options.name)},</p>
+      <p>Somebody has withdrawn, so you now have a place at this session.</p>
+      ${sessionCard(options.session)}
+      <p>Nothing to do: you are on the list. If you cannot make it after all, please withdraw so the
+      place passes on.</p>
+    `),
+  }
+}
+
+export function renderSessionCancelled(options: {
+  name: string
+  session: SessionEmailSummary
+  reason: string
+}): { subject: string, html: string } {
+  return {
+    subject: `Cancelled: ${options.session.moduleNames.join(', ')}`,
+    html: layout(`
+      <p>Hello ${firstName(options.name)},</p>
+      <p>This session has been cancelled, so there is nothing to turn up to.</p>
+      ${sessionCard(options.session)}
+      <p><strong>Reason given:</strong> ${options.reason}</p>
+      <p>Your training record is unchanged. Keep an eye on the schedule for the next one, or ask for
+      the module to be taught again and we will know there is demand for it.</p>
+    `),
+  }
+}
+
+/**
+ * The note to somebody who signed up and did not come. A nudge, never a
+ * telling-off: it says what was not recorded, not that they failed anything.
+ */
+export function renderMissedYou(options: {
+  name: string
+  session: SessionEmailSummary
+}): { subject: string, html: string } {
+  const { session } = options
+  const plural = session.moduleNames.length === 1 ? 'it' : 'them'
+
+  return {
+    subject: `Sorry we missed you: ${session.moduleNames.join(', ')}`,
+    html: layout(`
+      <p>Hello ${firstName(options.name)},</p>
+      <p>You were signed up for this session and we did not see you there, so there is nothing on
+      your training record for it.</p>
+      ${sessionCard(session)}
+      <p>Nothing has been held against you and nothing has been taken away. It only means
+      ${session.moduleNames.length === 1 ? 'this module is' : 'these modules are'} still outstanding,
+      so anything that needs ${plural} is still waiting on ${plural}.</p>
+      <p>The schedule has the next one, and if there is not a date that suits you, ask for the module
+      to be taught again and we will know there is demand for it.</p>
+      <p>If you did come and this is wrong, tell whoever ran the session and they can put it right.</p>
+    `),
+  }
+}
+
+export function renderSessionReminder(options: {
+  name: string
+  session: SessionEmailSummary
+  hasPlace: boolean
+}): { subject: string, html: string } {
+  return {
+    subject: `Tomorrow: ${options.session.moduleNames.join(', ')}`,
+    html: layout(`
+      <p>Hello ${firstName(options.name)},</p>
+      <p>${options.hasPlace
+        ? 'A reminder that you have a place at this session tomorrow.'
+        : 'A reminder about this session tomorrow. You are on the waitlist, so you do not have a place, but people often withdraw on the day and it is worth coming along.'}</p>
+      ${sessionCard(options.session)}
+      <p>${options.hasPlace
+        ? 'If you can no longer make it, please withdraw so somebody on the waitlist can take the place.'
+        : ''}</p>
+    `),
+  }
+}
+
+/** The nag to a lead whose session has passed with an unmarked register. */
+export function renderRegisterNag(options: {
+  name: string
+  session: SessionEmailSummary
+  signupCount: number
+  daysAgo: number
+}): { subject: string, html: string } {
+  return {
+    subject: `Unmarked register: ${options.session.moduleNames.join(', ')}`,
+    html: layout(`
+      <p>Hello ${firstName(options.name)},</p>
+      <p>This session was ${options.daysAgo} day${options.daysAgo === 1 ? '' : 's'} ago and its
+      register has not been marked, so <strong>nobody has been given a record for it</strong>.</p>
+      ${sessionCard(options.session)}
+      <p>${options.signupCount} ${options.signupCount === 1 ? 'person was' : 'people were'} signed up.
+      Marking the register is what creates the records, so until you do, as far as the rest of the
+      estate is concerned this training did not happen.</p>
+      <p>If it did not happen, cancel the session instead and everyone signed up will be told.</p>
     `),
   }
 }

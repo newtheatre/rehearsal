@@ -28,8 +28,10 @@ export const notificationLog = sqliteTable('notification_log', {
   type: text('type').notNull(), // 'expiry.window', 'expiry.14day', 'digest.monthly'
   recordId: text('record_id'),
   moduleId: text('module_id'),
+  sessionId: text('session_id'), // set for the session reminder and register nag
   sentAt: integer('sent_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
 }, table => [
   index('notification_log_user_idx').on(table.userId),
   index('notification_log_record_type_idx').on(table.recordId, table.type),
+  index('notification_log_session_type_idx').on(table.sessionId, table.type),
 ])

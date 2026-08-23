@@ -9,6 +9,7 @@ import { nanoid } from 'nanoid'
 import { runAtomic, type BatchStatement } from './batch'
 import { londonInstant, londonTimeOf, today } from '../../shared/utils/dates'
 import type { SessionRow } from './sessions'
+import type { RegisterEntry } from '../../shared/types/session'
 import { closeSessionWindowStatements } from './practice'
 
 export type AttendeeRow = typeof schema.sessionAttendees.$inferSelect
@@ -341,13 +342,6 @@ export async function openRegister(sessionId: string): Promise<void> {
   await db.update(schema.sessions)
     .set({ registerOpenedAt: new Date(), updatedAt: new Date() })
     .where(eq(schema.sessions.id, sessionId))
-}
-
-export interface RegisterEntry {
-  userId: string
-  name: string
-  hasPlace: boolean
-  status: AttendeeRow['status']
 }
 
 /** The register, in sign-up order, with the waitlist marked but present. */

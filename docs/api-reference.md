@@ -90,7 +90,7 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `DELETE /api/sessions/:id/signup` | session | withdraw. Allowed until the session is delivered or cancelled, including while the register is open. Returns how many people that moved into a place |
 | `POST /api/sessions/:id/attendees` | steward | add a walk-in. Bypasses the sign-up prerequisite gate on purpose; the register-time check still applies |
 | `POST /api/sessions/:id/register/open` | steward | start taking the register. Idempotent, and **closes sign-ups** |
-| `GET /api/sessions/:id/register` | steward | who to mark off, in sign-up order, waitlist marked |
+| `GET /api/sessions/:id/register` | steward | who to mark off, in sign-up order, waitlist marked, plus `practiceTargets`: the sandboxes this session's modules unlock, or empty when they unlock none |
 | `POST /api/sessions/:id/register` | steward | **mark it, which creates the records.** 409 if already marked |
 | `GET /api/module-requests` | session | your own requests, plus the demand board if you lead a department |
 | `POST /api/module-requests` | session | ask for a module to be taught. 409 if you already have one open, 400 if it is not `ACTIVE` |
@@ -140,7 +140,9 @@ without anybody being written to ([ADR-0013](decisions/0013-a-scheduled-session-
 cohort only. The marks must match the register in both directions: `409` if a mark names somebody no
 longer signed up, and `409` naming who was missed if a register entry has no mark, because a partial
 submission would otherwise deliver the session and strand that person with no record and no email. It
-also answers `409` if the register has already been marked (a double tap, a retry, or a second lead
+answers `409` with `requiresAllAbsentAcknowledgement` when nobody is marked present, until
+`acknowledgeAllAbsent: true`, because one tap on an untouched register would otherwise award
+nobody and send everybody a no-show note. It also answers `409` if the register has already been marked (a double tap, a retry, or a second lead
 on a second phone must not award the same training twice), `409` if the register exceeds
 `MAX_REGISTER` (200) with an instruction to split the session, `422` for a safety-critical
 prerequisite gap among the people **present**, and `409` for ordinary gaps until

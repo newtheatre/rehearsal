@@ -288,10 +288,16 @@ describe('a register is marked once', () => {
     await openTheRegister(id)
     sent.length = 0
 
+    // Refused until the lead says so: one tap must not write off a whole class.
+    await expect(mark(id, [
+      { userId: 'alice', present: false },
+      { userId: 'bob', present: false },
+    ])).rejects.toMatchObject({ statusCode: 409 })
+
     const result = await mark(id, [
       { userId: 'alice', present: false },
       { userId: 'bob', present: false },
-    ])
+    ], { acknowledgeAllAbsent: true })
 
     expect(result.recordCount).toBe(0)
     expect(await recordsFor('alice')).toHaveLength(0)

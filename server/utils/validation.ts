@@ -226,6 +226,8 @@ export const registerSchema = z.object({
   })).min(1, 'Mark at least one person').max(MAX_REGISTER),
   /** Set once the trainer has seen and accepted the prerequisite warnings. */
   acknowledgeWarnings: z.boolean().default(false),
+  /** Set once the trainer has confirmed that nobody was present. */
+  acknowledgeAllAbsent: z.boolean().default(false),
 })
 
 export const addAttendeeSchema = z.object({

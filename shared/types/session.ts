@@ -20,6 +20,27 @@ export interface SessionAttendeeSummary {
   hasPlace: boolean
 }
 
+export interface RegisterEntry {
+  userId: string
+  name: string
+  /** False while they are behind the capacity line. Derived, never stored. */
+  hasPlace: boolean
+  status: AttendeeStatus
+}
+
+/** The shape of GET /api/sessions/:id/register. */
+export interface RegisterView {
+  id: string
+  heldOn: string
+  status: SessionStatus
+  capacity: number | null
+  registerOpened: boolean
+  marked: boolean
+  /** Sandboxes this session's modules unlock, or empty when they unlock none. */
+  practiceTargets: string[]
+  register: RegisterEntry[]
+}
+
 export interface SessionDetail {
   id: string
   status: SessionStatus

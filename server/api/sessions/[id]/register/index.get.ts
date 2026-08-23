@@ -1,7 +1,8 @@
 /** GET /api/sessions/:id/register: who to mark off, in sign-up order. */
 
 import { requireTrainer } from '../../../../utils/auth'
-import { loadSessionRow, registerFor } from '../../../../utils/scheduling'
+import { loadSessionRow, moduleIdsFor, registerFor } from '../../../../utils/scheduling'
+import { targetsForModules } from '../../../../utils/practice'
 import { assertMaySteward } from '../../../../utils/sessionAuth'
 
 export default defineEventHandler(async (event) => {
@@ -13,6 +14,10 @@ export default defineEventHandler(async (event) => {
 
   assertMaySteward(session, abilities)
 
+  // Named here rather than only in the open response, so the lead still sees
+  // what practice this session unlocks after a reload or on a second phone.
+  const targets = await targetsForModules(await moduleIdsFor(session.id))
+
   return {
     id: session.id,
     heldOn: session.heldOn,
@@ -20,6 +25,7 @@ export default defineEventHandler(async (event) => {
     capacity: session.capacity,
     registerOpened: session.registerOpenedAt !== null,
     marked: session.status === 'DELIVERED',
+    practiceTargets: targets.map(target => target.key),
     register: await registerFor(session),
   }
 })

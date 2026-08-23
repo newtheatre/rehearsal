@@ -5,17 +5,6 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
-const sent: { to: string, subject: string }[] = []
-
-vi.mock('../server/utils/email', async () => {
-  const actual = await vi.importActual<typeof import('../server/utils/email')>('../server/utils/email')
-  return {
-    ...actual,
-    sendEmail: vi.fn(async ({ to, subject }: { to: string, subject: string }) => {
-      sent.push({ to, subject })
-    }),
-  }
-})
 import { db, schema } from './mocks/nuxthub-db'
 import { makeEvent, signIn, type FakeEvent } from './setup'
 import { seedDepartments, seedLead, seedModule, seedRecord, seedUser } from './helpers/fixtures'
@@ -26,6 +15,19 @@ import withdrawHandler from '../server/api/module-requests/[id]/index.delete'
 import declineHandler from '../server/api/module-requests/[id]/decline.post'
 import scheduleHandler from '../server/api/sessions/schedule.post'
 import openHandler from '../server/api/sessions/[id]/open.post'
+
+const sent = vi.hoisted(() => [] as { to: string, subject: string }[])
+
+// Intercept at the email boundary so the handlers' own logic runs for real.
+vi.mock('../server/utils/email', async () => {
+  const actual = await vi.importActual<typeof import('../server/utils/email')>('../server/utils/email')
+  return {
+    ...actual,
+    sendEmail: vi.fn(async ({ to, subject }: { to: string, subject: string }) => {
+      sent.push({ to, subject })
+    }),
+  }
+})
 
 type Handler = (event: FakeEvent) => Promise<unknown>
 const call = (handler: unknown, event: FakeEvent) => (handler as Handler)(event)

@@ -65,6 +65,16 @@ export default defineEventHandler(async (event) => {
 
   const present = input.marks.filter(mark => mark.present).map(mark => mark.userId)
 
+  // One tap on a register where nobody is ticked awards nothing and emails
+  // everybody a no-show note, so it is confirmed rather than assumed.
+  if (present.length === 0 && !input.acknowledgeAllAbsent) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: 'Nobody is marked as here. Confirm that the session ran with nobody present.',
+      data: { requiresAllAbsentAcknowledgement: true },
+    })
+  }
+
   const [modules, warningWindowDays, academicYearEnd] = await Promise.all([
     loadModules(await moduleIdsFor(session.id)),
     getConfigNumber('warning_window_days'),

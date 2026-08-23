@@ -192,7 +192,7 @@ describe('closing', () => {
       method: 'POST',
       path: '/x',
       params: { id },
-      body: { marks: [{ userId: 'alice', present: false }] },
+      body: { marks: [{ userId: 'alice', present: false }], acknowledgeAllAbsent: true },
     })
     signIn(mark, { id: 'trainer' })
     await call(markHandler, mark)

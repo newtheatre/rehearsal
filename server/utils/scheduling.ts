@@ -43,6 +43,22 @@ export function splitByCapacity<T extends { signedUpAt: Date | null, id: string 
   return { confirmed: ordered.slice(0, capacity), waitlisted: ordered.slice(capacity) }
 }
 
+/**
+ * Who holds a place, across a mixed set of rows. Somebody already marked kept
+ * their place by turning up, so only live sign-ups are ranked (design §3.3).
+ */
+export function placesHeld<T extends { id: string, signedUpAt: Date | null, status: AttendeeRow['status'] }>(
+  rows: T[],
+  capacity: number | null,
+): Set<string> {
+  const live = rows.filter(row => row.status === 'SIGNED_UP')
+  const held = new Set(splitByCapacity(live, capacity).confirmed.map(row => row.id))
+  for (const row of rows) {
+    if (row.status !== 'SIGNED_UP') held.add(row.id)
+  }
+  return held
+}
+
 /** Ties break on id so the order is total, not merely stable in one engine. */
 function compareSignupOrder(a: { signedUpAt: Date | null, id: string }, b: { signedUpAt: Date | null, id: string }): number {
   const at = a.signedUpAt?.getTime() ?? 0
@@ -361,16 +377,14 @@ export async function registerFor(session: SessionRow): Promise<RegisterEntry[]>
     ))
     .all()
 
-  const live = rows.filter(row => row.status === 'SIGNED_UP')
-  const held = new Set(splitByCapacity(live, session.capacity).confirmed.map(row => row.id))
+  const held = placesHeld(rows, session.capacity)
 
   return rows
     .sort(compareSignupOrder)
     .map(row => ({
       userId: row.userId,
       name: row.name,
-      // Somebody already marked kept their place by turning up.
-      hasPlace: row.status === 'SIGNED_UP' ? held.has(row.id) : true,
+      hasPlace: held.has(row.id),
       status: row.status,
     }))
 }

@@ -106,6 +106,7 @@ export default defineEventHandler(async (event) => {
 
   const result = await deliverSession({
     session,
+    modules,
     marks: input.marks,
     actorUserId: abilities.user.id,
     academicYearEnd,
@@ -130,9 +131,9 @@ export default defineEventHandler(async (event) => {
   })
 
   // After the batch: the records are the fact, the email is the courtesy.
-  const summary = await sessionEmailSummary(session.id)
+  const summary = result.absent.length > 0 ? await sessionEmailSummary(session.id) : null
   let told = 0
-  if (summary && result.absent.length > 0) {
+  if (summary) {
     const recipients = await addressableUsers(result.absent)
     const sent = await sendEach(recipients, recipient => renderMissedYou({
       name: recipient.name,

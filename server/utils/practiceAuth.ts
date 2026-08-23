@@ -1,6 +1,6 @@
 /**
- * A window may only be opened for somebody this app already mirrors: ids are
- * canonical auth ids and are never minted here (CLAUDE.md invariant 7).
+ * Somebody must already be mirrored here before they can be named: ids are
+ * canonical auth ids and are never minted locally (CLAUDE.md invariant 7).
  */
 
 import { db, schema } from '@nuxthub/db'

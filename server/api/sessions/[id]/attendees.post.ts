@@ -2,7 +2,9 @@
 
 import { addAttendeeSchema } from '../../../utils/validation'
 import { requireTrainer } from '../../../utils/auth'
-import { addAttendee, loadSessionRow, registerFor, SignupError } from '../../../utils/scheduling'
+import { addAttendee, loadSessionRow, moduleIdsFor, registerFor, SignupError } from '../../../utils/scheduling'
+import { openWindowsForSession } from '../../../utils/practice'
+import { ensureKnownUser } from '../../../utils/practiceAuth'
 import { assertMaySteward } from '../../../utils/sessionAuth'
 import { writeAudit } from '../../../utils/audit'
 
@@ -24,6 +26,9 @@ export default defineEventHandler(async (event) => {
 
   const { userId } = await readValidatedBody(event, addAttendeeSchema.parse)
 
+  // A merged-away or never-seen id is a 404, not a foreign-key 500.
+  await ensureKnownUser(userId)
+
   try {
     await addAttendee({ session, userId })
   }
@@ -32,6 +37,18 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: error.statusCode, statusMessage: error.message })
     }
     throw error
+  }
+
+  // A walk-in added after the register opened would otherwise be the one
+  // person in the room whose practice never unlocked.
+  if (session.registerOpenedAt) {
+    await openWindowsForSession({
+      sessionId: session.id,
+      moduleIds: await moduleIdsFor(session.id),
+      userIds: [userId],
+      endsAt: session.endsAt,
+      openedBy: abilities.user.id,
+    })
   }
 
   await writeAudit({

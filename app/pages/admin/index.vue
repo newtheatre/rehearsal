@@ -34,6 +34,14 @@ const sections = computed(() => [
     available: true,
   },
   {
+    label: 'Practice targets',
+    description: 'Which modules open a sandbox in another app when they are taught.',
+    icon: 'i-lucide-graduation-cap',
+    to: '/admin/practice-targets',
+    adminOnly: true,
+    available: true,
+  },
+  {
     label: 'API',
     description: 'Eligibility rules other apps ask about, and the tokens that let them ask.',
     icon: 'i-lucide-plug',

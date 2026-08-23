@@ -11,7 +11,8 @@ import { registerFor } from './scheduling'
 import { sweepExpiredWindows } from './practice'
 import { getConfig, getConfigNumber } from './siteConfig'
 import { chunk } from './d1'
-import { today } from '../../shared/utils/dates'
+import { daysBetween, today } from '../../shared/utils/dates'
+import { addDays } from './validity'
 
 export type SessionNotificationType = 'session.reminder' | 'session.nag'
 
@@ -22,13 +23,6 @@ export interface SessionSweepResult {
   nags: number
   windowsClosed: number
   failed: number
-}
-
-/** ISO date `days` after `from`. */
-function addDays(from: string, days: number): string {
-  const date = new Date(`${from}T00:00:00Z`)
-  date.setUTCDate(date.getUTCDate() + days)
-  return date.toISOString().slice(0, 10)
 }
 
 /** A nag repeats, but weekly rather than every morning. */
@@ -149,9 +143,7 @@ export async function runSessionSweep(asOf: string = today()): Promise<SessionSw
     const summary = await sessionEmailSummary(session.id)
     if (!summary) continue
 
-    const daysAgo = Math.round(
-      (Date.parse(`${asOf}T00:00:00Z`) - Date.parse(`${session.heldOn}T00:00:00Z`)) / 86_400_000,
-    )
+    const daysAgo = daysBetween(session.heldOn, asOf)
     if (daysAgo < nagDays) continue
 
     const register = await registerFor(session)

@@ -19,6 +19,7 @@ import practiceHandler from '../server/api/v1/practice/[key].get'
 import targetsPutHandler from '../server/api/admin/practice-targets/index.put'
 import grantHandler from '../server/api/practice-windows/index.post'
 import closeHandler from '../server/api/practice-windows/[id]/index.delete'
+import addAttendeeHandler from '../server/api/sessions/[id]/attendees.post'
 
 type Handler = (event: FakeEvent) => Promise<unknown>
 const call = (handler: unknown, event: FakeEvent) => (handler as Handler)(event)
@@ -162,6 +163,21 @@ describe('what a session opens', () => {
     const result = await openTheRegister(id)
 
     expect(result.practiceOpened.sort()).toEqual(['bar-till', 'challenge-25'])
+  })
+})
+
+describe('walk-ins', () => {
+  it('opens a window for somebody added after the register did', async () => {
+    const id = await sessionTeaching(['ADMN-102'], ['alice'])
+    await openTheRegister(id)
+    expect(await ask('bar-till', 'bob')).toMatchObject({ active: false })
+
+    const add = makeEvent({ method: 'POST', path: '/x', params: { id }, body: { userId: 'bob' } })
+    signIn(add, { id: 'trainer' })
+    await call(addAttendeeHandler, add)
+
+    // Otherwise the walk-in is the one person in the room who cannot practise.
+    expect(await ask('bar-till', 'bob')).toMatchObject({ active: true })
   })
 })
 

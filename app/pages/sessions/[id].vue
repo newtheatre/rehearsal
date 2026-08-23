@@ -21,24 +21,7 @@ const STATUS_BADGE: Record<SessionDetail['status'], { label: string, color: 'neu
   CANCELLED: { label: 'Cancelled', color: 'error' },
 }
 
-const busy = ref(false)
-const actionError = ref<string | null>(null)
-
-async function act(fn: () => Promise<unknown>, success: string) {
-  busy.value = true
-  actionError.value = null
-  try {
-    await fn()
-    await refresh()
-    toast.add({ title: success, icon: 'i-lucide-check', color: 'success' })
-  }
-  catch (e) {
-    actionError.value = errorMessage(e, 'That did not work')
-  }
-  finally {
-    busy.value = false
-  }
-}
+const { busy, actionError, act } = useAction(refresh)
 
 const signUp = () => act(
   () => $fetch(`/api/sessions/${route.params.id}/signup`, { method: 'POST' }),

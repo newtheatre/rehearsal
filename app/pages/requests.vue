@@ -5,8 +5,6 @@
  */
 definePageMeta({ title: 'Requests' })
 
-const toast = useToast()
-
 const { data, refresh } = await useFetch('/api/module-requests')
 const { data: catalogue } = await useFetch('/api/modules')
 
@@ -25,24 +23,7 @@ const moduleOptions = computed(() =>
 
 const chosen = ref<string | undefined>(undefined)
 const note = ref('')
-const busy = ref(false)
-const actionError = ref<string | null>(null)
-
-async function act(fn: () => Promise<unknown>, success: string) {
-  busy.value = true
-  actionError.value = null
-  try {
-    await fn()
-    await refresh()
-    toast.add({ title: success, icon: 'i-lucide-check', color: 'success' })
-  }
-  catch (e) {
-    actionError.value = errorMessage(e, 'That did not work')
-  }
-  finally {
-    busy.value = false
-  }
-}
+const { busy, actionError, act } = useAction(refresh)
 
 const ask = () => act(async () => {
   await $fetch('/api/module-requests', {

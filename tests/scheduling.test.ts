@@ -22,7 +22,7 @@ const { db, schema, resetQueryCount, widestBoundStatement } = await import('./mo
 const { makeEvent, signIn } = await import('./setup')
 type FakeEvent = import('./setup').FakeEvent
 const { seedDepartments, seedModule, seedRecord, seedUser } = await import('./helpers/fixtures')
-const { today } = await import('../shared/utils/dates')
+const { today, londonTimeOf } = await import('../shared/utils/dates')
 const { eq } = await import('drizzle-orm')
 
 const scheduleHandler = (await import('../server/api/sessions/schedule.post')).default
@@ -358,6 +358,51 @@ describe('sign-up gating', () => {
   it('refuses once sign-ups have closed', async () => {
     const id = await openSession({ signupsCloseAt: new Date(Date.now() - 1000).toISOString() })
     await expect(signUpAs(id, 'alice')).rejects.toMatchObject({ statusCode: 409 })
+  })
+})
+
+describe('times are Europe/London wall-clock', () => {
+  it('anchors a 19:30 session to London, not to the runner or the browser', async () => {
+    const day = tomorrow()
+    const event = makeEvent({ method: 'POST', path: '/api/sessions/schedule', body: {
+      heldOn: day,
+      moduleIds: ['NNT-001'],
+      startsTime: '19:30',
+      endsTime: '21:00',
+      openNow: true,
+    } })
+    signIn(event, { id: 'trainer' })
+    const { id } = await call(scheduleHandler, event) as { id: string }
+
+    const row = await db.select().from(schema.sessions).where(eq(schema.sessions.id, id)).get()
+    // Reading the stored instant back in London must give the time typed in.
+    expect(londonTimeOf(row!.startsAt!)).toBe('19:30')
+    expect(londonTimeOf(row!.endsAt!)).toBe('21:00')
+  })
+
+  it('moves the instants when the date moves', async () => {
+    const day = tomorrow()
+    const create = makeEvent({ method: 'POST', path: '/api/sessions/schedule', body: {
+      heldOn: day,
+      moduleIds: ['NNT-001'],
+      startsTime: '19:30',
+      openNow: true,
+    } })
+    signIn(create, { id: 'trainer' })
+    const { id } = await call(scheduleHandler, create) as { id: string }
+
+    const later = new Date(`${day}T00:00:00Z`)
+    later.setUTCDate(later.getUTCDate() + 7)
+    const moved = later.toISOString().slice(0, 10)
+
+    const edit = makeEvent({ method: 'PUT', path: '/x', params: { id }, body: { heldOn: moved } })
+    signIn(edit, { id: 'trainer' })
+    await call(reschedule, edit)
+
+    const row = await db.select().from(schema.sessions).where(eq(schema.sessions.id, id)).get()
+    expect(row!.heldOn).toBe(moved)
+    // The time of day survives a date change rather than being left behind.
+    expect(londonTimeOf(row!.startsAt!)).toBe('19:30')
   })
 })
 

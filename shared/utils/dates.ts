@@ -12,6 +12,41 @@ export function today(now: Date = new Date()): string {
   return isoFormatter.format(now)
 }
 
+/**
+ * A wall-clock date and HH:MM in Europe/London, as an instant. The Worker runs
+ * in UTC and a browser runs in whatever the device says, so neither may parse it.
+ */
+export function londonInstant(isoDate: string, hhmm: string): Date {
+  const guess = new Date(`${isoDate}T${hhmm}:00Z`)
+  // Correct the guess by London's offset at that moment, which is what turns
+  // a wall-clock reading into the instant it names.
+  return new Date(guess.getTime() - londonOffsetMs(guess))
+}
+
+/** The HH:MM an instant reads as in Europe/London. */
+export function londonTimeOf(at: Date): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: TIMEZONE, hour12: false, hour: '2-digit', minute: '2-digit',
+  }).format(at)
+}
+
+function londonOffsetMs(at: Date): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: TIMEZONE,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(at)
+
+  const get = (type: string) => Number(parts.find(part => part.type === type)?.value ?? 0)
+  const asUtc = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour') % 24, get('minute'), get('second'))
+  return asUtc - at.getTime()
+}
+
 /** Whole days from `from` to `to`, both ISO dates. */
 export function daysBetween(from: string, to: string): number {
   const a = Date.parse(`${from}T00:00:00Z`)

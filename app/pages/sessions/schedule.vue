@@ -35,12 +35,6 @@ const canSubmit = computed(() => Boolean(form.value.heldOn) && form.value.module
 const submitting = ref(false)
 const submitError = ref<string | null>(null)
 
-/** A time on the chosen day, as an instant the server can store. */
-function instant(time: string): string | null {
-  if (!time || !form.value.heldOn) return null
-  return new Date(`${form.value.heldOn}T${time}`).toISOString()
-}
-
 async function submit() {
   submitting.value = true
   submitError.value = null
@@ -50,8 +44,8 @@ async function submit() {
       body: {
         heldOn: form.value.heldOn,
         moduleIds: form.value.moduleIds,
-        startsAt: instant(form.value.startsAt),
-        endsAt: instant(form.value.endsAt),
+        startsTime: form.value.startsAt || null,
+        endsTime: form.value.endsAt || null,
         capacity: form.value.capacity || null,
         location: form.value.location || null,
         description: form.value.description || null,

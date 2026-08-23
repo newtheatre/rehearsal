@@ -7,7 +7,7 @@ import { db, schema } from '@nuxthub/db'
 import { and, asc, eq, gte, inArray, ne, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { runAtomic, type BatchStatement } from './batch'
-import { today } from '../../shared/utils/dates'
+import { londonInstant, londonTimeOf, today } from '../../shared/utils/dates'
 import type { SessionRow } from './sessions'
 import { closeSessionWindowStatements } from './practice'
 
@@ -19,8 +19,9 @@ const LIVE_STATUSES = ['OPEN', 'FULL'] as const
 export interface ScheduleInput {
   heldOn: string
   moduleIds: string[]
-  startsAt?: Date | null
-  endsAt?: Date | null
+  /** Wall-clock in Europe/London; the instant is composed here, not sent. */
+  startsTime?: string | null
+  endsTime?: string | null
   signupsCloseAt?: Date | null
   capacity?: number | null
   location?: string | null
@@ -103,8 +104,8 @@ export async function scheduleSession(options: {
       trainerUserId: options.trainerUserId,
       createdBy: options.createdBy,
       status: options.openNow ? 'OPEN' : 'PLANNED',
-      startsAt: input.startsAt ?? null,
-      endsAt: input.endsAt ?? null,
+      startsAt: input.startsTime ? londonInstant(input.heldOn, input.startsTime) : null,
+      endsAt: input.endsTime ? londonInstant(input.heldOn, input.endsTime) : null,
       signupsCloseAt: input.signupsCloseAt ?? null,
       capacity: input.capacity ?? null,
       location: input.location ?? null,
@@ -133,13 +134,26 @@ export async function updateSchedule(options: {
 
   const fields: Partial<typeof schema.sessions.$inferInsert> = { updatedAt: new Date() }
   if (input.heldOn !== undefined) fields.heldOn = input.heldOn
-  if (input.startsAt !== undefined) fields.startsAt = input.startsAt
-  if (input.endsAt !== undefined) fields.endsAt = input.endsAt
   if (input.signupsCloseAt !== undefined) fields.signupsCloseAt = input.signupsCloseAt
   if (input.capacity !== undefined) fields.capacity = input.capacity
   if (input.location !== undefined) fields.location = input.location
   if (input.description !== undefined) fields.description = input.description
   if (input.notes !== undefined) fields.notes = input.notes
+
+  // Moving the date moves the instants with it, so both are recomposed from
+  // whatever the session ends up holding rather than edited independently.
+  const heldOn = input.heldOn ?? session.heldOn
+  const startsTime = input.startsTime !== undefined
+    ? input.startsTime
+    : session.startsAt && londonTimeOf(session.startsAt)
+  const endsTime = input.endsTime !== undefined
+    ? input.endsTime
+    : session.endsAt && londonTimeOf(session.endsAt)
+
+  if (input.heldOn !== undefined || input.startsTime !== undefined || input.endsTime !== undefined) {
+    fields.startsAt = startsTime ? londonInstant(heldOn, startsTime) : null
+    fields.endsAt = endsTime ? londonInstant(heldOn, endsTime) : null
+  }
 
   statements.push(db.update(schema.sessions).set(fields).where(eq(schema.sessions.id, sessionId)))
 

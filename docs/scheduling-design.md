@@ -137,9 +137,14 @@ way to tell which is right. Deriving it has neither problem, and withdrawal prom
 by arithmetic rather than by an `UPDATE`.
 
 `sessions.status = 'FULL'` survives as a **cached badge** so the schedule list can say "full" without
-counting rows per session. It is recomputed on every sign-up and withdrawal, and **nothing
-authoritative reads it**: a sign-up decides on the live count, never on the badge. If it ever
-disagrees with the count, the count is right.
+counting rows per session. It is recomputed on every sign-up, withdrawal **and capacity change**, and
+**nothing authoritative reads it**: a sign-up decides on the live count, never on the badge. If it
+ever disagrees with the count, the count is right.
+
+Recomputing it on a capacity change matters more than it looks: the badge is what members see, so a
+stale `FULL` on a session that now has room reads as "waitlist" and suppresses exactly the sign-ups
+the lead just made room for. A wrong badge is self-reinforcing, because the write that would heal it
+is the sign-up it is discouraging.
 
 ## 4. Requesting a module
 
@@ -193,15 +198,24 @@ A lead may add someone directly, including a walk-in with no account. Unknown pe
 auth service's shadow endpoint: this app never mints a user id ([CLAUDE.md](../CLAUDE.md)
 invariant 7).
 
-### 5.3 Capacity is capped at 60
+### 5.3 Capacity is capped at 60, and the register at 200
 
-Not because sixty people fit in the studio, but because submitting the register writes one statement
-per attendee per module in a single `db.batch()`
-([ADR-0009](decisions/0009-atomic-writes-use-batch-not-transactions.md)). An unbounded register is an
-unbounded batch, and the failure would arrive on the one night somebody ran a whole-cohort induction.
-Sixty attendees across three modules is 180 statements plus the session rows, which is comfortable.
-If a real session ever needs more, split it, and revisit this number with a measurement rather than a
-guess.
+Two different limits, and conflating them is a trap worth naming.
+
+**Capacity** is the largest number a lead may *set*, capped at 60. It bounds nothing on its own: a
+session may be uncapped (`capacity: null`), sign-up never refuses for being full so the waitlist
+grows past it, and a lead may add walk-ins.
+
+**The register** is what actually gets submitted, and it is capped at 200
+(`MAX_REGISTER`). Submitting one writes a statement per attendee per module in a single `db.batch()`
+([ADR-0009](decisions/0009-atomic-writes-use-batch-not-transactions.md)), so it cannot be unbounded.
+The register route checks its own size *before* parsing the body, so an over-long register is
+refused with something a lead can act on ("split the session") rather than a bare validation error.
+
+The two must never be set to the same number. If they were, an uncapped session or a single walk-in
+past capacity would produce a register that can never be submitted, which means nobody who attended
+ever gets a record and there is no way to recover: sign-ups cannot be withdrawn from the outside and
+only this route awards.
 
 ### 5.4 Cancelling
 
@@ -214,6 +228,11 @@ because "why did that not happen" is a question people ask in March about someth
 On the day, the lead opens the register. This stamps `register_opened_at` and opens practice windows
 (§7). The register is a phone screen: the sign-up list, one big control per person, present or
 absent, plus a way to add someone who turned up unannounced.
+
+**The marks must match the register exactly**, in both directions. A mark naming somebody no longer
+signed up is refused, and so is a register entry with no mark: a partial submission would otherwise
+deliver the session and leave that person with no record, no absence and no email, invisible to the
+nag because the session is now delivered. The refusal names who was missed.
 
 Submitting it is the record-creating act:
 

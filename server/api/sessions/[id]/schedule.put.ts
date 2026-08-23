@@ -5,6 +5,8 @@ import { requireTrainer } from '../../../utils/auth'
 import { loadModules } from '../../../utils/records'
 import { loadSessionRow, updateSchedule } from '../../../utils/scheduling'
 import { assertMaySteward } from '../../../utils/sessionAuth'
+import { addressableUsers, sendEach, sessionEmailSummary } from '../../../utils/sessionNotify'
+import { renderWaitlistPromotion } from '../../../utils/email'
 import { writeAudit } from '../../../utils/audit'
 import { today } from '../../../../shared/utils/dates'
 
@@ -35,14 +37,27 @@ export default defineEventHandler(async (event) => {
 
   // Lowering capacity below the number already signed up is allowed: it moves
   // the people at the back onto the waitlist rather than removing them.
-  await updateSchedule({ sessionId: session.id, input })
+  const { promoted } = await updateSchedule({ session, input })
 
   await writeAudit({
     actorUserId: abilities.user.id,
     action: 'session.reschedule',
     target: session.id,
-    detail: input,
+    // Field names only: notes and description are free text, and audit_log is
+    // append-only and never scrubbed by the erasure hook.
+    detail: { changed: Object.keys(input), promoted: promoted.length },
   })
 
-  return { id: session.id }
+  // Raising capacity gives somebody a place, and they were promised an email
+  // the moment one came free.
+  const summary = promoted.length ? await sessionEmailSummary(session.id) : null
+  if (summary) {
+    const recipients = await addressableUsers(promoted.map(row => row.userId))
+    await sendEach(recipients, recipient => renderWaitlistPromotion({
+      name: recipient.name,
+      session: summary,
+    }))
+  }
+
+  return { id: session.id, promoted: promoted.length }
 })

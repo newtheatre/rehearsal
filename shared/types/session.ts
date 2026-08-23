@@ -50,6 +50,7 @@ export interface SessionDetail {
   recordCount: number
   canSignUp: boolean
   signupBlockedReason: string | null
+  canWithdraw: boolean
   canSteward: boolean
   canEdit: boolean
   editWindowDays: number

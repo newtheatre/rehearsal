@@ -267,6 +267,46 @@ describe('merge', () => {
     expect(await db.select().from(schema.users).where(eq(schema.users.id, 'alice')).get()).toBeTruthy()
   })
 
+  it('re-points every column this app owns, so the delete cannot violate a key', async () => {
+    await setup()
+    await seedSession('s1', '2026-02-01', 'alice', ['alice'])
+
+    // One row for each column added alongside scheduling and practice.
+    await db.insert(schema.moduleRequests).values({ userId: 'alice', moduleId: 'TECH-111' })
+    await db.update(schema.sessionAttendees).set({ markedByUserId: 'alice' })
+    await db.insert(schema.practiceTargets).values({
+      key: 'bar-till', name: 'Bar till', moduleIds: ['TECH-111'], updatedBy: 'alice',
+    })
+    await db.insert(schema.practiceWindows).values({
+      userId: 'alice', targetKey: 'bar-till', openedBy: 'alice', closedBy: 'alice',
+      opensAt: new Date(), expiresAt: new Date(Date.now() + 3_600_000),
+    })
+
+    await call(mergeHandler, hookEvent({ fromUserId: 'alice', toUserId: 'winner' }))
+
+    // The losing row going is the proof: it cannot while anything still points at it.
+    expect(await db.select().from(schema.users).where(eq(schema.users.id, 'alice')).get()).toBeUndefined()
+    expect((await db.select().from(schema.moduleRequests).all())[0]!.userId).toBe('winner')
+    expect((await db.select().from(schema.practiceWindows).all())[0]!.userId).toBe('winner')
+    expect((await db.select().from(schema.practiceTargets).all())[0]!.updatedBy).toBe('winner')
+    expect((await db.select().from(schema.sessionAttendees).all())[0]!.markedByUserId).toBe('winner')
+  })
+
+  it('drops a colliding open request rather than failing the merge', async () => {
+    await setup()
+    await db.insert(schema.moduleRequests).values([
+      { userId: 'alice', moduleId: 'TECH-111' },
+      { userId: 'winner', moduleId: 'TECH-111' },
+    ])
+
+    await call(mergeHandler, hookEvent({ fromUserId: 'alice', toUserId: 'winner' }))
+
+    // The partial unique index allows one open request per person per module.
+    const open = await db.select().from(schema.moduleRequests).all()
+    expect(open).toHaveLength(1)
+    expect(open[0]!.userId).toBe('winner')
+  })
+
   it('re-points records, attendance and delivery onto the winner', async () => {
     await setup()
     await seedRecord({ userId: 'alice', moduleId: 'NNT-001', expiresAt: null })

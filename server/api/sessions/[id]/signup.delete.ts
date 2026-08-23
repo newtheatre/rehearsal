@@ -1,7 +1,7 @@
 /** DELETE /api/sessions/:id/signup: give up a place, and pass it on. */
 
 import { useAbilities } from '../../../utils/abilities'
-import { loadSessionRow, signupBlockedReason, withdraw, SignupError } from '../../../utils/scheduling'
+import { loadSessionRow, withdraw, withdrawBlockedReason, SignupError } from '../../../utils/scheduling'
 import { addressableUsers, sendEach, sessionEmailSummary } from '../../../utils/sessionNotify'
 import { renderWaitlistPromotion } from '../../../utils/email'
 
@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
   const session = id ? await loadSessionRow(id) : undefined
   if (!session) throw createError({ statusCode: 404, statusMessage: 'Session not found' })
 
-  const blocked = signupBlockedReason(session)
+  const blocked = withdrawBlockedReason(session)
   if (blocked) throw createError({ statusCode: 409, statusMessage: blocked })
 
   let promoted

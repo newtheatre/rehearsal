@@ -209,7 +209,7 @@ const whenLine = computed(() => {
             @click="signUp"
           />
           <UButton
-            v-if="data.mine.signedUp && data.status !== 'CANCELLED'"
+            v-if="data.canWithdraw"
             label="Withdraw"
             color="neutral"
             variant="outline"

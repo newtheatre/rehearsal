@@ -31,6 +31,7 @@ const markHandler = (await import('../server/api/sessions/[id]/register/index.po
 const readRegisterHandler = (await import('../server/api/sessions/[id]/register/index.get')).default
 const addAttendeeHandler = (await import('../server/api/sessions/[id]/attendees.post')).default
 const logHandler = (await import('../server/api/sessions/index.get')).default
+const editHandler = (await import('../server/api/sessions/[id].put')).default
 
 type Handler = (event: FakeEvent) => Promise<unknown>
 const call = (handler: unknown, event: FakeEvent) => (handler as Handler)(event)
@@ -234,6 +235,29 @@ describe('a register is marked once', () => {
     expect(await recordsFor('alice')).toHaveLength(1)
   })
 
+  it('refuses a submission that skips somebody on the register', async () => {
+    const id = await sessionWith(['alice', 'bob'])
+    await openTheRegister(id)
+
+    // A partial submission must refuse: delivering it would strand the
+    // unmarked person with no record and no email.
+    await expect(mark(id, [{ userId: 'alice', present: true }]))
+      .rejects.toMatchObject({ statusCode: 409 })
+
+    const rows = await db.select().from(schema.sessionAttendees)
+      .where(eq(schema.sessionAttendees.sessionId, id)).all()
+    expect(rows.every(row => row.status === 'SIGNED_UP')).toBe(true)
+    expect(await recordsFor('alice')).toHaveLength(0)
+  })
+
+  it('names who was missed so the lead can act on it', async () => {
+    const id = await sessionWith(['alice', 'bob'])
+    await openTheRegister(id)
+
+    await expect(mark(id, [{ userId: 'alice', present: true }]))
+      .rejects.toMatchObject({ statusMessage: expect.stringContaining('Bob Barnes') })
+  })
+
   it('refuses somebody who is not on the register', async () => {
     const id = await sessionWith(['alice'])
     await openTheRegister(id)
@@ -270,6 +294,32 @@ describe('a register is marked once', () => {
     expect(result.recordCount).toBe(0)
     expect(await recordsFor('alice')).toHaveLength(0)
     expect(sent).toHaveLength(2)
+  })
+})
+
+describe('editing a delivered session keeps its register outcome', () => {
+  it('does not resurrect an absentee as an attendee', async () => {
+    const id = await sessionWith(['alice', 'bob'])
+    await openTheRegister(id)
+    await mark(id, [
+      { userId: 'alice', present: true },
+      { userId: 'bob', present: false },
+    ])
+
+    // A lead fixes the location. Bob did not attend and must stay that way.
+    const edit = makeEvent({ method: 'PUT', path: '/x', params: { id }, body: {
+      heldOn: TODAY,
+      moduleIds: ['NNT-001'],
+      attendeeIds: ['alice'],
+      location: 'Main house',
+    } })
+    signIn(edit, { id: 'trainer' })
+    await call(editHandler, edit)
+
+    const rows = await db.select().from(schema.sessionAttendees)
+      .where(eq(schema.sessionAttendees.sessionId, id)).all()
+    expect(rows.find(row => row.userId === 'bob')!.status).toBe('ABSENT')
+    expect(await recordsFor('bob')).toHaveLength(0)
   })
 })
 

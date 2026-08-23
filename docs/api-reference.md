@@ -83,11 +83,11 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `PUT /api/sessions/:id` | trainer (own session) or admin | re-derive records inside the edit window. **409 unless the session is `DELIVERED`**: there are no records to re-derive otherwise |
 | `GET /api/sessions/upcoming` | session | the schedule, soonest first. `PLANNED` sessions are visible only to trainers and leads |
 | `POST /api/sessions/schedule` | trainer | put a session in the diary. **Creates no records.** `openNow: true` skips `PLANNED` |
-| `PUT /api/sessions/:id/schedule` | steward | amend a session that has not been taught; 409 once it is `DELIVERED` or `CANCELLED` |
+| `PUT /api/sessions/:id/schedule` | steward | amend a session that has not been taught; 409 once it is `DELIVERED` or `CANCELLED`. Raising capacity emails whoever it moved into a place and recomputes the FULL badge; returns `promoted` |
 | `POST /api/sessions/:id/open` | steward | open sign-ups; 409 unless the session is `PLANNED` |
 | `POST /api/sessions/:id/cancel` | steward | cancel with a mandatory reason, and email everyone signed up. Creates and touches no records |
 | `POST /api/sessions/:id/signup` | session | take a place, or join the waitlist. Returns `{ hasPlace, waitlistPosition, warnings }` |
-| `DELETE /api/sessions/:id/signup` | session | withdraw. Returns how many people that moved into a place |
+| `DELETE /api/sessions/:id/signup` | session | withdraw. Allowed until the session is delivered or cancelled, including while the register is open. Returns how many people that moved into a place |
 | `POST /api/sessions/:id/attendees` | steward | add a walk-in. Bypasses the sign-up prerequisite gate on purpose; the register-time check still applies |
 | `POST /api/sessions/:id/register/open` | steward | start taking the register. Idempotent, and **closes sign-ups** |
 | `GET /api/sessions/:id/register` | steward | who to mark off, in sign-up order, waitlist marked |
@@ -136,11 +136,15 @@ A place is **derived** from sign-up order against capacity, never stored, so `ha
 without anybody being written to ([ADR-0013](decisions/0013-a-scheduled-session-is-the-same-row.md)).
 
 **Marking the register is the only thing that awards a scheduled session's records.** `POST
-/api/sessions/:id/register` takes a full set of `marks` and creates records for the present cohort
-only. It answers `409` if the register has already been marked (a double tap, a retry, or a second
-lead on a second phone must not award the same training twice), `409` if a mark names somebody no
-longer signed up, `422` for a safety-critical prerequisite gap among the people **present**, and
-`409` for ordinary gaps until `acknowledgeWarnings: true`. Prerequisites are checked again here
+/api/sessions/:id/register` takes a **complete** set of `marks` and creates records for the present
+cohort only. The marks must match the register in both directions: `409` if a mark names somebody no
+longer signed up, and `409` naming who was missed if a register entry has no mark, because a partial
+submission would otherwise deliver the session and strand that person with no record and no email. It
+also answers `409` if the register has already been marked (a double tap, a retry, or a second lead
+on a second phone must not award the same training twice), `409` if the register exceeds
+`MAX_REGISTER` (200) with an instruction to split the session, `422` for a safety-critical
+prerequisite gap among the people **present**, and `409` for ordinary gaps until
+`acknowledgeWarnings: true`. Prerequisites are checked again here
 because somebody can sign up in October and lose one to expiry before the session runs.
 
 Everybody marked absent gets no record and one email. A waitlisted person marked present is awarded
@@ -161,7 +165,7 @@ Per the estate hook pattern (stage-door docs/api-reference.md §app-hooks), auth
 | `POST /api/_hooks/auth/export` | `{ userId }` → this app's personal data: mirror row, records (with modules/dates/sources), sessions attended/delivered |
 | `POST /api/_hooks/auth/anonymise` | Rewrite mirror row to anonymised values. **Records survive**, keyed to the anonymised id: training/safety history is retained as anonymous rows, same stance as bookings ([gdpr-retention.md](gdpr-retention.md)). Idempotent. |
 | `POST /api/_hooks/auth/last-activity` | `{ userIds }` → latest of: last record awarded, last session attended/delivered, per user |
-| `POST /api/_hooks/auth/merge` | `{ fromUserId, toUserId, dryRun? }` → re-point every user-referencing column (records `user_id`/`granted_by`/`revoked_by`, session `trainer_user_id`/`created_by`, attendees, leads) onto `toUserId`, delete the losing mirror row, return `{ ok, notMirrored, counts }`. Idempotent (stage-door ADR-0015). |
+| `POST /api/_hooks/auth/merge` | `{ fromUserId, toUserId, dryRun? }` → re-point every user-referencing column onto `toUserId`, delete the losing mirror row, return `{ ok, notMirrored, counts }`. Idempotent (stage-door ADR-0015). **Every column means every column:** records (`user_id`/`granted_by`/`revoked_by`), sessions (`trainer_user_id`/`created_by`), attendees (`user_id`/`marked_by_user_id`), leads, rules, notifications, module requests (`user_id`/`resolved_by`), practice windows (`user_id`/`opened_by`/`closed_by`) and practice targets (`updated_by`). The closing delete is what enforces it: miss one and the whole merge fails on a foreign key, so adding a user-referencing column means adding it here. |
 | `GET /api/_hooks/auth/manifest` | This app's declaration: namespace (`training`), the roles it reads, the permissions each carries, and **the eligibility rules it offers**. The auth service polls it and turns the roles into definitions, so adding a role here is what makes it grantable (stage-door ADR-0017). |
 
 `eligibilityRules` in the manifest is read from the `eligibility_rules` table, never written as a

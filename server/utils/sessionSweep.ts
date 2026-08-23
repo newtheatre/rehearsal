@@ -140,11 +140,13 @@ export async function runSessionSweep(asOf: string = today()): Promise<SessionSw
   }
 
   for (const session of unmarked) {
-    const summary = await sessionEmailSummary(session.id)
-    if (!summary) continue
-
+    // The cheap gate first: most unmarked sessions are not yet due a nag, and
+    // the reads below are per session.
     const daysAgo = daysBetween(session.heldOn, asOf)
     if (daysAgo < nagDays) continue
+
+    const summary = await sessionEmailSummary(session.id)
+    if (!summary) continue
 
     const register = await registerFor(session)
     const [lead] = await addressableUsers([session.trainerUserId])

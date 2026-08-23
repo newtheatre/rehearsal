@@ -312,6 +312,14 @@ const whenLine = computed(() => {
         icon="i-lucide-clipboard-check"
       />
       <UButton
+        v-if="data.canAmend"
+        :to="`/sessions/${data.id}/edit`"
+        label="Amend"
+        color="neutral"
+        variant="outline"
+        icon="i-lucide-pencil"
+      />
+      <UButton
         label="Cancel this session"
         color="error"
         variant="outline"

@@ -73,6 +73,8 @@ export interface SessionDetail {
   signupBlockedReason: string | null
   canWithdraw: boolean
   canSteward: boolean
+  /** Amendable until it is delivered or cancelled. */
+  canAmend: boolean
   canEdit: boolean
   editWindowDays: number
 }

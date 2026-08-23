@@ -50,9 +50,9 @@ export async function requestModule(options: {
   return { id: row!.id }
 }
 
-/** One person's own requests, newest first. */
-export async function requestsFor(userId: string) {
-  return db.select({
+/** One person's own requests, newest first. Paged in SQL, like every list. */
+export async function requestsFor(userId: string, { limit = 50 }: { limit?: number } = {}) {
+  const rows = await db.select({
     id: schema.moduleRequests.id,
     moduleId: schema.moduleRequests.moduleId,
     moduleName: schema.modules.name,
@@ -66,8 +66,12 @@ export async function requestsFor(userId: string) {
     .from(schema.moduleRequests)
     .innerJoin(schema.modules, eq(schema.moduleRequests.moduleId, schema.modules.id))
     .where(eq(schema.moduleRequests.userId, userId))
-    .orderBy(desc(schema.moduleRequests.createdAt))
+    .orderBy(desc(schema.moduleRequests.createdAt), desc(schema.moduleRequests.id))
+    // One extra row says whether there is another page without counting.
+    .limit(limit + 1)
     .all()
+
+  return { requests: rows.slice(0, limit), hasMore: rows.length > limit }
 }
 
 /**

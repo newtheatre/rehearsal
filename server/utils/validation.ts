@@ -165,7 +165,7 @@ const timeOfDaySchema = z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Us
  * `heldOn` is deliberately not awardedAtSchema: a scheduled session is in the
  * future, which is exactly what that schema refuses.
  */
-export const sessionScheduleSchema = z.object({
+const sessionScheduleFields = z.object({
   heldOn: isoDateSchema,
   moduleIds: z.array(moduleIdSchema).min(1, 'A session must cover at least one module').max(20),
   startsTime: timeOfDaySchema.nullable().optional(),
@@ -175,21 +175,17 @@ export const sessionScheduleSchema = z.object({
   location: z.string().trim().max(120).nullable().optional(),
   description: z.string().trim().max(4000).nullable().optional(),
   notes: z.string().trim().max(4000).nullable().optional(),
+})
+
+export const sessionScheduleSchema = sessionScheduleFields.extend({
   /** Skip PLANNED and put it in front of members straight away. */
   openNow: z.boolean().default(false),
 }).superRefine(checkSchedule)
 
-export const sessionScheduleUpdateSchema = z.object({
-  heldOn: isoDateSchema.optional(),
-  moduleIds: z.array(moduleIdSchema).min(1).max(20).optional(),
-  startsTime: timeOfDaySchema.nullable().optional(),
-  endsTime: timeOfDaySchema.nullable().optional(),
-  signupsCloseAt: timestampSchema.nullable().optional(),
-  capacity: z.number().int().min(1).max(MAX_SESSION_CAPACITY).nullable().optional(),
-  location: z.string().trim().max(120).nullable().optional(),
-  description: z.string().trim().max(4000).nullable().optional(),
-  notes: z.string().trim().max(4000).nullable().optional(),
-}).superRefine(checkSchedule)
+/** The same fields, every one optional: an amendment sends only what changed. */
+export const sessionScheduleUpdateSchema = sessionScheduleFields
+  .partial()
+  .superRefine(checkSchedule)
 
 export const moduleRequestSchema = z.object({
   moduleId: moduleIdSchema,

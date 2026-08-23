@@ -92,7 +92,7 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `POST /api/sessions/:id/register/open` | steward | start taking the register. Idempotent, and **closes sign-ups** |
 | `GET /api/sessions/:id/register` | steward | who to mark off, in sign-up order, waitlist marked, plus `practiceTargets`: the sandboxes this session's modules unlock, or empty when they unlock none |
 | `POST /api/sessions/:id/register` | steward | **mark it, which creates the records.** 409 if already marked |
-| `GET /api/module-requests` | session | your own requests, plus the demand board if you lead a department |
+| `GET /api/module-requests` | session | your own requests, paged (`limit` default 50) and returned with `hasMore`, plus the demand board if you lead a department |
 | `POST /api/module-requests` | session | ask for a module to be taught. 409 if you already have one open, 400 if it is not `ACTIVE` |
 | `DELETE /api/module-requests/:id` | session (own) | withdraw, which frees you to ask again later |
 | `POST /api/module-requests/:id/decline` | lead (module's dept) or admin | reply with a reason, which the requester is shown |

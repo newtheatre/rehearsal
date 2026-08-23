@@ -74,6 +74,7 @@ export default defineEventHandler(async (event): Promise<SessionDetail> => {
     canWithdraw: withdrawBlockedReason(session) === null
       && signups.some(item => item.userId === abilities.user.id),
     canSteward,
+    canAmend: canSteward && session.status !== 'DELIVERED' && session.status !== 'CANCELLED',
     canEdit: (abilities.isAdmin || isOwnSession)
       && session.status === 'DELIVERED'
       && withinEditWindow(session, editWindowDays),

@@ -153,6 +153,17 @@ describe('scheduling awards nothing', () => {
     await expect(call(scheduleHandler, event)).rejects.toMatchObject({ statusCode: 400 })
   })
 
+  it('refuses rescheduling onto a module a session may not teach', async () => {
+    const id = await openSession()
+    const event = makeEvent({ method: 'PUT', path: '/x', params: { id }, body: {
+      moduleIds: ['LEAD-CERT'],
+    } })
+    signIn(event, { id: 'trainer' })
+    // The gate that guards creation must guard amendment too, or a session
+    // can be booked onto something its own register would refuse.
+    await expect(call(reschedule, event)).rejects.toMatchObject({ statusCode: 400 })
+  })
+
   it('refuses a module that must be signed off instead', async () => {
     const event = makeEvent({ method: 'POST', path: '/api/sessions/schedule', body: {
       heldOn: tomorrow(),

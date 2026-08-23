@@ -60,7 +60,7 @@ function assertOverridable(options: {
  * Where a record may come from, by kind and status. Enforced here so every
  * creation path is covered by construction, not by remembering (ADR-0003).
  */
-function assertAwardable(modules: ModuleRow[], source: RecordSource): void {
+export function assertAwardable(modules: ModuleRow[], source: RecordSource): void {
   // LEGACY is the historical import: it records what happened, including on
   // modules since retired.
   if (source !== 'LEGACY') {

@@ -254,6 +254,29 @@ describe('last-activity', () => {
   })
 })
 
+describe('last activity', () => {
+  it('does not report a future session as activity already had', async () => {
+    await setup()
+    const future = new Date()
+    future.setDate(future.getDate() + 30)
+    const heldOn = future.toISOString().slice(0, 10)
+
+    await db.insert(schema.sessions).values({
+      id: 's-future', heldOn, trainerUserId: 'trainer', createdBy: 'trainer', status: 'OPEN',
+    })
+    await db.insert(schema.sessionAttendees).values({
+      sessionId: 's-future', userId: 'alice', status: 'SIGNED_UP', signedUpAt: new Date(),
+    })
+
+    const result = await call(lastActivityHandler,
+      hookEvent({ userIds: ['alice'] })) as Record<string, number | null>
+
+    // Signing up is activity; the session's date has not happened yet.
+    expect(result.alice).not.toBeNull()
+    expect(result.alice!).toBeLessThanOrEqual(Date.now())
+  })
+})
+
 describe('merge', () => {
   it('reports counts without writing on a dry run', async () => {
     await setup()

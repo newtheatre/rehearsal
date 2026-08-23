@@ -2,7 +2,7 @@
 
 import { sessionScheduleSchema } from '../../utils/validation'
 import { requireTrainer } from '../../utils/auth'
-import { loadModules } from '../../utils/records'
+import { assertAwardable, loadModules } from '../../utils/records'
 import { scheduleSession } from '../../utils/scheduling'
 import { resolveRequestsFor } from '../../utils/moduleRequests'
 import { writeAudit } from '../../utils/audit'
@@ -19,23 +19,9 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Rejects unknown ids, and refuses a retired module or one that needs a
-  // sign-off rather than a session.
-  const modules = await loadModules(input.moduleIds)
-  const certifications = modules.filter(module => module.signoffRequired)
-  if (certifications.length > 0) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: `${certifications.map(m => m.id).join(', ')} must be signed off, not taught in a session`,
-    })
-  }
-  const retired = modules.filter(module => module.status === 'RETIRED')
-  if (retired.length > 0) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: `Retired, so no longer teachable: ${retired.map(m => m.id).join(', ')}`,
-    })
-  }
+  // Rejects unknown ids, then the same gate the register will apply, so a
+  // session cannot be booked onto modules its delivery would refuse.
+  assertAwardable(await loadModules(input.moduleIds), 'SESSION')
 
   const { sessionId } = await scheduleSession({
     input,

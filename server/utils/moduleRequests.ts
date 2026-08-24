@@ -15,8 +15,9 @@ export interface DemandRow {
   moduleName: string
   department: string
   openCount: number
-  /** Names, for a lead deciding whether a session is worth an evening. */
-  requesters: { id: string, name: string, note: string | null }[]
+  /** Names, for a lead deciding whether a session is worth an evening.
+   * `requestId` is what the decline route takes; `id` is the person. */
+  requesters: { id: string, requestId: string, name: string, note: string | null }[]
 }
 
 /** Raise a request, or refuse because one is already open. */
@@ -86,6 +87,7 @@ export async function demandBoard(departments: string[] | null): Promise<DemandR
       : inArray(schema.modules.department, departments)
 
   const rows = await db.select({
+    requestId: schema.moduleRequests.id,
     moduleId: schema.moduleRequests.moduleId,
     moduleName: schema.modules.name,
     department: schema.modules.department,
@@ -107,7 +109,7 @@ export async function demandBoard(departments: string[] | null): Promise<DemandR
       department: row.department,
       requesters: [],
     }
-    entry.requesters.push({ id: row.userId, name: row.userName, note: row.note })
+    entry.requesters.push({ id: row.userId, requestId: row.requestId, name: row.userName, note: row.note })
     byModule.set(row.moduleId, entry)
   }
 

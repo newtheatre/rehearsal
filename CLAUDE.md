@@ -25,6 +25,7 @@ npx wrangler d1 ...    # production D1: read docs/operations.md before touching
 
 - Spec-first: while building, implement what the docs say; if a doc is wrong or infeasible, *stop and flag it*: don't silently diverge. After cutover, code is truth and docs must follow it.
 - **Any PR that changes behaviour updates the matching doc in the same PR.** Schema → `docs/data-model.md`; endpoints → `docs/api-reference.md`; record/expiry semantics → `docs/records-and-expiry.md`; anything an operator does → `docs/operations.md`.
+- A bug you understand but are not fixing → `docs/known-issues.md`.
 - New architectural choice, or reversing an old one → ADR in `docs/decisions/` (template in that folder's README). Never edit an accepted ADR's decision; supersede it.
 
 ## Invariants: do not break these

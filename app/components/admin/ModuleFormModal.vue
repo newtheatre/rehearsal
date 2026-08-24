@@ -9,14 +9,15 @@ interface ModuleFormValue {
   department: string
   kind: 'MODULE' | 'CERTIFICATION' | 'BRIEF'
   name: string
-  description: string | null
-  notes: string | null
-  materialsUrl: string | null
+  // Empty is '', not null: an input cannot hold null, and save() maps '' back.
+  description: string
+  notes: string
+  materialsUrl: string
   expiryMode: 'NONE' | 'MONTHS' | 'ACADEMIC_YEAR'
   expiryMonths: number | null
   safetyCritical: boolean
   allowsExternal: boolean
-  externalEvidence: string | null
+  externalEvidence: string
   grantsSupervisor: boolean
   grantsTrainer: boolean
   status: 'DRAFT' | 'ACTIVE' | 'RETIRED'
@@ -46,9 +47,9 @@ function emptyModule(): ModuleFormValue {
     department: props.departments[0]?.code ?? '',
     kind: 'MODULE',
     name: '',
-    description: null,
-    notes: null,
-    materialsUrl: null,
+    description: '',
+    notes: '',
+    materialsUrl: '',
     expiryMode: 'NONE',
     expiryMonths: null,
     safetyCritical: false,
@@ -77,9 +78,9 @@ watch(open, async (isOpen) => {
     department: module.department,
     kind: module.kind,
     name: module.name,
-    description: module.description,
-    notes: module.notes,
-    materialsUrl: module.materialsUrl,
+    description: module.description ?? '',
+    notes: module.notes ?? '',
+    materialsUrl: module.materialsUrl ?? '',
     expiryMode: module.expiryMode,
     expiryMonths: module.expiryMonths,
     safetyCritical: module.safetyCritical,

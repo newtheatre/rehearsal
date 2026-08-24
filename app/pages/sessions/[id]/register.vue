@@ -11,10 +11,15 @@ const route = useRoute()
 const toast = useToast()
 const router = useRouter()
 
-const { data, refresh } = await useFetch<RegisterView>(`/api/sessions/${route.params.id}/register`)
-if (!data.value) {
-  throw createError({ statusCode: 404, statusMessage: 'Session not found', fatal: true })
-}
+// Lazy: a slow connection gets a pending state rather than a page that hangs.
+const { data, status, refresh } = useFetch<RegisterView>(`/api/sessions/${route.params.id}/register`, { lazy: true })
+
+// A lazy fetch cannot refuse during setup: raise the 404 once it has landed.
+watchEffect(() => {
+  if (status.value === 'error' || (status.value === 'success' && !data.value)) {
+    showError(createError({ statusCode: 404, statusMessage: 'Session not found', fatal: true }))
+  }
+})
 
 // Only the walk-in modal reads this: do not block the register on it.
 const { data: directory, refresh: refreshDirectory } = useFetch('/api/directory', { immediate: false })
@@ -34,10 +39,24 @@ const absentCount = computed(() => (data.value?.register ?? []).length - present
 
 const busy = ref(false)
 const actionError = ref<string | null>(null)
+/** Named gaps from a 422, so a refusal says who and what, not just that. */
+const blocking = ref<{ name: string, moduleId: string, missing: { moduleId: string }[] }[]>([])
+
+const blockingDetail = computed(() => {
+  if (!blocking.value.length) return undefined
+  return blocking.value
+    .map(gap => `${gap.name} needs ${gap.missing.map(m => m.moduleId).join(', ')} before ${gap.moduleId}`)
+    .join('; ')
+})
+
+function clearError() {
+  actionError.value = null
+  blocking.value = []
+}
 
 async function openRegister() {
   busy.value = true
-  actionError.value = null
+  clearError()
   try {
     await $fetch(`/api/sessions/${route.params.id}/register/open`, { method: 'POST' })
     await refresh()
@@ -56,6 +75,8 @@ const addOpen = ref(false)
 
 function openWalkIn() {
   addOpen.value = true
+  // The modal shows the refusal it caused, so it must not inherit an older one.
+  clearError()
   if (!directory.value) refreshDirectory()
 }
 const addChoice = ref<string | undefined>(undefined)
@@ -70,7 +91,7 @@ const addOptions = computed(() =>
 
 async function addWalkIn() {
   busy.value = true
-  actionError.value = null
+  clearError()
   try {
     let userId = addChoice.value
     if (!userId && addEmail.value) {
@@ -107,12 +128,13 @@ async function addWalkIn() {
 const confirmOpen = ref(false)
 const warnings = ref<{ name: string, moduleId: string }[]>([])
 const allAbsentOpen = ref(false)
-/** Named gaps from a 422, so a refusal says who and what, not just that. */
-const blocking = ref<{ name: string, moduleId: string, missing: { moduleId: string }[] }[]>([])
+
+// An alert in the page sits behind an open modal, so each modal carries its own.
+const modalOpen = computed(() => addOpen.value || confirmOpen.value || allAbsentOpen.value)
 
 async function submit(acknowledgeWarnings = false, acknowledgeAllAbsent = false) {
   busy.value = true
-  actionError.value = null
+  clearError()
   try {
     const result = await $fetch(`/api/sessions/${route.params.id}/register`, {
       method: 'POST',
@@ -159,7 +181,7 @@ async function submit(acknowledgeWarnings = false, acknowledgeAllAbsent = false)
     // A safety-critical refusal names who is missing what, not just that.
     blocking.value = payload?.blocking ?? []
     actionError.value = errorMessage(e, 'Could not mark the register')
-    confirmOpen.value = false
+    // Any open modal stays open: a page alert would render behind its overlay.
   }
   finally {
     busy.value = false
@@ -169,7 +191,19 @@ async function submit(acknowledgeWarnings = false, acknowledgeAllAbsent = false)
 
 <template>
   <div
-    v-if="data"
+    v-if="!data && status !== 'error'"
+    class="space-y-4 max-w-xl"
+  >
+    <USkeleton class="h-9 w-40" />
+    <USkeleton
+      v-for="n in 5"
+      :key="n"
+      class="h-16 w-full"
+    />
+  </div>
+
+  <div
+    v-else-if="data"
     class="space-y-6 max-w-xl"
   >
     <UButton
@@ -192,17 +226,6 @@ async function submit(acknowledgeWarnings = false, acknowledgeAllAbsent = false)
     </div>
 
     <UAlert
-      v-if="actionError"
-      icon="i-lucide-circle-alert"
-      color="error"
-      variant="subtle"
-      :title="actionError"
-      :description="blocking.length
-        ? blocking.map(gap => `${gap.name} needs ${gap.missing.map(m => m.moduleId).join(', ')} before ${gap.moduleId}`).join('; ')
-        : undefined"
-    />
-
-    <UAlert
       v-if="data.marked"
       icon="i-lucide-check"
       color="success"
@@ -218,6 +241,14 @@ async function submit(acknowledgeWarnings = false, acknowledgeAllAbsent = false)
         variant="subtle"
         title="Not taking the register yet"
         description="Opening it closes sign-ups, so do it when you are about to start."
+      />
+      <UAlert
+        v-if="actionError && !modalOpen"
+        icon="i-lucide-circle-alert"
+        color="error"
+        variant="subtle"
+        :title="actionError"
+        :description="blockingDetail"
       />
       <UButton
         label="Open the register"
@@ -243,6 +274,7 @@ async function submit(acknowledgeWarnings = false, acknowledgeAllAbsent = false)
           v-for="entry in data.register"
           :key="entry.userId"
           type="button"
+          :aria-pressed="Boolean(present[entry.userId])"
           class="w-full flex items-center justify-between gap-3 p-4 text-left transition-colors"
           :class="present[entry.userId] ? 'bg-success/10' : 'hover:bg-elevated/50'"
           @click="present[entry.userId] = !present[entry.userId]"
@@ -295,6 +327,16 @@ async function submit(acknowledgeWarnings = false, acknowledgeAllAbsent = false)
         description="They get no record for this session, so anything needing it stays outstanding for them."
       />
 
+      <!-- Above the button: on a long register, anything below it starts off the screen. -->
+      <UAlert
+        v-if="actionError && !modalOpen"
+        icon="i-lucide-circle-alert"
+        color="error"
+        variant="subtle"
+        :title="actionError"
+        :description="blockingDetail"
+      />
+
       <UButton
         label="Mark the register"
         icon="i-lucide-check"
@@ -311,11 +353,21 @@ async function submit(acknowledgeWarnings = false, acknowledgeAllAbsent = false)
       title="Nobody is marked as here"
     >
       <template #body>
-        <p class="text-sm text-muted">
-          Marking this register now gives nobody a record and sends everybody signed up a
-          note saying we missed them. If the session ran and people were there, close this
-          and tick them first.
-        </p>
+        <div class="space-y-3">
+          <p class="text-sm text-muted">
+            Marking this register now gives nobody a record and sends everybody signed up a
+            note saying we missed them. If the session ran and people were there, close this
+            and tick them first.
+          </p>
+          <UAlert
+            v-if="actionError"
+            icon="i-lucide-circle-alert"
+            color="error"
+            variant="subtle"
+            :title="actionError"
+            :description="blockingDetail"
+          />
+        </div>
       </template>
       <template #footer>
         <div class="flex justify-end gap-2 w-full">
@@ -352,6 +404,14 @@ async function submit(acknowledgeWarnings = false, acknowledgeAllAbsent = false)
               {{ warning.name }}, for {{ warning.moduleId }}
             </li>
           </ul>
+          <UAlert
+            v-if="actionError"
+            icon="i-lucide-circle-alert"
+            color="error"
+            variant="subtle"
+            :title="actionError"
+            :description="blockingDetail"
+          />
         </div>
       </template>
       <template #footer>
@@ -400,6 +460,14 @@ async function submit(acknowledgeWarnings = false, acknowledgeAllAbsent = false)
               class="w-full"
             />
           </UFormField>
+          <UAlert
+            v-if="actionError"
+            icon="i-lucide-circle-alert"
+            color="error"
+            variant="subtle"
+            :title="actionError"
+            :description="blockingDetail"
+          />
         </div>
       </template>
       <template #footer>

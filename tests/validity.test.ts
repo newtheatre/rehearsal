@@ -3,7 +3,7 @@
  * and every API consumer, depends on. docs/records-and-expiry.md
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'bun:test'
 import { validityState, countsAsValid, isCurrentlyValid, addDays } from '../server/utils/validity'
 import { today } from '../shared/utils/dates'
 import { computeExpiresAt, nextAcademicYearEnd, addMonths } from '../server/utils/expiry'

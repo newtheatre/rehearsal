@@ -5,7 +5,7 @@
 
 import { today } from '../shared/utils/dates'
 
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach } from 'bun:test'
 import { db, schema } from './mocks/nuxthub-db'
 import { makeEvent, signIn, runtimeConfig, type FakeEvent } from './setup'
 import { seedDepartments, seedModule, seedRecord, seedUser } from './helpers/fixtures'

@@ -3,7 +3,7 @@
  * evidence trail, so nothing may become unreachable by growing past a page.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'bun:test'
 import sessionsHandler from '../server/api/sessions/index.get'
 import peopleHandler from '../server/api/people/index.get'
 import directoryHandler from '../server/api/directory.get'

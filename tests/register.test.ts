@@ -5,19 +5,18 @@
 
 import { today } from '../shared/utils/dates'
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, mock } from 'bun:test'
 
 const sent: { to: string, subject: string }[] = []
 
-vi.mock('../server/utils/email', async () => {
-  const actual = await vi.importActual<typeof import('../server/utils/email')>('../server/utils/email')
-  return {
-    ...actual,
-    sendEmail: vi.fn(async ({ to, subject }: { to: string, subject: string }) => {
-      sent.push({ to, subject })
-    }),
-  }
-})
+const actualEmail = await import('../server/utils/email')
+
+mock.module('../server/utils/email', () => ({
+  ...actualEmail,
+  sendEmail: mock(async ({ to, subject }: { to: string, subject: string }) => {
+    sent.push({ to, subject })
+  }),
+}))
 
 const { db, schema } = await import('./mocks/nuxthub-db')
 const { makeEvent, signIn } = await import('./setup')

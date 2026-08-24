@@ -5,7 +5,7 @@
 
 import { today } from '../shared/utils/dates'
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'bun:test'
 import listHandler from '../server/api/admin/leads/index.get'
 import addHandler from '../server/api/admin/leads/index.post'
 import removeHandler from '../server/api/admin/leads/[id].delete'

@@ -3,7 +3,7 @@
  * becomes a way to change anything.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'bun:test'
 import auditHandler from '../server/api/admin/audit.get'
 import { db, schema } from './mocks/nuxthub-db'
 import { makeEvent, signIn, type FakeEvent } from './setup'

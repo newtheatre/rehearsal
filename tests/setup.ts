@@ -3,7 +3,7 @@
  * fakes. Handlers under test are the real files from server/api.
  */
 
-import { beforeEach, vi } from 'vitest'
+import { beforeEach, vi } from 'bun:test'
 import { resetDb } from './mocks/nuxthub-db'
 import { hasRole, hasAnyRole, isStale, ROLE_STALENESS_MS } from '@newtheatre/auth-types'
 import { APP_MANIFEST } from '../shared/utils/appManifest'

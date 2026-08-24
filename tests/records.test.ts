@@ -3,7 +3,7 @@
  * expiry gets stamped onto it.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'bun:test'
 import { db, schema } from './mocks/nuxthub-db'
 import {
   buildRecordInserts,

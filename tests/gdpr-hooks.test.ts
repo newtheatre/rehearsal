@@ -3,7 +3,7 @@
  * erasure removes the identity, not the record of who was trained.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'bun:test'
 import { createHash } from 'node:crypto'
 import exportHandler from '../server/api/_hooks/auth/export.post'
 import anonymiseHandler from '../server/api/_hooks/auth/anonymise.post'

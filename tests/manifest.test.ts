@@ -3,7 +3,7 @@
  * table, so a rule the auth service cannot see is one nobody can gate on.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'bun:test'
 import { createHash } from 'node:crypto'
 import manifestHandler from '../server/api/_hooks/auth/manifest.get'
 import { db, schema } from './mocks/nuxthub-db'

@@ -4,7 +4,7 @@
  * The interesting behaviour is everything it refuses to touch.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'bun:test'
 import recalculateHandler from '../server/api/admin/recalculate.post'
 import configHandler from '../server/api/admin/config.put'
 import { planRecalculation } from '../server/utils/recalculate'

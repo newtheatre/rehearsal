@@ -5,7 +5,7 @@
 
 import { today } from '../shared/utils/dates'
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'bun:test'
 import signoffHandler from '../server/api/people/[id]/signoff.post'
 import externalHandler from '../server/api/people/[id]/external.post'
 import revokeHandler from '../server/api/records/[id]/revoke.post'

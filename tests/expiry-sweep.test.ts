@@ -3,20 +3,19 @@
  * second run send nothing new.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, mock } from 'bun:test'
 
 const sent: { to: string, subject: string }[] = []
 
 // Intercept at the email boundary so the sweep's own logic runs for real.
-vi.mock('../server/utils/email', async () => {
-  const actual = await vi.importActual<typeof import('../server/utils/email')>('../server/utils/email')
-  return {
-    ...actual,
-    sendEmail: vi.fn(async ({ to, subject }: { to: string, subject: string }) => {
-      sent.push({ to, subject })
-    }),
-  }
-})
+const actualEmail = await import('../server/utils/email')
+
+mock.module('../server/utils/email', () => ({
+  ...actualEmail,
+  sendEmail: mock(async ({ to, subject }: { to: string, subject: string }) => {
+    sent.push({ to, subject })
+  }),
+}))
 
 const { db, schema } = await import('./mocks/nuxthub-db')
 const { runExpirySweep, gatherSweepInputs } = await import('../server/utils/expirySweep')
@@ -188,7 +187,8 @@ describe('live run', () => {
     await seedRecord({ userId: 'alice', moduleId: 'NNT-001', expiresAt: '2026-09-30' })
 
     const email = await import('../server/utils/email')
-    vi.mocked(email.sendEmail).mockRejectedValueOnce(new Error('Resend is down'))
+    const send = email.sendEmail as ReturnType<typeof mock>
+    send.mockRejectedValueOnce(new Error('Resend is down'))
 
     const result = await runExpirySweep({ asOf: ASOF, force: 'live' })
 

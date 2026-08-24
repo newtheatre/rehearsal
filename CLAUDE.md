@@ -15,7 +15,7 @@ bun run db:migrate     # apply Drizzle migrations locally
 bun run db:generate    # generate a migration from schema changes (review the SQL!)
 bun run db:seed        # dev-only: module catalogue + sample users/records; refuses in production
 bun run seed:catalogue # parse data/catalogue.csv into the local database
-bun run test           # unit + integration (vitest)
+bun run test           # unit + integration (bun test)
 bun run lint           # eslint (matches Proscenium's config)
 bun run typecheck      # nuxi typecheck
 npx wrangler d1 ...    # production D1: read docs/operations.md before touching

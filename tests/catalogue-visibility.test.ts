@@ -3,7 +3,7 @@
  * that would put half-written safety content in front of members.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'bun:test'
 import { listModules, getModuleDetail } from '../server/utils/modules'
 import type { Abilities } from '../server/utils/abilities'
 import { seedDepartments, seedModule } from './helpers/fixtures'

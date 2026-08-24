@@ -25,7 +25,8 @@ const editing = ref<{
   description: string
   consumer: string
   moduleIds: string[]
-  graceHours: number | '' | null
+  // Blank means the site default. An input cannot hold null; save maps '' back.
+  graceHours: number | ''
   status: 'ACTIVE' | 'RETIRED'
 } | null>(null)
 
@@ -40,7 +41,7 @@ function edit(target: typeof targets.value[number] | null) {
         description: target.description ?? '',
         consumer: target.consumer ?? '',
         moduleIds: [...target.moduleIds],
-        graceHours: target.graceHours,
+        graceHours: target.graceHours ?? '',
         status: target.status,
       }
     : {
@@ -49,7 +50,7 @@ function edit(target: typeof targets.value[number] | null) {
         description: '',
         consumer: '',
         moduleIds: [],
-        graceHours: null,
+        graceHours: '',
         status: 'ACTIVE',
       }
 }

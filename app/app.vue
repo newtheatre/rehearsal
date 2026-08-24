@@ -2,6 +2,12 @@
   <UApp :locale="en_gb">
     <NuxtRouteAnnouncer />
 
+    <!--
+    Pages fetch before they paint, so a navigation waits with the old page still
+    on screen. Without a progress bar that reads as a dead click.
+    -->
+    <NuxtLoadingIndicator />
+
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>

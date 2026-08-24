@@ -68,7 +68,7 @@ const sections = computed(() => [
       </h1>
       <p class="text-muted mt-1">
         {{ me?.isAdmin
-          ? 'You hold training:ADMIN.'
+          ? 'You administer training across every department.'
           : `You lead ${me?.leadOf.join(', ')}.` }}
       </p>
     </div>

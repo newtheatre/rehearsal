@@ -3,7 +3,7 @@
  * skipped row is a module nobody notices is missing.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseCatalogue, parseCsv, parseExpiry, CatalogueParseError } from '../scripts/lib/catalogue'

@@ -3,7 +3,7 @@
  * a record rather than stored (ADR-0004).
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'bun:test'
 import { getAbilities, holdsTrainerCertification, leadDepartments, canSeeDrafts, canStewardDepartment } from '../server/utils/abilities'
 import { addDays } from '../server/utils/validity'
 import { today } from '../shared/utils/dates'

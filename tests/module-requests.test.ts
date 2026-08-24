@@ -3,7 +3,7 @@
  * one. docs/scheduling-design.md §4
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, mock } from 'bun:test'
 
 import { db, schema } from './mocks/nuxthub-db'
 import { makeEvent, signIn, type FakeEvent } from './setup'
@@ -16,18 +16,17 @@ import declineHandler from '../server/api/module-requests/[id]/decline.post'
 import scheduleHandler from '../server/api/sessions/schedule.post'
 import openHandler from '../server/api/sessions/[id]/open.post'
 
-const sent = vi.hoisted(() => [] as { to: string, subject: string }[])
+const sent: { to: string, subject: string }[] = []
 
 // Intercept at the email boundary so the handlers' own logic runs for real.
-vi.mock('../server/utils/email', async () => {
-  const actual = await vi.importActual<typeof import('../server/utils/email')>('../server/utils/email')
-  return {
-    ...actual,
-    sendEmail: vi.fn(async ({ to, subject }: { to: string, subject: string }) => {
-      sent.push({ to, subject })
-    }),
-  }
-})
+const actualEmail = await import('../server/utils/email')
+
+mock.module('../server/utils/email', () => ({
+  ...actualEmail,
+  sendEmail: mock(async ({ to, subject }: { to: string, subject: string }) => {
+    sent.push({ to, subject })
+  }),
+}))
 
 type Handler = (event: FakeEvent) => Promise<unknown>
 const call = (handler: unknown, event: FakeEvent) => (handler as Handler)(event)

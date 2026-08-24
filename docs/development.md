@@ -57,7 +57,7 @@ Once Phase 2 lands, the seed will also carry fixture records covering every stat
 ## Testing
 
 ```bash
-bun run test           # vitest: unit + integration (h3 app, in-memory SQLite)
+bun run test           # bun test: unit + integration (h3 app, in-memory SQLite)
 ```
 
 High-value suites, keep these green and comprehensive; they encode the safety posture:

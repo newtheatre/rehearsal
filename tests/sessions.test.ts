@@ -3,7 +3,7 @@
  * prerequisite gating and the atomic batch as deployed.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'bun:test'
 import createSessionHandler from '../server/api/sessions/index.post'
 import checkSessionHandler from '../server/api/sessions/check.post'
 import updateSessionHandler from '../server/api/sessions/[id].put'

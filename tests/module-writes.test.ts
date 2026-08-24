@@ -3,7 +3,7 @@
  * module is created or edited. These run the real handlers.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'bun:test'
 import createModule from '../server/api/modules/index.post'
 import updateModule from '../server/api/modules/[id].put'
 import { db, schema } from './mocks/nuxthub-db'

@@ -3,7 +3,7 @@
  * every other server path assumes are working.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'bun:test'
 import authMiddleware from '../server/middleware/auth'
 import { ensureLocalUser, resetMirrorDebounce } from '../server/utils/ensureLocalUser'
 import { db, schema } from './mocks/nuxthub-db'

@@ -3,7 +3,7 @@
  * revoking a required module flips eligibility.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'bun:test'
 import modulesHandler from '../server/api/v1/modules.get'
 import userRecordsHandler from '../server/api/v1/users/[id]/records.get'
 import recordsHandler from '../server/api/v1/records.get'
@@ -83,8 +83,9 @@ describe('subtree middleware', () => {
     await setup()
     const event = makeEvent({ method: 'POST', path: '/api/_hooks/auth/anonymise', headers: {} })
 
-    // Synchronous guard, so it throws rather than rejecting.
-    await expect(async () => call(hooksMiddleware, event)).rejects.toMatchObject({ statusCode: 401 })
+    // The guard throws synchronously, so it is invoked here to give
+    // `rejects` the promise it requires.
+    await expect((async () => call(hooksMiddleware, event))()).rejects.toMatchObject({ statusCode: 401 })
   })
 })
 

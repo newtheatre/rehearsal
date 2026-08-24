@@ -28,6 +28,9 @@ const editing = ref<{
   // Blank means the site default. An input cannot hold null; save maps '' back.
   graceHours: number | ''
   status: 'ACTIVE' | 'RETIRED'
+  // Decided when the dialog opens. A consumer hardcodes the key, so an
+  // existing one is never editable and a new one is never an overwrite.
+  isNew: boolean
 } | null>(null)
 
 const busy = ref(false)
@@ -43,6 +46,7 @@ function edit(target: typeof targets.value[number] | null) {
         moduleIds: [...target.moduleIds],
         graceHours: target.graceHours ?? '',
         status: target.status,
+        isNew: false,
       }
     : {
         key: '',
@@ -52,11 +56,18 @@ function edit(target: typeof targets.value[number] | null) {
         moduleIds: [],
         graceHours: '',
         status: 'ACTIVE',
+        isNew: true,
       }
 }
 
 async function save() {
   if (!editing.value) return
+  // The endpoint upserts, so a new target on a taken key would replace the
+  // live one a consumer depends on.
+  if (editing.value.isNew && targets.value.some(target => target.key === editing.value!.key)) {
+    actionError.value = `A target called "${editing.value.key}" already exists. Edit that one, or pick another key.`
+    return
+  }
   busy.value = true
   actionError.value = null
   try {
@@ -210,7 +221,7 @@ async function save() {
             <UInput
               v-model="editing.key"
               placeholder="bar-till"
-              :disabled="targets.some(target => target.key === editing?.key)"
+              :disabled="!editing.isNew"
               class="w-full"
             />
           </UFormField>

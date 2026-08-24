@@ -23,7 +23,7 @@ const moduleOptions = computed(() =>
 
 const chosen = ref<string | undefined>(undefined)
 const note = ref('')
-const { busy, actionError, act } = useAction(refresh)
+const { busy, busyWith, actionError, act } = useAction(refresh)
 
 const ask = () => act(async () => {
   await $fetch('/api/module-requests', {
@@ -34,9 +34,29 @@ const ask = () => act(async () => {
   note.value = ''
 }, 'Asked. A lead will see it on their board.')
 
+// A lead answers a request they will not schedule. The requester is shown the
+// reason, so the copy asks for a reply rather than a rejection.
+const declining = ref<{ requestId: string, name: string, moduleId: string } | null>(null)
+const declineReason = ref('')
+
+function startDecline(person: { requestId: string, name: string }, moduleId: string) {
+  declining.value = { requestId: person.requestId, name: person.name, moduleId }
+  declineReason.value = ''
+}
+
+const sendDecline = () => act(async () => {
+  await $fetch(`/api/module-requests/${declining.value!.requestId}/decline`, {
+    method: 'POST',
+    body: { reason: declineReason.value.trim() },
+  })
+  declining.value = null
+}, 'Answered. They have been told why.', `decline:${declining.value?.requestId}`)
+
+// Keyed on the request, so one withdrawal does not spin every row's button.
 const withdrawRequest = (id: string) => act(
   () => $fetch(`/api/module-requests/${id}`, { method: 'DELETE' }),
   'Withdrawn',
+  id,
 )
 
 const STATUS: Record<string, { label: string, color: 'neutral' | 'success' | 'warning' }> = {
@@ -155,7 +175,7 @@ const STATUS: Record<string, { label: string, color: 'neutral' | 'success' | 'wa
             size="xs"
             color="neutral"
             variant="ghost"
-            :loading="busy"
+            :loading="busyWith(request.id)"
             @click="withdrawRequest(request.id)"
           />
         </div>
@@ -202,18 +222,23 @@ const STATUS: Record<string, { label: string, color: 'neutral' | 'success' | 'wa
               :label="`${row.openCount} waiting`"
             />
           </div>
-          <p class="text-xs text-muted">
-            {{ row.requesters.map(person => person.name).join(', ') }}
-          </p>
-          <ul
-            v-if="row.requesters.some(person => person.note)"
-            class="text-xs text-muted list-disc pl-4"
-          >
+          <ul class="text-xs text-muted space-y-1">
             <li
-              v-for="person in row.requesters.filter(candidate => candidate.note)"
-              :key="person.id"
+              v-for="person in row.requesters"
+              :key="person.requestId"
+              class="flex items-start justify-between gap-3"
             >
-              {{ person.name }}: {{ person.note }}
+              <span>
+                {{ person.name }}<template v-if="person.note">: {{ person.note }}</template>
+              </span>
+              <UButton
+                size="xs"
+                variant="ghost"
+                color="neutral"
+                label="Decline"
+                :loading="busyWith(`decline:${person.requestId}`)"
+                @click="startDecline(person, row.moduleId)"
+              />
             </li>
           </ul>
           <UButton
@@ -227,5 +252,49 @@ const STATUS: Record<string, { label: string, color: 'neutral' | 'success' | 'wa
         </div>
       </div>
     </section>
+
+    <UModal
+      :open="Boolean(declining)"
+      title="Answer this request"
+      @update:open="(value: boolean) => { if (!value) declining = null }"
+    >
+      <template #body>
+        <div class="space-y-3">
+          <p class="text-sm text-muted">
+            {{ declining?.name }} asked for {{ declining?.moduleId }}. They are shown what you write,
+            so tell them where it stands rather than only that it is declined.
+          </p>
+          <UAlert
+            v-if="actionError"
+            icon="i-lucide-circle-alert"
+            color="error"
+            variant="subtle"
+            :title="actionError"
+          />
+          <UTextarea
+            v-model="declineReason"
+            :rows="3"
+            class="w-full"
+            placeholder="Not running this term, but it is on the list for next"
+          />
+        </div>
+      </template>
+      <template #footer>
+        <div class="flex justify-end gap-2 w-full">
+          <UButton
+            variant="ghost"
+            color="neutral"
+            label="Back"
+            @click="() => { declining = null }"
+          />
+          <UButton
+            label="Send reply"
+            :loading="busyWith(`decline:${declining?.requestId}`)"
+            :disabled="declineReason.trim().length < 3"
+            @click="sendDecline"
+          />
+        </div>
+      </template>
+    </UModal>
   </div>
 </template>

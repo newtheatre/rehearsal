@@ -472,12 +472,31 @@ describe('the schedule', () => {
     const event = makeEvent({ method: 'GET', path: '/api/sessions/upcoming' })
     signIn(event, { id: 'alice' })
     const view = await call(upcomingHandler, event) as {
-      sessions: { id: string, placesLeft: number | null, signedUp: boolean }[]
+      sessions: { id: string, placesLeft: number | null, signedUp: boolean, hasPlace: boolean }[]
     }
 
     const session = view.sessions.find(item => item.id === id)!
     expect(session.placesLeft).toBe(2)
     expect(session.signedUp).toBe(true)
+    expect(session.hasPlace).toBe(true)
+  })
+
+  it('tells a waitlisted member they are on the waitlist, not signed up', async () => {
+    const id = await openSession({ capacity: 1 })
+    await signUpAs(id, 'alice')
+    await signUpAs(id, 'bob')
+
+    const event = makeEvent({ method: 'GET', path: '/api/sessions/upcoming' })
+    signIn(event, { id: 'bob' })
+    const view = await call(upcomingHandler, event) as {
+      sessions: { id: string, signedUp: boolean, hasPlace: boolean }[]
+    }
+
+    const session = view.sessions.find(item => item.id === id)!
+    expect(session.signedUp).toBe(true)
+    // Saying "you are signed up" to somebody without a place is how a
+    // session ends up under-attended.
+    expect(session.hasPlace).toBe(false)
   })
 
   it('badges a full session without letting the badge gate a sign-up', async () => {

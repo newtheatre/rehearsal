@@ -7,6 +7,7 @@ import { db, schema } from '@nuxthub/db'
 import { and, asc, eq, gte, inArray, ne, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { runAtomic, type BatchStatement } from './batch'
+import { chunk } from './d1'
 import { londonInstant, londonTimeOf, today } from '../../shared/utils/dates'
 import type { SessionRow } from './sessions'
 import type { RegisterEntry } from '../../shared/types/session'
@@ -517,10 +518,12 @@ export async function listUpcoming(
 }
 
 /** Sessions this person is signed up to, soonest first. */
-export async function myUpcoming(userId: string): Promise<{ sessionId: string, status: AttendeeRow['status'] }[]> {
-  const rows = await db.select({
+export async function myUpcoming(userId: string): Promise<{ sessionId: string, hasPlace: boolean }[]> {
+  const mine = await db.select({
     sessionId: schema.sessionAttendees.sessionId,
-    status: schema.sessionAttendees.status,
+    id: schema.sessionAttendees.id,
+    signedUpAt: schema.sessionAttendees.signedUpAt,
+    capacity: schema.sessions.capacity,
   })
     .from(schema.sessionAttendees)
     .innerJoin(schema.sessions, eq(schema.sessionAttendees.sessionId, schema.sessions.id))
@@ -533,5 +536,34 @@ export async function myUpcoming(userId: string): Promise<{ sessionId: string, s
     .orderBy(asc(schema.sessions.heldOn))
     .all()
 
-  return rows
+  if (mine.length === 0) return []
+
+  // Their place, not merely that they signed up: telling somebody on a
+  // waitlist they have one is how a session is under-attended.
+  const ahead = new Map<string, number>()
+  for (const batch of chunk(mine.map(row => row.sessionId))) {
+    const rows = await db.select({
+      sessionId: schema.sessionAttendees.sessionId,
+      id: schema.sessionAttendees.id,
+      signedUpAt: schema.sessionAttendees.signedUpAt,
+    })
+      .from(schema.sessionAttendees)
+      .where(and(
+        inArray(schema.sessionAttendees.sessionId, batch),
+        eq(schema.sessionAttendees.status, 'SIGNED_UP'),
+      ))
+      .all()
+
+    for (const row of rows) {
+      const own = mine.find(item => item.sessionId === row.sessionId)!
+      if (compareSignupOrder(row, own) < 0) {
+        ahead.set(row.sessionId, (ahead.get(row.sessionId) ?? 0) + 1)
+      }
+    }
+  }
+
+  return mine.map(row => ({
+    sessionId: row.sessionId,
+    hasPlace: row.capacity === null || (ahead.get(row.sessionId) ?? 0) < row.capacity,
+  }))
 }

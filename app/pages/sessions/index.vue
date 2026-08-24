@@ -110,10 +110,10 @@ async function loadMore() {
               />
               <UBadge
                 v-if="session.signedUp"
-                color="success"
+                :color="session.hasPlace ? 'success' : 'warning'"
                 variant="subtle"
                 size="sm"
-                label="You are signed up"
+                :label="session.hasPlace ? 'You are signed up' : 'You are on the waitlist'"
               />
             </div>
             <p class="text-xs text-muted mt-0.5">

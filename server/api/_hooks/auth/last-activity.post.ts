@@ -33,18 +33,39 @@ export default defineEventHandler(async (event) => {
     const [records, attended, delivered] = await Promise.all([
       db.select({ userId: schema.records.userId, awardedAt: schema.records.awardedAt })
         .from(schema.records).where(inArray(schema.records.userId, batch)).all(),
-      db.select({ userId: schema.sessionAttendees.userId, heldOn: schema.sessions.heldOn })
+      db.select({
+        userId: schema.sessionAttendees.userId,
+        heldOn: schema.sessions.heldOn,
+        status: schema.sessionAttendees.status,
+        signedUpAt: schema.sessionAttendees.signedUpAt,
+      })
         .from(schema.sessionAttendees)
         .innerJoin(schema.sessions, eq(schema.sessionAttendees.sessionId, schema.sessions.id))
         .where(inArray(schema.sessionAttendees.userId, batch)).all(),
-      db.select({ userId: schema.sessions.trainerUserId, heldOn: schema.sessions.heldOn })
+      db.select({
+        userId: schema.sessions.trainerUserId,
+        heldOn: schema.sessions.heldOn,
+        status: schema.sessions.status,
+        createdAt: schema.sessions.createdAt,
+      })
         .from(schema.sessions)
         .where(inArray(schema.sessions.trainerUserId, batch)).all(),
     ])
 
     for (const row of records) note(row.userId, isoDateToEpoch(row.awardedAt))
-    for (const row of attended) note(row.userId, isoDateToEpoch(row.heldOn))
-    for (const row of delivered) note(row.userId, isoDateToEpoch(row.heldOn))
+
+    // A scheduled session's held_on is in the future, so it is activity only
+    // once it has happened; before that, signing up or booking it is.
+    for (const row of attended) {
+      note(row.userId, row.status === 'ATTENDED'
+        ? isoDateToEpoch(row.heldOn)
+        : row.signedUpAt?.getTime() ?? null)
+    }
+    for (const row of delivered) {
+      note(row.userId, row.status === 'DELIVERED'
+        ? isoDateToEpoch(row.heldOn)
+        : row.createdAt.getTime())
+    }
   }
 
   return Object.fromEntries(userIds.map(id => [id, latest.get(id) ?? null]))

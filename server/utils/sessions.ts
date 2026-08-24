@@ -127,12 +127,12 @@ export interface RegisterMark {
  */
 export async function deliverSession(options: {
   session: SessionRow
+  modules: ModuleRow[]
   marks: RegisterMark[]
   actorUserId: string
   academicYearEnd?: string
 }): Promise<{ sessionId: string, recordCount: number, present: string[], absent: string[] }> {
-  const { session } = options
-  const modules = await loadModules(await sessionModuleIds(session.id))
+  const { session, modules } = options
 
   const present = options.marks.filter(mark => mark.present).map(mark => mark.userId)
   const absent = options.marks.filter(mark => !mark.present).map(mark => mark.userId)
@@ -173,14 +173,6 @@ export async function deliverSession(options: {
   ])
 
   return { sessionId: session.id, recordCount: records.length, present, absent }
-}
-
-async function sessionModuleIds(sessionId: string): Promise<string[]> {
-  const rows = await db.select({ moduleId: schema.sessionModules.moduleId })
-    .from(schema.sessionModules)
-    .where(eq(schema.sessionModules.sessionId, sessionId))
-    .all()
-  return rows.map(row => row.moduleId)
 }
 
 /**

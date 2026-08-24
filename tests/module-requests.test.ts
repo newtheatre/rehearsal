@@ -3,7 +3,8 @@
  * one. docs/scheduling-design.md §4
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+
 import { db, schema } from './mocks/nuxthub-db'
 import { makeEvent, signIn, type FakeEvent } from './setup'
 import { seedDepartments, seedLead, seedModule, seedRecord, seedUser } from './helpers/fixtures'
@@ -14,6 +15,19 @@ import withdrawHandler from '../server/api/module-requests/[id]/index.delete'
 import declineHandler from '../server/api/module-requests/[id]/decline.post'
 import scheduleHandler from '../server/api/sessions/schedule.post'
 import openHandler from '../server/api/sessions/[id]/open.post'
+
+const sent = vi.hoisted(() => [] as { to: string, subject: string }[])
+
+// Intercept at the email boundary so the handlers' own logic runs for real.
+vi.mock('../server/utils/email', async () => {
+  const actual = await vi.importActual<typeof import('../server/utils/email')>('../server/utils/email')
+  return {
+    ...actual,
+    sendEmail: vi.fn(async ({ to, subject }: { to: string, subject: string }) => {
+      sent.push({ to, subject })
+    }),
+  }
+})
 
 type Handler = (event: FakeEvent) => Promise<unknown>
 const call = (handler: unknown, event: FakeEvent) => (handler as Handler)(event)
@@ -171,6 +185,26 @@ describe('resolving', () => {
     await call(openHandler, open)
 
     expect((await listFor('alice')).mine[0]!.status).toBe('SCHEDULED')
+  })
+
+  it('tells the people who asked, once it is actually offered', async () => {
+    await ask('alice', 'TECH-111')
+    await ask('bob', 'TECH-111')
+    sent.length = 0
+
+    const event = makeEvent({ method: 'POST', path: '/api/sessions/schedule', body: {
+      heldOn: tomorrow(),
+      moduleIds: ['TECH-111'],
+      openNow: true,
+    } })
+    signIn(event, { id: 'trainer' })
+    await call(scheduleHandler, event)
+
+    expect(sent.map(mail => mail.to).sort()).toEqual([
+      'alice@dev.newtheatre.org.uk',
+      'bob@dev.newtheatre.org.uk',
+    ])
+    expect(sent[0]!.subject).toContain('Now scheduled')
   })
 
   it('leaves requests for other modules alone', async () => {

@@ -4,6 +4,7 @@ import { requireTrainer } from '../../../utils/auth'
 import { loadSessionRow, moduleIdsFor, openSignups } from '../../../utils/scheduling'
 import { assertMaySteward } from '../../../utils/sessionAuth'
 import { resolveRequestsFor } from '../../../utils/moduleRequests'
+import { tellRequesters } from '../../../utils/sessionNotify'
 import { writeAudit } from '../../../utils/audit'
 
 export default defineEventHandler(async (event) => {
@@ -38,6 +39,9 @@ export default defineEventHandler(async (event) => {
     target: session.id,
     detail: { heldOn: session.heldOn, requestsAnswered: answered.length },
   })
+
+  // After the audit: opening is the fact, the email is the courtesy.
+  await tellRequesters(session.id, answered)
 
   return { id: session.id, status: 'OPEN', requestsAnswered: answered.length }
 })

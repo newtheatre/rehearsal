@@ -3,6 +3,8 @@
  * the row does.
  */
 
+import { today } from '../shared/utils/dates'
+
 import { describe, it, expect } from 'vitest'
 import listHandler from '../server/api/admin/leads/index.get'
 import addHandler from '../server/api/admin/leads/index.post'
@@ -17,7 +19,7 @@ import { seedDepartments, seedModule, seedRecord, seedUser } from './helpers/fix
 type Handler = (event: FakeEvent) => Promise<unknown>
 const call = (handler: unknown, event: FakeEvent) => (handler as Handler)(event)
 
-const TODAY = new Date().toISOString().slice(0, 10)
+const TODAY = today()
 
 async function setup() {
   await seedDepartments()

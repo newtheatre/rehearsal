@@ -15,10 +15,15 @@ export default defineEventHandler(async (event) => {
     myUpcoming(abilities.user.id),
   ])
 
-  const signedUp = new Set(mine.map(row => row.sessionId))
+  const places = new Map(mine.map(row => [row.sessionId, row.hasPlace]))
 
   return {
-    sessions: sessions.map(session => ({ ...session, signedUp: signedUp.has(session.id) })),
+    sessions: sessions.map(session => ({
+      ...session,
+      signedUp: places.has(session.id),
+      // False when they are on the waitlist, so the badge can say which.
+      hasPlace: places.get(session.id) ?? false,
+    })),
     canSchedule: includePlanned,
   }
 })

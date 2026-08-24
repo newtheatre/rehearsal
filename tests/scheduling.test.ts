@@ -18,11 +18,11 @@ vi.mock('../server/utils/email', async () => {
   }
 })
 
-const { db, schema } = await import('./mocks/nuxthub-db')
+const { db, schema, resetQueryCount, widestBoundStatement } = await import('./mocks/nuxthub-db')
 const { makeEvent, signIn } = await import('./setup')
 type FakeEvent = import('./setup').FakeEvent
 const { seedDepartments, seedModule, seedRecord, seedUser } = await import('./helpers/fixtures')
-const { today } = await import('../shared/utils/dates')
+const { today, londonTimeOf } = await import('../shared/utils/dates')
 const { eq } = await import('drizzle-orm')
 
 const scheduleHandler = (await import('../server/api/sessions/schedule.post')).default
@@ -151,6 +151,17 @@ describe('scheduling awards nothing', () => {
     } })
     signIn(event, { id: 'trainer' })
     await expect(call(scheduleHandler, event)).rejects.toMatchObject({ statusCode: 400 })
+  })
+
+  it('refuses rescheduling onto a module a session may not teach', async () => {
+    const id = await openSession()
+    const event = makeEvent({ method: 'PUT', path: '/x', params: { id }, body: {
+      moduleIds: ['LEAD-CERT'],
+    } })
+    signIn(event, { id: 'trainer' })
+    // The gate that guards creation must guard amendment too, or a session
+    // can be booked onto something its own register would refuse.
+    await expect(call(reschedule, event)).rejects.toMatchObject({ statusCode: 400 })
   })
 
   it('refuses a module that must be signed off instead', async () => {
@@ -361,6 +372,79 @@ describe('sign-up gating', () => {
   })
 })
 
+describe('times are Europe/London wall-clock', () => {
+  it('anchors a 19:30 session to London, not to the runner or the browser', async () => {
+    const day = tomorrow()
+    const event = makeEvent({ method: 'POST', path: '/api/sessions/schedule', body: {
+      heldOn: day,
+      moduleIds: ['NNT-001'],
+      startsTime: '19:30',
+      endsTime: '21:00',
+      openNow: true,
+    } })
+    signIn(event, { id: 'trainer' })
+    const { id } = await call(scheduleHandler, event) as { id: string }
+
+    const row = await db.select().from(schema.sessions).where(eq(schema.sessions.id, id)).get()
+    // Reading the stored instant back in London must give the time typed in.
+    expect(londonTimeOf(row!.startsAt!)).toBe('19:30')
+    expect(londonTimeOf(row!.endsAt!)).toBe('21:00')
+  })
+
+  it('moves the instants when the date moves', async () => {
+    const day = tomorrow()
+    const create = makeEvent({ method: 'POST', path: '/api/sessions/schedule', body: {
+      heldOn: day,
+      moduleIds: ['NNT-001'],
+      startsTime: '19:30',
+      openNow: true,
+    } })
+    signIn(create, { id: 'trainer' })
+    const { id } = await call(scheduleHandler, create) as { id: string }
+
+    const later = new Date(`${day}T00:00:00Z`)
+    later.setUTCDate(later.getUTCDate() + 7)
+    const moved = later.toISOString().slice(0, 10)
+
+    const edit = makeEvent({ method: 'PUT', path: '/x', params: { id }, body: { heldOn: moved } })
+    signIn(edit, { id: 'trainer' })
+    await call(reschedule, edit)
+
+    const row = await db.select().from(schema.sessions).where(eq(schema.sessions.id, id)).get()
+    expect(row!.heldOn).toBe(moved)
+    // The time of day survives a date change rather than being left behind.
+    expect(londonTimeOf(row!.startsAt!)).toBe('19:30')
+  })
+})
+
+describe('D1 parameter limits', () => {
+  it('lists a schedule larger than D1 can bind in one statement', async () => {
+    // 120 sessions: an IN list of the ids just returned would bind 121
+    // parameters, over the cap of 100.
+    const day = tomorrow()
+    for (let n = 0; n < 120; n++) {
+      const event = makeEvent({ method: 'POST', path: '/api/sessions/schedule', body: {
+        heldOn: day,
+        moduleIds: ['NNT-001'],
+        openNow: true,
+      } })
+      signIn(event, { id: 'trainer' })
+      await call(scheduleHandler, event)
+    }
+
+    resetQueryCount()
+    const view = makeEvent({ method: 'GET', path: '/api/sessions/upcoming' })
+    signIn(view, { id: 'alice' })
+    const result = await call(upcomingHandler, view) as { sessions: { moduleIds: string[] }[] }
+
+    // The rule itself: no statement's parameter count tracks the row count.
+    expect(widestBoundStatement()).toBeLessThan(100)
+    // And the scoping did not silently drop the follow-up query.
+    expect(result.sessions).toHaveLength(100)
+    expect(result.sessions.every(session => session.moduleIds.length === 1)).toBe(true)
+  })
+})
+
 describe('the schedule', () => {
   it('shows a planned session to a trainer and not to a member', async () => {
     const event = makeEvent({ method: 'POST', path: '/api/sessions/schedule', body: {
@@ -388,12 +472,31 @@ describe('the schedule', () => {
     const event = makeEvent({ method: 'GET', path: '/api/sessions/upcoming' })
     signIn(event, { id: 'alice' })
     const view = await call(upcomingHandler, event) as {
-      sessions: { id: string, placesLeft: number | null, signedUp: boolean }[]
+      sessions: { id: string, placesLeft: number | null, signedUp: boolean, hasPlace: boolean }[]
     }
 
     const session = view.sessions.find(item => item.id === id)!
     expect(session.placesLeft).toBe(2)
     expect(session.signedUp).toBe(true)
+    expect(session.hasPlace).toBe(true)
+  })
+
+  it('tells a waitlisted member they are on the waitlist, not signed up', async () => {
+    const id = await openSession({ capacity: 1 })
+    await signUpAs(id, 'alice')
+    await signUpAs(id, 'bob')
+
+    const event = makeEvent({ method: 'GET', path: '/api/sessions/upcoming' })
+    signIn(event, { id: 'bob' })
+    const view = await call(upcomingHandler, event) as {
+      sessions: { id: string, signedUp: boolean, hasPlace: boolean }[]
+    }
+
+    const session = view.sessions.find(item => item.id === id)!
+    expect(session.signedUp).toBe(true)
+    // Saying "you are signed up" to somebody without a place is how a
+    // session ends up under-attended.
+    expect(session.hasPlace).toBe(false)
   })
 
   it('badges a full session without letting the badge gate a sign-up', async () => {

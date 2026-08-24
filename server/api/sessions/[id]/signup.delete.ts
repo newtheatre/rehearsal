@@ -26,8 +26,8 @@ export default defineEventHandler(async (event) => {
     throw error
   }
 
-  const summary = await sessionEmailSummary(session.id)
-  if (summary && promoted.length > 0) {
+  const summary = promoted.length > 0 ? await sessionEmailSummary(session.id) : null
+  if (summary) {
     const recipients = await addressableUsers(promoted.map(row => row.userId))
     await sendEach(recipients, recipient => renderWaitlistPromotion({
       name: recipient.name,

@@ -1,82 +1,108 @@
 <script lang="ts" setup>
 /**
- * Put a session in the diary. Nothing here creates a record: that happens
- * when the register is marked (docs/scheduling-design.md §6).
+ * Amend a session that has not been taught. Records are untouched: only a
+ * marked register awards (ADR-0013).
  */
-definePageMeta({ title: 'Schedule a session', middleware: 'trainer' })
+import type { SessionDetail } from '~~/shared/types/session'
 
-const toast = useToast()
+definePageMeta({ title: 'Amend session', middleware: 'trainer' })
+
+const route = useRoute()
 const router = useRouter()
+const toast = useToast()
+
+const { data } = await useFetch<SessionDetail>(`/api/sessions/${route.params.id}`)
+if (!data.value) {
+  throw createError({ statusCode: 404, statusMessage: 'Session not found', fatal: true })
+}
+if (!data.value.canAmend) {
+  throw createError({ statusCode: 409, statusMessage: 'That session can no longer be amended', fatal: true })
+}
 
 const { data: catalogue } = await useFetch('/api/modules')
 
+/** The stored instants read back as London wall-clock, which is what was typed. */
+function timeOf(value: string | null): string {
+  if (!value) return ''
+  return new Date(value).toLocaleTimeString('en-GB', {
+    timeZone: 'Europe/London', hour12: false, hour: '2-digit', minute: '2-digit',
+  })
+}
+
 const form = ref({
-  heldOn: '',
-  startsAt: '',
-  endsAt: '',
-  moduleIds: [] as string[],
-  capacity: null as number | null,
-  location: '',
-  description: '',
-  notes: '',
-  openNow: true,
+  heldOn: data.value.heldOn,
+  startsTime: timeOf(data.value.startsAt),
+  endsTime: timeOf(data.value.endsAt),
+  moduleIds: data.value.modules.map(module => module.id),
+  capacity: data.value.capacity,
+  location: data.value.location ?? '',
+  description: data.value.description ?? '',
+  notes: data.value.notes ?? '',
 })
 
 const moduleOptions = computed(() =>
   (catalogue.value?.modules ?? [])
-    // Certifications are signed off after a supervised practical, so they
-    // cannot be scheduled as a session; the server refuses them too.
     .filter(m => m.kind !== 'CERTIFICATION' && m.status === 'ACTIVE')
     .map(m => ({ label: `${m.id} · ${m.name}`, value: m.id })),
 )
 
-const canSubmit = computed(() => Boolean(form.value.heldOn) && form.value.moduleIds.length > 0)
-
-const submitting = ref(false)
+const busy = ref(false)
 const submitError = ref<string | null>(null)
 
 async function submit() {
-  submitting.value = true
+  busy.value = true
   submitError.value = null
   try {
-    const result = await $fetch('/api/sessions/schedule', {
-      method: 'POST',
+    const result = await $fetch(`/api/sessions/${route.params.id}/schedule`, {
+      method: 'PUT',
       body: {
         heldOn: form.value.heldOn,
+        startsTime: form.value.startsTime || null,
+        endsTime: form.value.endsTime || null,
         moduleIds: form.value.moduleIds,
-        startsTime: form.value.startsAt || null,
-        endsTime: form.value.endsAt || null,
         capacity: form.value.capacity || null,
         location: form.value.location || null,
         description: form.value.description || null,
         notes: form.value.notes || null,
-        openNow: form.value.openNow,
       },
     })
     toast.add({
-      title: form.value.openNow ? 'Scheduled, and open for sign-ups' : 'Scheduled',
-      icon: 'i-lucide-calendar-check',
+      title: 'Amended',
+      description: result.promoted
+        ? `${result.promoted} moved off the waitlist and were emailed.`
+        : undefined,
+      icon: 'i-lucide-check',
       color: 'success',
     })
-    await router.push(`/sessions/${result.id}`)
+    await router.push(`/sessions/${route.params.id}`)
   }
   catch (e) {
-    submitError.value = errorMessage(e, 'Could not schedule this session')
+    submitError.value = errorMessage(e, 'Could not amend this session')
   }
   finally {
-    submitting.value = false
+    busy.value = false
   }
 }
 </script>
 
 <template>
   <div class="space-y-6 max-w-2xl">
+    <UButton
+      :to="`/sessions/${route.params.id}`"
+      variant="link"
+      color="neutral"
+      size="sm"
+      icon="i-lucide-arrow-left"
+      label="Session"
+      class="px-0"
+    />
+
     <div>
       <h1 class="text-2xl font-bold">
-        Schedule a session
+        Amend session
       </h1>
       <p class="text-muted mt-1">
-        Nobody gets a record from this. You mark the register on the day, and that is what awards.
+        Nobody's records change. Raising the places emails anyone it lets in.
       </p>
     </div>
 
@@ -102,18 +128,16 @@ async function submit() {
               class="w-full"
             />
           </UFormField>
-
           <UFormField label="Starts">
             <UInput
-              v-model="form.startsAt"
+              v-model="form.startsTime"
               type="time"
               class="w-full"
             />
           </UFormField>
-
           <UFormField label="Ends">
             <UInput
-              v-model="form.endsAt"
+              v-model="form.endsTime"
               type="time"
               class="w-full"
             />
@@ -130,7 +154,6 @@ async function submit() {
             value-key="value"
             multiple
             searchable
-            placeholder="Choose modules"
             class="w-full"
           />
         </UFormField>
@@ -139,14 +162,12 @@ async function submit() {
           <UFormField label="Where">
             <UInput
               v-model="form.location"
-              placeholder="Main house, or a rooms booking link"
               class="w-full"
             />
           </UFormField>
-
           <UFormField
             label="Places"
-            help="Leave blank for no limit. Past this, people join a waitlist."
+            help="Lowering this moves the people at the back onto the waitlist"
           >
             <UInput
               v-model.number="form.capacity"
@@ -158,14 +179,10 @@ async function submit() {
           </UFormField>
         </div>
 
-        <UFormField
-          label="What to expect"
-          help="Shown to anyone deciding whether to sign up"
-        >
+        <UFormField label="What to expect">
           <UTextarea
             v-model="form.description"
             :rows="2"
-            placeholder="Bring boots. Meet in the foyer."
             class="w-full"
           />
         </UFormField>
@@ -180,20 +197,14 @@ async function submit() {
             class="w-full"
           />
         </UFormField>
-
-        <UCheckbox
-          v-model="form.openNow"
-          label="Open for sign-ups straight away"
-          help="Leave this off to finish the details first. Nobody sees a planned session."
-        />
       </div>
 
       <template #footer>
         <UButton
-          label="Schedule"
-          icon="i-lucide-calendar-plus"
-          :loading="submitting"
-          :disabled="!canSubmit"
+          label="Save changes"
+          icon="i-lucide-check"
+          :loading="busy"
+          :disabled="!form.heldOn || !form.moduleIds.length"
           @click="submit"
         />
       </template>

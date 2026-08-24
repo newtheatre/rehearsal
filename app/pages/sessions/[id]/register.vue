@@ -3,34 +3,21 @@
  * The register, on a phone, in a rehearsal room. Marking it is what creates
  * records, so the confirm step says exactly what is about to happen.
  */
+import type { RegisterView } from '~~/shared/types/session'
+
 definePageMeta({ title: 'Register', middleware: 'trainer' })
 
 const route = useRoute()
 const toast = useToast()
 const router = useRouter()
 
-interface RegisterEntry {
-  userId: string
-  name: string
-  hasPlace: boolean
-  status: 'SIGNED_UP' | 'CANCELLED' | 'ATTENDED' | 'ABSENT'
-}
-interface RegisterView {
-  id: string
-  heldOn: string
-  status: string
-  capacity: number | null
-  registerOpened: boolean
-  marked: boolean
-  register: RegisterEntry[]
-}
-
 const { data, refresh } = await useFetch<RegisterView>(`/api/sessions/${route.params.id}/register`)
 if (!data.value) {
   throw createError({ statusCode: 404, statusMessage: 'Session not found', fatal: true })
 }
 
-const { data: directory, refresh: refreshDirectory } = await useFetch('/api/directory')
+// Only the walk-in modal reads this: do not block the register on it.
+const { data: directory, refresh: refreshDirectory } = useFetch('/api/directory', { immediate: false })
 
 /** Nobody is present until somebody says so: an unticked register awards nothing. */
 const present = ref<Record<string, boolean>>({})
@@ -66,6 +53,11 @@ async function openRegister() {
 // ── Adding a walk-in ────────────────────────────────────────────────────────
 
 const addOpen = ref(false)
+
+function openWalkIn() {
+  addOpen.value = true
+  if (!directory.value) refreshDirectory()
+}
 const addChoice = ref<string | undefined>(undefined)
 const addEmail = ref('')
 
@@ -114,8 +106,11 @@ async function addWalkIn() {
 
 const confirmOpen = ref(false)
 const warnings = ref<{ name: string, moduleId: string }[]>([])
+const allAbsentOpen = ref(false)
+/** Named gaps from a 422, so a refusal says who and what, not just that. */
+const blocking = ref<{ name: string, moduleId: string, missing: { moduleId: string }[] }[]>([])
 
-async function submit(acknowledgeWarnings = false) {
+async function submit(acknowledgeWarnings = false, acknowledgeAllAbsent = false) {
   busy.value = true
   actionError.value = null
   try {
@@ -127,9 +122,11 @@ async function submit(acknowledgeWarnings = false) {
           present: Boolean(present.value[entry.userId]),
         })),
         acknowledgeWarnings,
+        acknowledgeAllAbsent,
       },
     })
     confirmOpen.value = false
+    allAbsentOpen.value = false
     toast.add({
       title: `${result.recordCount} record${result.recordCount === 1 ? '' : 's'} created`,
       description: result.absent
@@ -141,12 +138,26 @@ async function submit(acknowledgeWarnings = false) {
     await router.push(`/sessions/${route.params.id}`)
   }
   catch (e) {
-    const data = (e as { data?: { data?: { warnings?: { name: string, moduleId: string }[], requiresAcknowledgement?: boolean } } }).data?.data
-    if (data?.requiresAcknowledgement && data.warnings) {
-      warnings.value = data.warnings
+    const payload = (e as {
+      data?: { data?: {
+        warnings?: { name: string, moduleId: string }[]
+        blocking?: { name: string, moduleId: string, missing: { moduleId: string }[] }[]
+        requiresAcknowledgement?: boolean
+        requiresAllAbsentAcknowledgement?: boolean
+      } }
+    }).data?.data
+
+    if (payload?.requiresAllAbsentAcknowledgement) {
+      allAbsentOpen.value = true
+      return
+    }
+    if (payload?.requiresAcknowledgement && payload.warnings) {
+      warnings.value = payload.warnings
       confirmOpen.value = true
       return
     }
+    // A safety-critical refusal names who is missing what, not just that.
+    blocking.value = payload?.blocking ?? []
     actionError.value = errorMessage(e, 'Could not mark the register')
     confirmOpen.value = false
   }
@@ -185,7 +196,10 @@ async function submit(acknowledgeWarnings = false) {
       icon="i-lucide-circle-alert"
       color="error"
       variant="subtle"
-      :description="actionError"
+      :title="actionError"
+      :description="blocking.length
+        ? blocking.map(gap => `${gap.name} needs ${gap.missing.map(m => m.moduleId).join(', ')} before ${gap.moduleId}`).join('; ')
+        : undefined"
     />
 
     <UAlert
@@ -215,6 +229,15 @@ async function submit(acknowledgeWarnings = false) {
     </template>
 
     <template v-else>
+      <UAlert
+        v-if="data.practiceTargets.length"
+        icon="i-lucide-graduation-cap"
+        color="neutral"
+        variant="subtle"
+        title="Practice is open for this room"
+        :description="`Everyone signed up can practise ${data.practiceTargets.join(', ')} until shortly after the session ends.`"
+      />
+
       <div class="border border-default rounded-lg divide-y divide-default overflow-hidden">
         <button
           v-for="entry in data.register"
@@ -259,7 +282,7 @@ async function submit(acknowledgeWarnings = false) {
           icon="i-lucide-user-plus"
           color="neutral"
           variant="outline"
-          @click="() => { addOpen = true }"
+          @click="openWalkIn"
         />
       </div>
 
@@ -282,6 +305,35 @@ async function submit(acknowledgeWarnings = false) {
         @click="() => submit(false)"
       />
     </template>
+
+    <UModal
+      v-model:open="allAbsentOpen"
+      title="Nobody is marked as here"
+    >
+      <template #body>
+        <p class="text-sm text-muted">
+          Marking this register now gives nobody a record and sends everybody signed up a
+          note saying we missed them. If the session ran and people were there, close this
+          and tick them first.
+        </p>
+      </template>
+      <template #footer>
+        <div class="flex justify-end gap-2 w-full">
+          <UButton
+            label="Go back"
+            color="neutral"
+            variant="ghost"
+            @click="() => { allAbsentOpen = false }"
+          />
+          <UButton
+            label="Nobody came"
+            color="warning"
+            :loading="busy"
+            @click="() => submit(false, true)"
+          />
+        </div>
+      </template>
+    </UModal>
 
     <UModal
       v-model:open="confirmOpen"

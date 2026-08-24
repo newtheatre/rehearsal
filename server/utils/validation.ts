@@ -156,34 +156,36 @@ export const MAX_REGISTER = 200
 const timestampSchema = z.coerce.date()
 
 /**
+ * Wall-clock, not an instant: the server anchors it to Europe/London, because
+ * a browser would anchor it to whatever the device says.
+ */
+const timeOfDaySchema = z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use a time like 19:30')
+
+/**
  * `heldOn` is deliberately not awardedAtSchema: a scheduled session is in the
  * future, which is exactly what that schema refuses.
  */
-export const sessionScheduleSchema = z.object({
+const sessionScheduleFields = z.object({
   heldOn: isoDateSchema,
   moduleIds: z.array(moduleIdSchema).min(1, 'A session must cover at least one module').max(20),
-  startsAt: timestampSchema.nullable().optional(),
-  endsAt: timestampSchema.nullable().optional(),
+  startsTime: timeOfDaySchema.nullable().optional(),
+  endsTime: timeOfDaySchema.nullable().optional(),
   signupsCloseAt: timestampSchema.nullable().optional(),
   capacity: z.number().int().min(1).max(MAX_SESSION_CAPACITY).nullable().optional(),
   location: z.string().trim().max(120).nullable().optional(),
   description: z.string().trim().max(4000).nullable().optional(),
   notes: z.string().trim().max(4000).nullable().optional(),
+})
+
+export const sessionScheduleSchema = sessionScheduleFields.extend({
   /** Skip PLANNED and put it in front of members straight away. */
   openNow: z.boolean().default(false),
 }).superRefine(checkSchedule)
 
-export const sessionScheduleUpdateSchema = z.object({
-  heldOn: isoDateSchema.optional(),
-  moduleIds: z.array(moduleIdSchema).min(1).max(20).optional(),
-  startsAt: timestampSchema.nullable().optional(),
-  endsAt: timestampSchema.nullable().optional(),
-  signupsCloseAt: timestampSchema.nullable().optional(),
-  capacity: z.number().int().min(1).max(MAX_SESSION_CAPACITY).nullable().optional(),
-  location: z.string().trim().max(120).nullable().optional(),
-  description: z.string().trim().max(4000).nullable().optional(),
-  notes: z.string().trim().max(4000).nullable().optional(),
-}).superRefine(checkSchedule)
+/** The same fields, every one optional: an amendment sends only what changed. */
+export const sessionScheduleUpdateSchema = sessionScheduleFields
+  .partial()
+  .superRefine(checkSchedule)
 
 export const moduleRequestSchema = z.object({
   moduleId: moduleIdSchema,
@@ -220,6 +222,8 @@ export const registerSchema = z.object({
   })).min(1, 'Mark at least one person').max(MAX_REGISTER),
   /** Set once the trainer has seen and accepted the prerequisite warnings. */
   acknowledgeWarnings: z.boolean().default(false),
+  /** Set once the trainer has confirmed that nobody was present. */
+  acknowledgeAllAbsent: z.boolean().default(false),
 })
 
 export const addAttendeeSchema = z.object({
@@ -232,13 +236,13 @@ export const cancelSessionSchema = z.object({
 })
 
 function checkSchedule(
-  value: { startsAt?: Date | null, endsAt?: Date | null },
+  value: { startsTime?: string | null, endsTime?: string | null },
   ctx: z.RefinementCtx,
 ): void {
-  if (value.startsAt && value.endsAt && value.endsAt <= value.startsAt) {
+  if (value.startsTime && value.endsTime && value.endsTime <= value.startsTime) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      path: ['endsAt'],
+      path: ['endsTime'],
       message: 'A session cannot end before it starts',
     })
   }

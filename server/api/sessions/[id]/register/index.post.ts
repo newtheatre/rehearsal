@@ -65,6 +65,16 @@ export default defineEventHandler(async (event) => {
 
   const present = input.marks.filter(mark => mark.present).map(mark => mark.userId)
 
+  // One tap on a register where nobody is ticked awards nothing and emails
+  // everybody a no-show note, so it is confirmed rather than assumed.
+  if (present.length === 0 && !input.acknowledgeAllAbsent) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: 'Nobody is marked as here. Confirm that the session ran with nobody present.',
+      data: { requiresAllAbsentAcknowledgement: true },
+    })
+  }
+
   const [modules, warningWindowDays, academicYearEnd] = await Promise.all([
     loadModules(await moduleIdsFor(session.id)),
     getConfigNumber('warning_window_days'),
@@ -96,6 +106,7 @@ export default defineEventHandler(async (event) => {
 
   const result = await deliverSession({
     session,
+    modules,
     marks: input.marks,
     actorUserId: abilities.user.id,
     academicYearEnd,
@@ -120,9 +131,9 @@ export default defineEventHandler(async (event) => {
   })
 
   // After the batch: the records are the fact, the email is the courtesy.
-  const summary = await sessionEmailSummary(session.id)
+  const summary = result.absent.length > 0 ? await sessionEmailSummary(session.id) : null
   let told = 0
-  if (summary && result.absent.length > 0) {
+  if (summary) {
     const recipients = await addressableUsers(result.absent)
     const sent = await sendEach(recipients, recipient => renderMissedYou({
       name: recipient.name,

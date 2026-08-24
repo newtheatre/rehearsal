@@ -38,14 +38,26 @@ await client.execute('PRAGMA foreign_keys = ON')
 // Test seam: the cohort reads exist to keep query counts off the row count,
 // so a test needs to be able to see them.
 let queries = 0
+// libsql binds far more than D1's 100, so the cap cannot fail here on its own.
+// Recording the widest statement is what lets a test assert the estate rule.
+let widestStatement = 0
+
+function record(statement: unknown): void {
+  const args = (statement as { args?: unknown })?.args
+  const count = Array.isArray(args) ? args.length : args ? Object.keys(args).length : 0
+  if (count > widestStatement) widestStatement = count
+}
+
 const rawExecute = client.execute.bind(client)
 const rawBatch = client.batch.bind(client)
 client.execute = ((...args: Parameters<typeof rawExecute>) => {
   queries++
+  record(args[0])
   return rawExecute(...args)
 }) as typeof client.execute
 client.batch = ((...args: Parameters<typeof rawBatch>) => {
   queries++
+  for (const statement of (args[0] ?? []) as unknown[]) record(statement)
   return rawBatch(...args)
 }) as typeof client.batch
 
@@ -53,8 +65,14 @@ export function countQueries(): number {
   return queries
 }
 
+/** The most bound parameters any one statement used. D1 caps at 100. */
+export function widestBoundStatement(): number {
+  return widestStatement
+}
+
 export function resetQueryCount(): void {
   queries = 0
+  widestStatement = 0
 }
 
 export const db = drizzle(client, { schema })

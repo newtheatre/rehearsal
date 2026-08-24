@@ -1,7 +1,7 @@
 /** GET /api/sessions/:id: one session, scheduled or delivered. */
 
 import { getSessionDetail, withinEditWindow } from '../../utils/sessions'
-import { signupBlockedReason, splitByCapacity, withdrawBlockedReason } from '../../utils/scheduling'
+import { placesHeld, signupBlockedReason, splitByCapacity, withdrawBlockedReason } from '../../utils/scheduling'
 import { maySteward } from '../../utils/sessionAuth'
 import { useAbilities } from '../../utils/abilities'
 import { getConfigNumber } from '../../utils/siteConfig'
@@ -20,11 +20,16 @@ export default defineEventHandler(async (event): Promise<SessionDetail> => {
   const isOwnSession = session.trainerUserId === abilities.user.id
     || session.createdBy === abilities.user.id
 
-  const signups = session.attendees
-    .filter(row => row.status === 'SIGNED_UP')
-    .map(row => ({ id: row.attendeeId, signedUpAt: row.signedUpAt, userId: row.id }))
-  const { confirmed, waitlisted } = splitByCapacity(signups, session.capacity)
-  const held = new Set(confirmed.map(row => row.userId))
+  const rows = session.attendees.map(row => ({
+    id: row.id,
+    signedUpAt: row.signedUpAt,
+    status: row.status,
+    userId: row.id,
+  }))
+  const signups = rows.filter(row => row.status === 'SIGNED_UP')
+  const { waitlisted } = splitByCapacity(signups, session.capacity)
+  // The same rule the register uses, not a second copy of it.
+  const held = placesHeld(rows, session.capacity)
 
   const blocked = signupBlockedReason(session)
   const mineIndex = waitlisted.findIndex(item => item.userId === abilities.user.id)
@@ -53,7 +58,7 @@ export default defineEventHandler(async (event): Promise<SessionDetail> => {
           id: attendee.id,
           name: attendee.name,
           status: attendee.status,
-          hasPlace: attendee.status === 'SIGNED_UP' ? held.has(attendee.id) : true,
+          hasPlace: held.has(attendee.id),
         }))
       : null,
     signupCount: signups.length,
@@ -69,6 +74,7 @@ export default defineEventHandler(async (event): Promise<SessionDetail> => {
     canWithdraw: withdrawBlockedReason(session) === null
       && signups.some(item => item.userId === abilities.user.id),
     canSteward,
+    canAmend: canSteward && session.status !== 'DELIVERED' && session.status !== 'CANCELLED',
     canEdit: (abilities.isAdmin || isOwnSession)
       && session.status === 'DELIVERED'
       && withinEditWindow(session, editWindowDays),

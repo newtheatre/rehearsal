@@ -21,24 +21,7 @@ const STATUS_BADGE: Record<SessionDetail['status'], { label: string, color: 'neu
   CANCELLED: { label: 'Cancelled', color: 'error' },
 }
 
-const busy = ref(false)
-const actionError = ref<string | null>(null)
-
-async function act(fn: () => Promise<unknown>, success: string) {
-  busy.value = true
-  actionError.value = null
-  try {
-    await fn()
-    await refresh()
-    toast.add({ title: success, icon: 'i-lucide-check', color: 'success' })
-  }
-  catch (e) {
-    actionError.value = errorMessage(e, 'That did not work')
-  }
-  finally {
-    busy.value = false
-  }
-}
+const { busy, actionError, act } = useAction(refresh)
 
 const signUp = () => act(
   () => $fetch(`/api/sessions/${route.params.id}/signup`, { method: 'POST' }),
@@ -57,18 +40,33 @@ const openSignups = () => act(
 
 const cancelOpen = ref(false)
 const cancelReason = ref('')
+/** Rendered inside the modal: the page-level alert sits behind the overlay. */
+const cancelError = ref<string | null>(null)
 
-const cancel = () => act(
-  async () => {
+async function cancel() {
+  busy.value = true
+  cancelError.value = null
+  try {
     await $fetch(`/api/sessions/${route.params.id}/cancel`, {
       method: 'POST',
       body: { reason: cancelReason.value },
     })
     cancelOpen.value = false
     cancelReason.value = ''
-  },
-  'Cancelled, and everyone signed up has been told',
-)
+    await refresh()
+    toast.add({
+      title: 'Cancelled, and everyone signed up has been told',
+      icon: 'i-lucide-check',
+      color: 'success',
+    })
+  }
+  catch (e) {
+    cancelError.value = errorMessage(e, 'Could not cancel this session')
+  }
+  finally {
+    busy.value = false
+  }
+}
 
 /** A scheduled session is the only one with a sign-up sheet to show. */
 const isScheduled = computed(() =>
@@ -297,6 +295,14 @@ const whenLine = computed(() => {
         icon="i-lucide-clipboard-check"
       />
       <UButton
+        v-if="data.canAmend"
+        :to="`/sessions/${data.id}/edit`"
+        label="Amend"
+        color="neutral"
+        variant="outline"
+        icon="i-lucide-pencil"
+      />
+      <UButton
         label="Cancel this session"
         color="error"
         variant="outline"
@@ -311,6 +317,13 @@ const whenLine = computed(() => {
     >
       <template #body>
         <div class="space-y-4">
+          <UAlert
+            v-if="cancelError"
+            icon="i-lucide-circle-alert"
+            color="error"
+            variant="subtle"
+            :description="cancelError"
+          />
           <p class="text-sm text-muted">
             Everyone signed up is emailed the reason you give. Nothing is recorded against anybody,
             and the session stays visible so people can see what happened.

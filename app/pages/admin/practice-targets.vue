@@ -25,7 +25,7 @@ const editing = ref<{
   description: string
   consumer: string
   moduleIds: string[]
-  graceHours: number | null
+  graceHours: number | '' | null
   status: 'ACTIVE' | 'RETIRED'
 } | null>(null)
 
@@ -67,7 +67,7 @@ async function save() {
         description: editing.value.description || null,
         consumer: editing.value.consumer || null,
         moduleIds: editing.value.moduleIds,
-        graceHours: editing.value.graceHours,
+        graceHours: editing.value.graceHours === '' ? null : editing.value.graceHours,
         status: editing.value.status,
       },
     })

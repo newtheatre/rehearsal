@@ -66,7 +66,7 @@ Day one, nobody holds LEAD-CERT. Admins grant the first Trainer certs to the est
 | Route | Guard |
 |---|---|
 | `/` `/modules*` `/people*` `/requests` | authenticated |
-| `/sessions/new`, `/sessions/schedule`, session edit | trainer-or-better (derived check) |
+| `/sessions/new`, `/sessions/schedule`, `/sessions/:id/edit`, session edit | trainer-or-better (derived check) |
 | person-page sign-off / external-cert actions | lead (matching dept) or admin |
 | `/admin` module & lead sections | lead (scoped to own dept) or admin |
 | `/admin/practice-targets` | admin (`config.manage`) |

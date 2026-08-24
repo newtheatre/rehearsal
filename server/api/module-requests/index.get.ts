@@ -16,5 +16,5 @@ export default defineEventHandler(async (event) => {
     canSeeBoard ? demandBoard(scope) : Promise.resolve([]),
   ])
 
-  return { mine, board, canSeeBoard }
+  return { mine: mine.requests, hasMore: mine.hasMore, board, canSeeBoard }
 })

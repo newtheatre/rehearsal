@@ -7,8 +7,10 @@ import { db, schema } from '@nuxthub/db'
 import { and, asc, eq, gte, inArray, ne, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { runAtomic, type BatchStatement } from './batch'
-import { today } from '../../shared/utils/dates'
+import { chunk } from './d1'
+import { londonInstant, londonTimeOf, today } from '../../shared/utils/dates'
 import type { SessionRow } from './sessions'
+import type { RegisterEntry } from '../../shared/types/session'
 import { closeSessionWindowStatements } from './practice'
 
 export type AttendeeRow = typeof schema.sessionAttendees.$inferSelect
@@ -19,8 +21,9 @@ const LIVE_STATUSES = ['OPEN', 'FULL'] as const
 export interface ScheduleInput {
   heldOn: string
   moduleIds: string[]
-  startsAt?: Date | null
-  endsAt?: Date | null
+  /** Wall-clock in Europe/London; the instant is composed here, not sent. */
+  startsTime?: string | null
+  endsTime?: string | null
   signupsCloseAt?: Date | null
   capacity?: number | null
   location?: string | null
@@ -39,6 +42,22 @@ export function splitByCapacity<T extends { signedUpAt: Date | null, id: string 
   const ordered = [...signups].sort(compareSignupOrder)
   if (capacity === null) return { confirmed: ordered, waitlisted: [] }
   return { confirmed: ordered.slice(0, capacity), waitlisted: ordered.slice(capacity) }
+}
+
+/**
+ * Who holds a place, across a mixed set of rows. Somebody already marked kept
+ * their place by turning up, so only live sign-ups are ranked (design §3.3).
+ */
+export function placesHeld<T extends { id: string, signedUpAt: Date | null, status: AttendeeRow['status'] }>(
+  rows: T[],
+  capacity: number | null,
+): Set<string> {
+  const live = rows.filter(row => row.status === 'SIGNED_UP')
+  const held = new Set(splitByCapacity(live, capacity).confirmed.map(row => row.id))
+  for (const row of rows) {
+    if (row.status !== 'SIGNED_UP') held.add(row.id)
+  }
+  return held
 }
 
 /** Ties break on id so the order is total, not merely stable in one engine. */
@@ -103,8 +122,8 @@ export async function scheduleSession(options: {
       trainerUserId: options.trainerUserId,
       createdBy: options.createdBy,
       status: options.openNow ? 'OPEN' : 'PLANNED',
-      startsAt: input.startsAt ?? null,
-      endsAt: input.endsAt ?? null,
+      startsAt: input.startsTime ? londonInstant(input.heldOn, input.startsTime) : null,
+      endsAt: input.endsTime ? londonInstant(input.heldOn, input.endsTime) : null,
       signupsCloseAt: input.signupsCloseAt ?? null,
       capacity: input.capacity ?? null,
       location: input.location ?? null,
@@ -133,13 +152,26 @@ export async function updateSchedule(options: {
 
   const fields: Partial<typeof schema.sessions.$inferInsert> = { updatedAt: new Date() }
   if (input.heldOn !== undefined) fields.heldOn = input.heldOn
-  if (input.startsAt !== undefined) fields.startsAt = input.startsAt
-  if (input.endsAt !== undefined) fields.endsAt = input.endsAt
   if (input.signupsCloseAt !== undefined) fields.signupsCloseAt = input.signupsCloseAt
   if (input.capacity !== undefined) fields.capacity = input.capacity
   if (input.location !== undefined) fields.location = input.location
   if (input.description !== undefined) fields.description = input.description
   if (input.notes !== undefined) fields.notes = input.notes
+
+  // Moving the date moves the instants with it, so both are recomposed from
+  // whatever the session ends up holding rather than edited independently.
+  const heldOn = input.heldOn ?? session.heldOn
+  const startsTime = input.startsTime !== undefined
+    ? input.startsTime
+    : session.startsAt && londonTimeOf(session.startsAt)
+  const endsTime = input.endsTime !== undefined
+    ? input.endsTime
+    : session.endsAt && londonTimeOf(session.endsAt)
+
+  if (input.heldOn !== undefined || input.startsTime !== undefined || input.endsTime !== undefined) {
+    fields.startsAt = startsTime ? londonInstant(heldOn, startsTime) : null
+    fields.endsAt = endsTime ? londonInstant(heldOn, endsTime) : null
+  }
 
   statements.push(db.update(schema.sessions).set(fields).where(eq(schema.sessions.id, sessionId)))
 
@@ -329,13 +361,6 @@ export async function openRegister(sessionId: string): Promise<void> {
     .where(eq(schema.sessions.id, sessionId))
 }
 
-export interface RegisterEntry {
-  userId: string
-  name: string
-  hasPlace: boolean
-  status: AttendeeRow['status']
-}
-
 /** The register, in sign-up order, with the waitlist marked but present. */
 export async function registerFor(session: SessionRow): Promise<RegisterEntry[]> {
   const rows = await db.select({
@@ -353,16 +378,14 @@ export async function registerFor(session: SessionRow): Promise<RegisterEntry[]>
     ))
     .all()
 
-  const live = rows.filter(row => row.status === 'SIGNED_UP')
-  const held = new Set(splitByCapacity(live, session.capacity).confirmed.map(row => row.id))
+  const held = placesHeld(rows, session.capacity)
 
   return rows
     .sort(compareSignupOrder)
     .map(row => ({
       userId: row.userId,
       name: row.name,
-      // Somebody already marked kept their place by turning up.
-      hasPlace: row.status === 'SIGNED_UP' ? held.has(row.id) : true,
+      hasPlace: held.has(row.id),
       status: row.status,
     }))
 }
@@ -447,19 +470,27 @@ export async function listUpcoming(
 
   if (rows.length === 0) return []
 
-  const ids = rows.map(row => row.session.id)
-  // Scoped by the same status predicate rather than by the ids just returned,
-  // so neither statement's parameter count tracks the rows (ADR-0006 estate).
+  // A subquery, never the ids just returned: an IN list built from a result
+  // set binds one parameter per row and blows D1's cap of 100.
+  const visibleSessions = db.select({ id: schema.sessions.id })
+    .from(schema.sessions)
+    .where(and(
+      inArray(schema.sessions.status, [...visible]),
+      gte(schema.sessions.heldOn, today()),
+    ))
+    .orderBy(asc(schema.sessions.heldOn), asc(schema.sessions.startsAt))
+    .limit(limit)
+
   const [modules, signups] = await Promise.all([
     db.select().from(schema.sessionModules)
-      .where(inArray(schema.sessionModules.sessionId, ids)).all(),
+      .where(inArray(schema.sessionModules.sessionId, visibleSessions)).all(),
     db.select({
       sessionId: schema.sessionAttendees.sessionId,
       count: sql<number>`count(*)`.as('count'),
     })
       .from(schema.sessionAttendees)
       .where(and(
-        inArray(schema.sessionAttendees.sessionId, ids),
+        inArray(schema.sessionAttendees.sessionId, visibleSessions),
         eq(schema.sessionAttendees.status, 'SIGNED_UP'),
       ))
       .groupBy(schema.sessionAttendees.sessionId)
@@ -487,10 +518,12 @@ export async function listUpcoming(
 }
 
 /** Sessions this person is signed up to, soonest first. */
-export async function myUpcoming(userId: string): Promise<{ sessionId: string, status: AttendeeRow['status'] }[]> {
-  const rows = await db.select({
+export async function myUpcoming(userId: string): Promise<{ sessionId: string, hasPlace: boolean }[]> {
+  const mine = await db.select({
     sessionId: schema.sessionAttendees.sessionId,
-    status: schema.sessionAttendees.status,
+    id: schema.sessionAttendees.id,
+    signedUpAt: schema.sessionAttendees.signedUpAt,
+    capacity: schema.sessions.capacity,
   })
     .from(schema.sessionAttendees)
     .innerJoin(schema.sessions, eq(schema.sessionAttendees.sessionId, schema.sessions.id))
@@ -503,5 +536,34 @@ export async function myUpcoming(userId: string): Promise<{ sessionId: string, s
     .orderBy(asc(schema.sessions.heldOn))
     .all()
 
-  return rows
+  if (mine.length === 0) return []
+
+  // Their place, not merely that they signed up: telling somebody on a
+  // waitlist they have one is how a session is under-attended.
+  const ahead = new Map<string, number>()
+  for (const batch of chunk(mine.map(row => row.sessionId))) {
+    const rows = await db.select({
+      sessionId: schema.sessionAttendees.sessionId,
+      id: schema.sessionAttendees.id,
+      signedUpAt: schema.sessionAttendees.signedUpAt,
+    })
+      .from(schema.sessionAttendees)
+      .where(and(
+        inArray(schema.sessionAttendees.sessionId, batch),
+        eq(schema.sessionAttendees.status, 'SIGNED_UP'),
+      ))
+      .all()
+
+    for (const row of rows) {
+      const own = mine.find(item => item.sessionId === row.sessionId)!
+      if (compareSignupOrder(row, own) < 0) {
+        ahead.set(row.sessionId, (ahead.get(row.sessionId) ?? 0) + 1)
+      }
+    }
+  }
+
+  return mine.map(row => ({
+    sessionId: row.sessionId,
+    hasPlace: row.capacity === null || (ahead.get(row.sessionId) ?? 0) < row.capacity,
+  }))
 }

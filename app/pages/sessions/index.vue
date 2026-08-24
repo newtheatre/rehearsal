@@ -5,6 +5,8 @@ const { data: me } = useMe()
 
 const { data: schedule } = await useFetch('/api/sessions/upcoming')
 const upcoming = computed(() => schedule.value?.sessions ?? [])
+// The endpoint decides who may schedule; the template must not re-derive it.
+const canSchedule = computed(() => schedule.value?.canSchedule ?? false)
 
 /** A time is only worth printing when the session says one. */
 function whenLine(session: { heldOn: string, startsAt: string | null }): string {
@@ -55,7 +57,7 @@ async function loadMore() {
       </div>
 
       <div
-        v-if="me?.isTrainer"
+        v-if="canSchedule"
         class="flex flex-wrap gap-2"
       >
         <UButton
@@ -108,10 +110,10 @@ async function loadMore() {
               />
               <UBadge
                 v-if="session.signedUp"
-                color="success"
+                :color="session.hasPlace ? 'success' : 'warning'"
                 variant="subtle"
                 size="sm"
-                label="You are signed up"
+                :label="session.hasPlace ? 'You are signed up' : 'You are on the waitlist'"
               />
             </div>
             <p class="text-xs text-muted mt-0.5">

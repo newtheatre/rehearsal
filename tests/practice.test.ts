@@ -3,6 +3,8 @@
  * most modules have no sandbox and must open nothing.
  */
 
+import { today } from '../shared/utils/dates'
+
 import { describe, it, expect, beforeEach } from 'vitest'
 import { db, schema } from './mocks/nuxthub-db'
 import { makeEvent, signIn, runtimeConfig, type FakeEvent } from './setup'
@@ -17,12 +19,13 @@ import practiceHandler from '../server/api/v1/practice/[key].get'
 import targetsPutHandler from '../server/api/admin/practice-targets/index.put'
 import grantHandler from '../server/api/practice-windows/index.post'
 import closeHandler from '../server/api/practice-windows/[id]/index.delete'
+import addAttendeeHandler from '../server/api/sessions/[id]/attendees.post'
 
 type Handler = (event: FakeEvent) => Promise<unknown>
 const call = (handler: unknown, event: FakeEvent) => (handler as Handler)(event)
 
 const SERVICE_TOKEN = `${TOKEN_PREFIX}practice-token`
-const TODAY = new Date().toISOString().slice(0, 10)
+const TODAY = today()
 
 async function setup() {
   await seedDepartments()
@@ -163,6 +166,21 @@ describe('what a session opens', () => {
   })
 })
 
+describe('walk-ins', () => {
+  it('opens a window for somebody added after the register did', async () => {
+    const id = await sessionTeaching(['ADMN-102'], ['alice'])
+    await openTheRegister(id)
+    expect(await ask('bar-till', 'bob')).toMatchObject({ active: false })
+
+    const add = makeEvent({ method: 'POST', path: '/x', params: { id }, body: { userId: 'bob' } })
+    signIn(add, { id: 'trainer' })
+    await call(addAttendeeHandler, add)
+
+    // Otherwise the walk-in is the one person in the room who cannot practise.
+    expect(await ask('bar-till', 'bob')).toMatchObject({ active: true })
+  })
+})
+
 describe('closing', () => {
   it('closes the window when the register is marked', async () => {
     const id = await sessionTeaching(['ADMN-102'], ['alice'])
@@ -190,7 +208,7 @@ describe('closing', () => {
       method: 'POST',
       path: '/x',
       params: { id },
-      body: { marks: [{ userId: 'alice', present: false }] },
+      body: { marks: [{ userId: 'alice', present: false }], acknowledgeAllAbsent: true },
     })
     signIn(mark, { id: 'trainer' })
     await call(markHandler, mark)

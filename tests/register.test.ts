@@ -3,6 +3,8 @@
  * (ADR-0013). The absence tests are the point of the feature.
  */
 
+import { today } from '../shared/utils/dates'
+
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const sent: { to: string, subject: string }[] = []
@@ -36,7 +38,7 @@ const editHandler = (await import('../server/api/sessions/[id].put')).default
 type Handler = (event: FakeEvent) => Promise<unknown>
 const call = (handler: unknown, event: FakeEvent) => (handler as Handler)(event)
 
-const TODAY = new Date().toISOString().slice(0, 10)
+const TODAY = today()
 
 async function setup() {
   await seedDepartments()
@@ -286,10 +288,16 @@ describe('a register is marked once', () => {
     await openTheRegister(id)
     sent.length = 0
 
+    // Refused until the lead says so: one tap must not write off a whole class.
+    await expect(mark(id, [
+      { userId: 'alice', present: false },
+      { userId: 'bob', present: false },
+    ])).rejects.toMatchObject({ statusCode: 409 })
+
     const result = await mark(id, [
       { userId: 'alice', present: false },
       { userId: 'bob', present: false },
-    ])
+    ], { acknowledgeAllAbsent: true })
 
     expect(result.recordCount).toBe(0)
     expect(await recordsFor('alice')).toHaveLength(0)

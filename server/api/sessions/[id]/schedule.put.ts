@@ -2,7 +2,7 @@
 
 import { sessionScheduleUpdateSchema } from '../../../utils/validation'
 import { requireTrainer } from '../../../utils/auth'
-import { loadModules } from '../../../utils/records'
+import { assertAwardable, loadModules } from '../../../utils/records'
 import { loadSessionRow, updateSchedule } from '../../../utils/scheduling'
 import { assertMaySteward } from '../../../utils/sessionAuth'
 import { addressableUsers, sendEach, sessionEmailSummary } from '../../../utils/sessionNotify'
@@ -33,7 +33,8 @@ export default defineEventHandler(async (event) => {
   if (input.heldOn && input.heldOn < today()) {
     throw createError({ statusCode: 400, statusMessage: 'That date has passed' })
   }
-  if (input.moduleIds) await loadModules(input.moduleIds)
+  // The same gate as creation: rescheduling must not slip a module past it.
+  if (input.moduleIds) assertAwardable(await loadModules(input.moduleIds), 'SESSION')
 
   // Lowering capacity below the number already signed up is allowed: it moves
   // the people at the back onto the waitlist rather than removing them.

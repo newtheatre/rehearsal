@@ -10,7 +10,9 @@ import { addressableUsers, sessionEmailSummary, type Recipient } from './session
 import { registerFor } from './scheduling'
 import { sweepExpiredWindows } from './practice'
 import { getConfig, getConfigNumber } from './siteConfig'
-import { today } from '../../shared/utils/dates'
+import { chunk } from './d1'
+import { daysBetween, today } from '../../shared/utils/dates'
+import { addDays } from './validity'
 
 export type SessionNotificationType = 'session.reminder' | 'session.nag'
 
@@ -23,28 +25,27 @@ export interface SessionSweepResult {
   failed: number
 }
 
-/** ISO date `days` after `from`. */
-function addDays(from: string, days: number): string {
-  const date = new Date(`${from}T00:00:00Z`)
-  date.setUTCDate(date.getUTCDate() + days)
-  return date.toISOString().slice(0, 10)
-}
-
 /** A nag repeats, but weekly rather than every morning. */
 const NAG_INTERVAL_DAYS = 7
 
 /** When each notification last went out, so a re-run sends nothing new. */
 async function lastSent(sessionIds: string[]): Promise<Map<string, Date>> {
   if (sessionIds.length === 0) return new Map()
-  const rows = await db.select({
-    sessionId: schema.notificationLog.sessionId,
-    userId: schema.notificationLog.userId,
-    type: schema.notificationLog.type,
-    sentAt: schema.notificationLog.sentAt,
-  })
-    .from(schema.notificationLog)
-    .where(inArray(schema.notificationLog.sessionId, sessionIds))
-    .all()
+
+  // Chunked: the sweep's session set is unbounded, and one parameter per id
+  // would blow D1's cap of 100 on a busy term (d1.ts).
+  const rows = []
+  for (const batch of chunk(sessionIds)) {
+    rows.push(...await db.select({
+      sessionId: schema.notificationLog.sessionId,
+      userId: schema.notificationLog.userId,
+      type: schema.notificationLog.type,
+      sentAt: schema.notificationLog.sentAt,
+    })
+      .from(schema.notificationLog)
+      .where(inArray(schema.notificationLog.sessionId, batch))
+      .all())
+  }
 
   const latest = new Map<string, Date>()
   for (const row of rows) {
@@ -139,13 +140,13 @@ export async function runSessionSweep(asOf: string = today()): Promise<SessionSw
   }
 
   for (const session of unmarked) {
+    // The cheap gate first: most unmarked sessions are not yet due a nag, and
+    // the reads below are per session.
+    const daysAgo = daysBetween(session.heldOn, asOf)
+    if (daysAgo < nagDays) continue
+
     const summary = await sessionEmailSummary(session.id)
     if (!summary) continue
-
-    const daysAgo = Math.round(
-      (Date.parse(`${asOf}T00:00:00Z`) - Date.parse(`${session.heldOn}T00:00:00Z`)) / 86_400_000,
-    )
-    if (daysAgo < nagDays) continue
 
     const register = await registerFor(session)
     const [lead] = await addressableUsers([session.trainerUserId])

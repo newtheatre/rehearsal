@@ -34,6 +34,7 @@
     "zod": "^4.1.11"
   },
   "devDependencies": {
+    "@iconify-json/lucide": "^1.2.126",
     "@libsql/client": "^0.17.4",
     "better-sqlite3": "^12.11.1",
     "drizzle-kit": "^0.31.10",

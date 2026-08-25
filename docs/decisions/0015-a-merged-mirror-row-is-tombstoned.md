@@ -38,8 +38,9 @@ identity now lives on the winner). The row exists only to occupy the id.
 
 `ensureLocalUser`'s `setWhere` already refused to write back over an erased row; it now refuses a
 tombstoned one too, so a cookie sealed before the merge cannot resurrect the losing id. The
-directory, the people list, `ensureKnownUser` and `addressableUsers` all exclude tombstoned rows, so
-a merged-away id cannot be picked, listed or emailed.
+directory, the people list, `ensureKnownUser`, `addressableUsers`, the lead-appointment route and
+the expiry sweep all exclude tombstoned rows, so a merged-away id cannot be picked, listed,
+appointed or emailed.
 
 **The whole merge is one `db.batch()`**, audit entry included ([ADR-0009](0009-atomic-writes-use-batch-not-transactions.md)).
 A failure leaves nothing tombstoned, so the automatic retry re-runs the merge from a clean state and

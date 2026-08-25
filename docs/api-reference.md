@@ -67,7 +67,7 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `GET /api/me/records` | session | own records, expiring/expired splits, and prerequisite-met suggestions |
 | `GET /api/departments` | session | departments with module counts (visible-to-caller counts only) |
 | `GET /api/modules` | session | catalogue list; `DRAFT` included only for leads/admins |
-| `GET /api/modules/:id` | session | module detail incl. prerequisites and dependents; `notes` only for leads/admins |
+| `GET /api/modules/:id` | session | module detail incl. prerequisites and dependents, both ordered by department, sort then id; `notes` only for leads/admins |
 | `POST /api/modules` | lead (own dept) or admin | create; Zod-validated; audit-logged |
 | `PUT /api/modules/:id` | lead (own dept) or admin | update incl. status transitions and prerequisites; audit-logged. **409** on changing `kind`, or turning on `grants_trainer`/`grants_supervisor`, once the module has an unrevoked record: those fields are read live, so the change would rewrite records already awarded ([ADR-0002](decisions/0002-expiry-stamped-at-award.md)) |
 | `GET /api/people` | session | directory with per-person valid/expiring/expired counts and certifications. Paged: `limit` (default 50, max 100) with a keyset cursor `(afterName, afterId)`; `q` and `module` filter in SQL. Returns `{ people, hasMore }` |

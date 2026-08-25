@@ -15,6 +15,7 @@ const {
   error: previewError,
 } = await useFetch('/api/admin/expiry-preview', { query: previewQuery })
 const { data: log, refresh: refreshLog } = await useFetch('/api/admin/notifications')
+const { data: unmarked, refresh: refreshUnmarked } = await useFetch('/api/admin/unmarked-sessions')
 
 const mode = computed(() => config.value?.config.find(c => c.key === 'notifications_mode')?.value ?? 'dry-run')
 const isLive = computed(() => mode.value === 'live')
@@ -44,6 +45,14 @@ async function setValue(key: string, value: string | number) {
 const windowDays = computed({
   get: () => Number(config.value?.config.find(c => c.key === 'warning_window_days')?.value ?? 60),
   set: (value: number) => { setValue('warning_window_days', value) },
+})
+
+const nagStopDays = computed({
+  get: () => Number(config.value?.config.find(c => c.key === 'register_nag_stop_days')?.value ?? 60),
+  set: async (value: number) => {
+    await setValue('register_nag_stop_days', value)
+    await refreshUnmarked()
+  },
 })
 </script>
 
@@ -218,6 +227,88 @@ const windowDays = computed({
             </li>
           </ul>
         </div>
+      </div>
+    </UCard>
+
+    <UCard>
+      <template #header>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="font-semibold">
+            Unmarked registers
+          </h2>
+          <UButton
+            icon="i-lucide-refresh-cw"
+            variant="ghost"
+            color="neutral"
+            size="sm"
+            aria-label="Refresh unmarked registers"
+            @click="refreshUnmarked()"
+          />
+        </div>
+      </template>
+
+      <div class="space-y-4">
+        <p class="text-sm text-muted">
+          A session that happened and was never marked means nobody in the room got a record.
+          The sweep nags its lead weekly, then stops; these stay listed either way.
+        </p>
+
+        <p
+          v-if="!unmarked?.sessions.length"
+          class="text-sm text-muted"
+        >
+          Every register that has come round has been marked.
+        </p>
+
+        <div
+          v-else
+          class="border border-default rounded-lg divide-y divide-default text-sm"
+        >
+          <div
+            v-for="session in unmarked.sessions"
+            :key="session.id"
+            class="flex flex-wrap items-center justify-between gap-3 p-2.5"
+          >
+            <NuxtLink
+              :to="`/sessions/${session.id}/register`"
+              class="font-medium hover:underline"
+            >
+              {{ formatDate(session.heldOn) }}
+            </NuxtLink>
+            <span class="text-muted text-xs">
+              {{ session.trainerName }} · {{ session.signupCount }} waiting on a record
+            </span>
+            <UBadge
+              :color="session.stale ? 'error' : 'warning'"
+              variant="subtle"
+              size="sm"
+              :label="session.stale ? `${session.daysAgo} days, no longer nagged` : `${session.daysAgo} days`"
+            />
+          </div>
+        </div>
+
+        <p
+          v-if="unmarked?.hasMore"
+          class="text-sm text-muted"
+        >
+          Only the oldest {{ unmarked.sessions.length }} are shown.
+        </p>
+
+        <UFormField
+          label="Stop nagging after"
+          help="The lead stops being emailed past this; the session stays on this list until it is marked or cancelled."
+        >
+          <div class="flex items-center gap-2">
+            <UInput
+              v-model.number="nagStopDays"
+              type="number"
+              :min="1"
+              :max="3650"
+              class="w-28"
+            />
+            <span class="text-sm text-muted">days</span>
+          </div>
+        </UFormField>
       </div>
     </UCard>
 

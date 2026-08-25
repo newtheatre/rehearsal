@@ -4,7 +4,8 @@
  */
 
 import { db, schema } from '@nuxthub/db'
-import { and, eq, inArray, like, or, ne, type SQL } from 'drizzle-orm'
+import { and, asc, eq, like, or, ne, type SQL } from 'drizzle-orm'
+import type { SQLiteColumn } from 'drizzle-orm/sqlite-core'
 import type { Abilities } from './abilities'
 import { canSeeDrafts } from './abilities'
 
@@ -59,34 +60,41 @@ export async function getModuleDetail(id: string, abilities: Abilities) {
   if (!module) return null
   if (module.status === 'DRAFT' && !canSeeDrafts(abilities)) return null
 
-  const [prerequisiteRows, dependentRows] = await Promise.all([
-    db.select({ id: schema.modulePrerequisites.requiresModuleId })
-      .from(schema.modulePrerequisites)
-      .where(eq(schema.modulePrerequisites.moduleId, id)).all(),
-    db.select({ id: schema.modulePrerequisites.moduleId })
-      .from(schema.modulePrerequisites)
-      .where(eq(schema.modulePrerequisites.requiresModuleId, id)).all(),
+  const [prerequisites, requiredBy] = await Promise.all([
+    relatedModules(schema.modulePrerequisites.requiresModuleId, eq(schema.modulePrerequisites.moduleId, id)),
+    relatedModules(schema.modulePrerequisites.moduleId, eq(schema.modulePrerequisites.requiresModuleId, id)),
   ])
-
-  const referenced = [...prerequisiteRows, ...dependentRows].map(r => r.id)
-  const related = referenced.length
-    ? await db.select().from(schema.modules).where(inArray(schema.modules.id, referenced)).all()
-    : []
-
-  const byId = new Map(related.map(m => [m.id, m]))
-  const resolve = (ids: { id: string }[]) => ids
-    .map(({ id: relatedId }) => byId.get(relatedId))
-    .filter((m): m is ModuleRow => Boolean(m))
-    // A draft prerequisite is hidden from members like any other draft, but
-    // the dependency itself is still enforced server-side at sign-off.
-    .filter(m => m.status !== 'DRAFT' || canSeeDrafts(abilities))
-    .map(m => ({ id: m.id, name: m.name, kind: m.kind, status: m.status, department: m.department }))
 
   return {
     ...presentModule(module, abilities),
-    prerequisites: resolve(prerequisiteRows),
-    requiredBy: resolve(dependentRows),
+    prerequisites: visibleRelated(prerequisites, abilities),
+    requiredBy: visibleRelated(requiredBy, abilities),
   }
+}
+
+/**
+ * Joined, never an IN list of the ids just read: a module's dependents are
+ * bounded only by the catalogue, and D1 caps a statement at 100 parameters.
+ */
+function relatedModules(joinColumn: SQLiteColumn, match: SQL) {
+  return db.select({
+    id: schema.modules.id,
+    name: schema.modules.name,
+    kind: schema.modules.kind,
+    status: schema.modules.status,
+    department: schema.modules.department,
+  })
+    .from(schema.modulePrerequisites)
+    .innerJoin(schema.modules, eq(schema.modules.id, joinColumn))
+    .where(match)
+    .orderBy(asc(schema.modules.department), asc(schema.modules.sort), asc(schema.modules.id))
+    .all()
+}
+
+// A draft prerequisite is hidden from members like any other draft, but the
+// dependency itself is still enforced server-side at sign-off.
+function visibleRelated<T extends { status: ModuleRow['status'] }>(rows: T[], abilities: Abilities): T[] {
+  return rows.filter(row => row.status !== 'DRAFT' || canSeeDrafts(abilities))
 }
 
 /**

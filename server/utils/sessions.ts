@@ -310,20 +310,39 @@ export async function listSessions(
 
   if (sessions.length === 0) return { sessions: [], hasMore: false }
 
-  const ids = sessions.map(s => s.id)
+  // A subquery, never the ids just returned: an IN list built from a result
+  // set binds one parameter per row and blows D1's cap of 100.
+  const page = db.select({ id: schema.sessions.id })
+    .from(schema.sessions)
+    .where(and(eq(schema.sessions.status, 'DELIVERED'), cursor))
+    .orderBy(desc(schema.sessions.heldOn), desc(schema.sessions.id))
+    // `limit`, not `limit + 1`: the probe row must not be hydrated.
+    .limit(limit)
+
   const [modules, attendees] = await Promise.all([
     db.select().from(schema.sessionModules)
-      .where(inArray(schema.sessionModules.sessionId, ids)).all(),
-    db.select().from(schema.sessionAttendees)
-      .where(inArray(schema.sessionAttendees.sessionId, ids)).all(),
+      .where(inArray(schema.sessionModules.sessionId, page)).all(),
+    // Present, not signed up: an absentee got no record and did not attend.
+    db.select({
+      sessionId: schema.sessionAttendees.sessionId,
+      count: sql<number>`count(*)`.as('count'),
+    })
+      .from(schema.sessionAttendees)
+      .where(and(
+        inArray(schema.sessionAttendees.sessionId, page),
+        eq(schema.sessionAttendees.status, 'ATTENDED'),
+      ))
+      .groupBy(schema.sessionAttendees.sessionId)
+      .all(),
   ])
+
+  const attendeeCounts = new Map(attendees.map(row => [row.sessionId, Number(row.count)]))
 
   return {
     sessions: sessions.map(session => ({
       ...session,
       moduleIds: modules.filter(m => m.sessionId === session.id).map(m => m.moduleId),
-      // Present, not signed up: an absentee got no record and did not attend.
-      attendeeCount: attendees.filter(a => a.sessionId === session.id && a.status === 'ATTENDED').length,
+      attendeeCount: attendeeCounts.get(session.id) ?? 0,
     })),
     hasMore,
   }

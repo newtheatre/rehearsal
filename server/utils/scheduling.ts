@@ -4,14 +4,15 @@
  */
 
 import { db, schema } from '@nuxthub/db'
-import { and, asc, eq, gte, inArray, ne, sql } from 'drizzle-orm'
+import { and, asc, eq, gt, gte, inArray, lt, ne, or, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { runAtomic, type BatchStatement } from './batch'
 import { chunk } from './d1'
-import { londonInstant, londonTimeOf, today } from '../../shared/utils/dates'
+import { daysBetween, londonInstant, londonTimeOf, today } from '../../shared/utils/dates'
+import { addDays } from './validity'
 import type { SessionRow } from './sessions'
 import type { RegisterEntry } from '../../shared/types/session'
-import { closeSessionWindowStatements } from './practice'
+import { closeAttendeeWindowStatements, closeSessionWindowStatements } from './practice'
 
 export type AttendeeRow = typeof schema.sessionAttendees.$inferSelect
 
@@ -176,6 +177,7 @@ export async function updateSchedule(options: {
   statements.push(db.update(schema.sessions).set(fields).where(eq(schema.sessions.id, sessionId)))
 
   if (input.moduleIds) {
+    await assertModulesUnchangedOnceOpen(session, input.moduleIds)
     statements.push(db.delete(schema.sessionModules).where(eq(schema.sessionModules.sessionId, sessionId)))
     statements.push(...input.moduleIds.map(moduleId =>
       db.insert(schema.sessionModules).values({ sessionId, moduleId }),
@@ -195,6 +197,23 @@ export async function updateSchedule(options: {
 
   const heldAfter = splitByCapacity(signups, capacity).confirmed
   return { promoted: heldAfter.filter(row => !heldBefore.has(row.id)) }
+}
+
+/**
+ * Practice windows come from the register-open snapshot and are never
+ * reconciled, so what a session teaches is frozen from then on (ADR-0014).
+ */
+async function assertModulesUnchangedOnceOpen(session: SessionRow, moduleIds: string[]): Promise<void> {
+  if (!session.registerOpenedAt) return
+
+  const before = new Set(await moduleIdsFor(session.id))
+  const after = new Set(moduleIds)
+  if (before.size === after.size && [...after].every(moduleId => before.has(moduleId))) return
+
+  throw createError({
+    statusCode: 409,
+    statusMessage: 'The register is open: mark it, or cancel the session, before changing what it teaches',
+  })
 }
 
 /** Put a planned session in front of members. */
@@ -344,6 +363,8 @@ export async function withdraw(options: {
   await runAtomic([
     db.update(schema.sessionAttendees).set({ status: 'CANCELLED' })
       .where(eq(schema.sessionAttendees.id, row.id)),
+    // Off the register with no way back, so the sandbox goes too (ADR-0014).
+    ...closeAttendeeWindowStatements(session.id, userId, userId),
   ])
 
   const after = before.filter(item => item.id !== row.id)
@@ -426,6 +447,93 @@ export async function addAttendee(options: {
       source: 'LEAD',
     }),
   ])
+}
+
+export interface UnmarkedSession {
+  id: string
+  heldOn: string
+  daysAgo: number
+  location: string | null
+  trainerUserId: string
+  trainerName: string
+  signupCount: number
+  /** Past the nag cutoff: nothing emails the lead about this one any more. */
+  stale: boolean
+}
+
+/**
+ * Registers that were never marked, oldest first. Nobody in one of these rooms
+ * has a record, so the list is the only thing that keeps them findable.
+ */
+export async function listUnmarkedSessions(options: {
+  asOf: string
+  staleAfterDays: number
+  limit?: number
+  after?: { heldOn: string, id: string }
+}): Promise<{ sessions: UnmarkedSession[], hasMore: boolean }> {
+  const limit = options.limit ?? 50
+  const status = ['OPEN', 'FULL'] as const
+
+  // Keyset on (held_on, id): held_on is a date, so many sessions share one.
+  const cursor = options.after
+    ? or(
+        gt(schema.sessions.heldOn, options.after.heldOn),
+        and(eq(schema.sessions.heldOn, options.after.heldOn), gt(schema.sessions.id, options.after.id)),
+      )
+    : undefined
+  const match = and(lt(schema.sessions.heldOn, options.asOf), inArray(schema.sessions.status, [...status]), cursor)
+
+  const rows = await db.select({
+    session: schema.sessions,
+    trainerName: schema.users.name,
+  })
+    .from(schema.sessions)
+    .innerJoin(schema.users, eq(schema.sessions.trainerUserId, schema.users.id))
+    .where(match)
+    .orderBy(asc(schema.sessions.heldOn), asc(schema.sessions.id))
+    // One extra row says whether there is another page without counting.
+    .limit(limit + 1)
+    .all()
+
+  const page = rows.slice(0, limit)
+  if (page.length === 0) return { sessions: [], hasMore: false }
+
+  // A subquery, never the ids just returned: an IN list built from a result
+  // set binds one parameter per row and blows D1's cap of 100.
+  const pageIds = db.select({ id: schema.sessions.id })
+    .from(schema.sessions)
+    .where(match)
+    .orderBy(asc(schema.sessions.heldOn), asc(schema.sessions.id))
+    .limit(limit)
+
+  const signups = await db.select({
+    sessionId: schema.sessionAttendees.sessionId,
+    count: sql<number>`count(*)`.as('count'),
+  })
+    .from(schema.sessionAttendees)
+    .where(and(
+      inArray(schema.sessionAttendees.sessionId, pageIds),
+      eq(schema.sessionAttendees.status, 'SIGNED_UP'),
+    ))
+    .groupBy(schema.sessionAttendees.sessionId)
+    .all()
+
+  const counts = new Map(signups.map(row => [row.sessionId, Number(row.count)]))
+  const staleBefore = addDays(options.asOf, -options.staleAfterDays)
+
+  return {
+    sessions: page.map(({ session, trainerName }) => ({
+      id: session.id,
+      heldOn: session.heldOn,
+      daysAgo: daysBetween(session.heldOn, options.asOf),
+      location: session.location,
+      trainerUserId: session.trainerUserId,
+      trainerName,
+      signupCount: counts.get(session.id) ?? 0,
+      stale: session.heldOn < staleBefore,
+    })),
+    hasMore: rows.length > limit,
+  }
 }
 
 export interface UpcomingSession {

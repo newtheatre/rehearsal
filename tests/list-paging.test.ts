@@ -11,6 +11,7 @@ import createSessionHandler from '../server/api/sessions/index.post'
 import { makeEvent, signIn, type FakeEvent } from './setup'
 import { seedDepartments, seedModule, seedRecord, seedUser } from './helpers/fixtures'
 import { today } from '../shared/utils/dates'
+import { db, schema, resetQueryCount, widestBoundStatement } from './mocks/nuxthub-db'
 
 type Handler = (event: FakeEvent) => Promise<unknown>
 const call = (handler: unknown, event: FakeEvent) => (handler as Handler)(event)
@@ -97,6 +98,39 @@ describe('GET /api/sessions', () => {
       'attendeeCount', 'capacity', 'deliveredAt', 'endsAt', 'heldOn', 'id',
       'location', 'moduleIds', 'startsAt', 'status', 'trainerName', 'trainerUserId',
     ])
+  })
+
+  it('keeps the statement width off the page size', async () => {
+    await setup()
+    await logSessions(100)
+
+    resetQueryCount()
+    const page = await call(sessionsHandler, memberEvent('/api/sessions', { limit: 100 })) as SessionsPage
+
+    // The rule itself: no statement's parameter count tracks the row count.
+    expect(widestBoundStatement()).toBeLessThan(90)
+    // And the scoping did not silently drop the hydration.
+    expect(page.sessions).toHaveLength(100)
+  })
+
+  it('counts only the people who were present', async () => {
+    await setup()
+    await seedUser('absentee')
+    await logSessions(1)
+
+    const readLog = async () => (await call(sessionsHandler, memberEvent('/api/sessions')) as {
+      sessions: { id: string, attendeeCount: number }[]
+    }).sessions[0]!
+
+    const before = await readLog()
+    expect(before.attendeeCount).toBe(1)
+
+    await db.insert(schema.sessionAttendees).values({
+      sessionId: before.id, userId: 'absentee', status: 'ABSENT',
+    })
+
+    // Present, not signed up: an absentee got no record and did not attend.
+    expect((await readLog()).attendeeCount).toBe(1)
   })
 
   it('says when there is more, rather than truncating in silence', async () => {

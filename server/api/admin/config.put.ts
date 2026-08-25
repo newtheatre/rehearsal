@@ -21,6 +21,7 @@ const schemas = {
   admin_cache_days: z.coerce.number().int().min(1).max(3650).transform(String),
   session_reminder_days: z.coerce.number().int().min(0).max(14).transform(String),
   register_nag_days: z.coerce.number().int().min(0).max(30).transform(String),
+  register_nag_stop_days: z.coerce.number().int().min(1).max(3650).transform(String),
   practice_window_grace_hours: z.coerce.number().int().min(0).max(48).transform(String),
 } as const
 

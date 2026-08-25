@@ -67,7 +67,7 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `GET /api/me/records` | session | own records, expiring/expired splits, and prerequisite-met suggestions |
 | `GET /api/departments` | session | departments with module counts (visible-to-caller counts only) |
 | `GET /api/modules` | session | catalogue list; `DRAFT` included only for leads/admins |
-| `GET /api/modules/:id` | session | module detail incl. prerequisites and dependents; `notes` only for leads/admins |
+| `GET /api/modules/:id` | session | module detail incl. prerequisites and dependents, both ordered by department, sort then id; `notes` only for leads/admins |
 | `POST /api/modules` | lead (own dept) or admin | create; Zod-validated; audit-logged |
 | `PUT /api/modules/:id` | lead (own dept) or admin | update incl. status transitions and prerequisites; audit-logged. **409** on changing `kind`, or turning on `grants_trainer`/`grants_supervisor`, once the module has an unrevoked record: those fields are read live, so the change would rewrite records already awarded ([ADR-0002](decisions/0002-expiry-stamped-at-award.md)) |
 | `GET /api/people` | session | directory with per-person valid/expiring/expired counts and certifications. Paged: `limit` (default 50, max 100) with a keyset cursor `(afterName, afterId)`; `q` and `module` filter in SQL. Returns `{ people, hasMore }` |
@@ -83,11 +83,11 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `PUT /api/sessions/:id` | trainer (own session) or admin | re-derive records inside the edit window, measured from `delivered_at` (`created_at` only when a session was logged rather than scheduled). **409 unless the session is `DELIVERED`**: there are no records to re-derive otherwise |
 | `GET /api/sessions/upcoming` | session | the schedule, soonest first. `PLANNED` sessions are visible only to trainers and leads |
 | `POST /api/sessions/schedule` | trainer | put a session in the diary. **Creates no records.** `openNow: true` skips `PLANNED`. Times are `startsTime`/`endsTime` as `HH:MM` **wall-clock in Europe/London**, never instants: the server composes them with `heldOn`, because a browser would anchor them to whatever the device says |
-| `PUT /api/sessions/:id/schedule` | steward | amend a session that has not been taught; 409 once it is `DELIVERED` or `CANCELLED`. Raising capacity emails whoever it moved into a place and recomputes the FULL badge; returns `promoted`. Moving `heldOn` recomposes the stored instants from the same wall-clock times, so a session keeps its time of day when its date moves |
+| `PUT /api/sessions/:id/schedule` | steward | amend a session that has not been taught; 409 once it is `DELIVERED` or `CANCELLED`, and 409 on **changing `moduleIds` once the register is open**, since practice windows come from the register-open snapshot and are never reconciled ([ADR-0014](decisions/0014-practice-targets-are-data.md)). Resending the same set is not a change, so the rest of the form still amends. Raising capacity emails whoever it moved into a place and recomputes the FULL badge; returns `promoted`. Moving `heldOn` recomposes the stored instants from the same wall-clock times, so a session keeps its time of day when its date moves |
 | `POST /api/sessions/:id/open` | steward | open sign-ups; 409 unless the session is `PLANNED` |
 | `POST /api/sessions/:id/cancel` | steward | cancel with a mandatory reason, and email everyone signed up. Creates and touches no records |
 | `POST /api/sessions/:id/signup` | session | take a place, or join the waitlist. Returns `{ hasPlace, waitlistPosition, warnings }` |
-| `DELETE /api/sessions/:id/signup` | session | withdraw. Allowed until the session is delivered or cancelled, including while the register is open. Returns how many people that moved into a place |
+| `DELETE /api/sessions/:id/signup` | session | withdraw. Allowed until the session is delivered or cancelled, including while the register is open. Closes that person's practice windows for the session, and nobody else's. Returns how many people that moved into a place |
 | `POST /api/sessions/:id/attendees` | steward | add a walk-in. Bypasses the sign-up prerequisite gate on purpose; the register-time check still applies |
 | `POST /api/sessions/:id/register/open` | steward | start taking the register. Idempotent, and **closes sign-ups**. The stamp, the practice windows and the audit entry are one batch, so a failure leaves the register unopened and the retry does the whole thing. 409 while `held_on` is still in the future: opening early would open everybody's practice windows early |
 | `GET /api/sessions/:id/register` | steward | who to mark off, in sign-up order, waitlist marked, plus `practiceTargets` (the sandboxes this session's modules unlock, or empty when they unlock none) and `practiceOpen` (those with a live window right now). The page's banner is driven by the second: a matching target is not a window |
@@ -96,11 +96,12 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `POST /api/module-requests` | session | ask for a module to be taught. 409 if you already have one open, 400 if it is not `ACTIVE` |
 | `DELETE /api/module-requests/:id` | session (own) | withdraw, which frees you to ask again later |
 | `POST /api/module-requests/:id/decline` | lead (module's dept) or admin | reply with a reason, which the requester is shown |
-| `POST /api/attendees/lookup` | trainer | resolve an email to a canonical id, creating a shadow account if needed |
+| `POST /api/attendees/lookup` | trainer | resolve an email to a canonical id, creating a shadow account if needed. **409** when the id resolves to an erased or merged-away mirror row: an account nobody can sign in as must not be given a record ([gdpr-retention.md](gdpr-retention.md)) |
 | `GET /api/admin/config` | admin | operator-tunable values, with defaults and whether each is stored |
 | `PUT /api/admin/config` | admin | change one value; per-key validation; audit-logged. `academic_year_end` is `MM-DD`, month first, and must be a real calendar day: `31-08`, `09-31` and `02-29` are refused with 400 |
 | `GET /api/admin/expiry-preview` | admin | what the next sweep would do; optional `asOf` date; sends and records nothing |
 | `GET /api/admin/notifications` | admin | what has actually been sent |
+| `GET /api/admin/unmarked-sessions` | admin | registers that were never marked, oldest first, paged on a keyset cursor `(afterHeldOn, afterId)`. Each row carries `daysAgo`, the lead, how many people are waiting on a record, and `stale` for the ones past `register_nag_stop_days` that the sweep no longer emails about. Nobody in one of these rooms has a record, so the list is what keeps them findable after the nag stops |
 | `POST /api/admin/recalculate` | admin | preview an expiry recalculation, or apply it by echoing the change count. Returns `{ changes, unchanged, skippedOverridden }`; records whose expiry was set explicitly are never recomputed |
 | `GET /api/admin/service-tokens` | admin | issued consumer tokens (never the tokens themselves) |
 | `POST /api/admin/service-tokens` | admin | issue one; the plaintext is in the response and nowhere else |

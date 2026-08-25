@@ -105,6 +105,8 @@ Two daily crons: the expiry sweep at 06:00 UTC (`expiry-sweep`) and the session 
 
 Sends tomorrow's reminders (`session_reminder_days`, default 1) and nags the lead of any session whose date has passed with an **unmarked register** (`register_nag_days`, default 2, then weekly). An unmarked register means nobody got a record, so the nag is the safety net for the commonest failure this feature has. It never marks anything itself.
 
+The nag phase is bounded by `register_nag_stop_days` (default 60), because each session in it costs per-session reads every morning and a weekly email to a lead who may have left. **Stopping the emails is not dropping the session.** Anything past the cutoff is counted as `stale` in the sweep's result and listed at `/admin/notifications` under "Unmarked registers", flagged as no longer nagged, until somebody marks or cancels it. Chase those by hand: marking a register works however old it is, and still awards the records.
+
 Both are idempotent through `notification_log`, now keyed on `session_id` as well. The sweep also closes any practice window left open past its expiry, which is housekeeping rather than a notification and so runs whatever the mode.
 
 The expiry sweep does the matching housekeeping for the ledger itself: it deletes `notification_log` rows older than 24 months, which is the retention promised in [gdpr-retention.md](gdpr-retention.md), and reports the count as `pruned` in its result and its audit entry. It also runs whatever the mode, for the same reason: a retention promise is not the operator's to switch off.

@@ -44,9 +44,9 @@ export default defineEventHandler(async (event) => {
     actorUserId: abilities.user.id,
     action: 'session.reschedule',
     target: session.id,
-    // Field names only: notes and description are free text, and audit_log is
-    // append-only and never scrubbed by the erasure hook.
-    detail: { changed: Object.keys(input), promoted: promoted.length },
+    // Field names for the free text, ids for the catalogue: notes and
+    // description are about people, and audit_log is never scrubbed.
+    detail: { changed: Object.keys(input), moduleIds: input.moduleIds, promoted: promoted.length },
   })
 
   // Raising capacity gives somebody a place, and they were promised an email

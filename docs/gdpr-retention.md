@@ -20,6 +20,8 @@ This app implements the auth service's hook contract ([api-reference.md](api-ref
 
 The row is stamped `anonymised_at`, and `ensureLocalUser` will not write over a row carrying it. Without that, the person's sealed session cookie, valid for up to 30 days after the erasure, and read locally without revalidation, would restore their real name and email on their next request from any open tab.
 
+`POST /api/attendees/lookup` carries the same guard and goes one step further: it **refuses** an id that resolves to an erased or merged-away row, with a 409, rather than answering with it. The upsert leaves such a row alone, so the name never comes back, but a lead who was handed the id could still attach a training record to an account nobody can sign in as. The erasure is retried by the auth service, so its own row can answer with the real address while the mirror here is already scrubbed.
+
 Audit detail is **not** scrubbed, so nothing identifying may be written into it: `audit_log.detail` is searchable by substring from `/admin`, which would re-identify an anonymised row. Record ids and user ids only. Every mutation that takes free text (revoke, sign-off, external certificate, ad-hoc practice grant, declined request) keeps it in its own column and out of the detail; `tests/audit-detail.test.ts` is what holds that. Rows written before 2026-08-25 predate the rule being enforced, and clearing them is a hand-applied one-off ([known-issues.md](known-issues.md)).
 
 One training-specific wrinkle: an anonymised *trainer* leaves sessions attributed to "Deleted user". Acceptable: the records those sessions produced remain valid; the evidence chain notes an anonymised trainer, which is true.

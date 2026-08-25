@@ -10,6 +10,7 @@ export const CONFIG_DEFAULTS = {
   admin_cache_days: '90',
   session_reminder_days: '1',
   register_nag_days: '2',
+  register_nag_stop_days: '60',
   practice_window_grace_hours: '4',
 } as const
 

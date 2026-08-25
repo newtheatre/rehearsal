@@ -277,7 +277,14 @@ for fun.
 
 The commonest failure of any register system is a session that happened and was never marked, which
 silently means nobody got their record. A daily task nags the lead of any session whose date has
-passed with an unmarked register, and keeps nagging.
+passed with an unmarked register, and keeps nagging weekly until it is marked or until
+`register_nag_stop_days` (default 60) have passed since the session.
+
+**The nag stopping is not the session being forgiven.** Past the cutoff the emails stop, because by
+then the lead has had roughly nine of them and may well have graduated, but the session moves onto
+`/admin/notifications` under "Unmarked registers", flagged as no longer nagged, and stays there until
+somebody marks or cancels it. The sweep also reports how many it has stopped nagging about, as
+`stale`. Marking a register is possible however old it is, and still awards.
 
 **The nag never creates or destroys a record.** It emails a human, who marks the register.
 ([CLAUDE.md](../CLAUDE.md) invariant 10.)
@@ -306,8 +313,15 @@ hand a fresher the till.
   driven by the second, so it cannot claim a sandbox is open when no window exists.
 - A lead may also open one by hand for a named person, for coaching outside a scheduled session. Same
   table, `session_id` null, a reason required.
+- **What a session teaches is frozen once its register is open.** Amending `moduleIds` from then on
+  is refused with a 409, because the windows came from the snapshot taken at register-open and
+  nothing reconciles them afterwards: a dropped module would leave its sandbox open for a lesson
+  that no longer teaches it, and an added one would open nothing for anybody in the room. Mark the
+  register, or cancel the session, and schedule what is actually being taught.
 - Submitting the register closes them. So does the expiry, so does a lead closing one early, and so
-  does a daily sweep for anything left behind.
+  does a daily sweep for anything left behind. So does withdrawing: a person who leaves after the
+  register opened cannot rejoin it (§5.2), so their sandbox closes with them and the rest of the
+  room keeps theirs.
 
 `GET /api/v1/practice/:key` answers, for a service token. **It is `no-store`**, unlike the
 five-minute eligibility cache: a window a lead just closed has to stop answering true immediately, or

@@ -8,6 +8,8 @@ import { listModules, getModuleDetail } from '../server/utils/modules'
 import type { Abilities } from '../server/utils/abilities'
 import { seedDepartments, seedModule } from './helpers/fixtures'
 
+const { db, schema, resetQueryCount, widestBoundStatement } = await import('./mocks/nuxthub-db')
+
 const user = { id: 'u', email: 'u@x', name: 'U', verified: true, guest: false, roles: [] }
 const member: Abilities = { user, isAdmin: false, leadOf: [], isTrainer: false }
 const techLead: Abilities = { user, isAdmin: false, leadOf: ['TECH'], isTrainer: false }
@@ -88,7 +90,6 @@ describe('getModuleDetail', () => {
     await seedDepartments()
     await seedModule('TECH-111')
     await seedModule('TECH-211')
-    const { db, schema } = await import('./mocks/nuxthub-db')
     await db.insert(schema.modulePrerequisites).values({ moduleId: 'TECH-211', requiresModuleId: 'TECH-111' })
 
     const detail = await getModuleDetail('TECH-211', member)
@@ -102,10 +103,26 @@ describe('getModuleDetail', () => {
     await seedDepartments()
     await seedModule('TECH-211')
     await seedModule('TECH-112', { status: 'DRAFT' })
-    const { db, schema } = await import('./mocks/nuxthub-db')
     await db.insert(schema.modulePrerequisites).values({ moduleId: 'TECH-211', requiresModuleId: 'TECH-112' })
 
     expect((await getModuleDetail('TECH-211', member))!.prerequisites).toEqual([])
     expect((await getModuleDetail('TECH-211', techLead))!.prerequisites.map(p => p.id)).toEqual(['TECH-112'])
+  })
+
+  it('keeps the statement width off the dependent count', async () => {
+    await seedDepartments()
+    await seedModule('NNT-001')
+    for (let n = 0; n < 120; n++) {
+      const id = `TECH-${String(n).padStart(3, '0')}`
+      await seedModule(id, { department: 'TECH' })
+      await db.insert(schema.modulePrerequisites).values({ moduleId: id, requiresModuleId: 'NNT-001' })
+    }
+
+    resetQueryCount()
+    const detail = await getModuleDetail('NNT-001', member)
+
+    // The rule itself: no statement's parameter count tracks the row count.
+    expect(widestBoundStatement()).toBeLessThan(100)
+    expect(detail!.requiredBy).toHaveLength(120)
   })
 })

@@ -162,6 +162,15 @@ export function planExpirySweep(input: SweepInputs): ExpiryPlan {
 }
 
 /**
+ * The admins a recipient list may address. The flag is a cache with no
+ * revocation path, so it is trusted only while recently refreshed.
+ */
+export function freshAdmins(people: SweepPerson[], asOf: string, adminCacheDays: number): SweepPerson[] {
+  const staleBefore = new Date(`${addDays(asOf, -adminCacheDays)}T00:00:00Z`)
+  return people.filter(person => person.isTrainingAdmin && person.mirrorUpdatedAt >= staleBefore)
+}
+
+/**
  * An empty digest is still sent. Its absence is the alert: a silent month
  * must mean nothing is expiring, not that the cron died.
  */
@@ -181,12 +190,9 @@ function planDigests(
   for (const [userId, departments] of departmentsByLead) {
     recipients.set(userId, departments)
   }
-  // Admins see everything, and outrank a lead scope. The flag is a cache with
-  // no revocation path, so it is trusted only while recently refreshed.
-  const staleBefore = new Date(`${addDays(input.asOf, -input.adminCacheDays)}T00:00:00Z`)
-  for (const person of input.people) {
-    if (!person.isTrainingAdmin) continue
-    if (person.mirrorUpdatedAt < staleBefore) continue
+  // Admins see everything, and outrank a lead scope. Stale cached admins get
+  // nothing: the flag has no revocation path (docs/data-model.md).
+  for (const person of freshAdmins(input.people, input.asOf, input.adminCacheDays)) {
     recipients.set(person.id, null)
   }
 

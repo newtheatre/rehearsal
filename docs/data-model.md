@@ -51,7 +51,7 @@ Thin mirror: `id` text PK (canonical auth id) · `email` unique · `name` · `is
 
 `is_training_admin` is a **derived cache** of the auth-service role, refreshed on every upsert. It exists solely so the expiry cron can address the monthly digest: a cron has no session to read roles from. Never gate access on it; the session is the authority.
 
-Nothing here is told when a role is revoked, so the flag is trusted only while `updated_at` is inside `site_config.admin_cache_days` (default 90). A former officer whose role was removed and who stops signing in therefore drops out of the unscoped digest rather than receiving membership-wide personal data indefinitely. An admin who has never signed in here has no row and so gets no digest either. Making revocation immediate would need the auth service to call a role-change hook, which does not exist yet.
+Nothing here is told when a role is revoked, so the flag is trusted only while `updated_at` is inside `site_config.admin_cache_days` (default 90). A former officer whose role was removed and who stops signing in therefore drops out of the unscoped digest, and out of the dry-run sweep report, rather than receiving membership-wide personal data indefinitely. Both lists come from `freshAdmins` in `server/utils/expiryPlan.ts`, deliberately one implementation. An admin who has never signed in here has no row and so gets no digest either. Making revocation immediate would need the auth service to call a role-change hook, which does not exist yet.
 
 ### `sessions` / `session_modules` / `session_attendees`
 

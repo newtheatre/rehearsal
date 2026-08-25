@@ -24,13 +24,22 @@ const { seedDepartments, seedModule, seedUser } = await import('./helpers/fixtur
 const { makeEvent, signIn } = await import('./setup')
 const { addDays } = await import('../server/utils/validity')
 const { eq } = await import('drizzle-orm')
+const { today } = await import('../shared/utils/dates')
 
 type FakeEvent = ReturnType<typeof makeEvent>
 
 type Handler = (event: FakeEvent) => Promise<unknown>
 const call = (handler: unknown, event: FakeEvent) => (handler as Handler)(event)
 
-const ASOF = '2026-08-25'
+// The endpoint under test reads the real clock, so a fixed date here would
+// start failing the morning after it was written.
+const ASOF = today()
+
+/** The reminder writes DD/MM/YYYY, so an expectation has to say the same. */
+function ukDate(iso: string): string {
+  const [year, month, day] = iso.split('-')
+  return `${day}/${month}/${year}`
+}
 
 async function setup() {
   await seedDepartments()
@@ -179,9 +188,9 @@ describe('the session reminder', () => {
     // on the wrong day, and the reminder is sent once.
     expect(result.reminders).toBe(1)
     expect(sent[0]!.subject).not.toContain('Tomorrow')
-    expect(sent[0]!.subject).toContain('01/09/2026')
+    expect(sent[0]!.subject).toContain(ukDate(addDays(ASOF, 7)))
     expect(sent[0]!.html).not.toContain('tomorrow')
-    expect(sent[0]!.html).toContain('on 01/09/2026')
+    expect(sent[0]!.html).toContain(`on ${ukDate(addDays(ASOF, 7))}`)
   })
 
   it('says today when the reminder goes out on the day', async () => {

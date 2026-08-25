@@ -3,7 +3,8 @@ definePageMeta({ title: 'Sessions' })
 
 const { data: me } = useMe()
 
-const { data: schedule } = await useFetch('/api/sessions/upcoming')
+const { data: schedule, error: scheduleError, status: scheduleStatus, refresh: refreshSchedule }
+  = await useFetch('/api/sessions/upcoming')
 const upcoming = computed(() => schedule.value?.sessions ?? [])
 // The endpoint decides who may schedule; the template must not re-derive it.
 const canSchedule = computed(() => schedule.value?.canSchedule ?? false)
@@ -13,30 +14,35 @@ function whenLine(session: { heldOn: string, startsAt: string | null }): string 
   return session.startsAt ? formatDateTime(session.startsAt) : formatDate(session.heldOn)
 }
 
-const { data } = await useFetch('/api/sessions')
+const { data, status, error, refresh } = await useFetch('/api/sessions')
 type SessionsPage = NonNullable<typeof data.value>
 
 // Accumulated, because the log is the who-trained-whom evidence trail: older
 // entries must stay reachable rather than falling off the end.
 const pages = ref<SessionsPage[]>([])
 watch(data, (value) => {
-  if (value) pages.value = [value]
+  pages.value = value ? [value] : []
 }, { immediate: true })
 
 const sessions = computed(() => pages.value.flatMap(page => page.sessions))
 const hasMore = computed(() => pages.value.at(-1)?.hasMore ?? false)
 const loadingMore = ref(false)
+const loadMoreError = ref<string | null>(null)
 
 async function loadMore() {
   const last = sessions.value.at(-1)
   if (!last) return
 
   loadingMore.value = true
+  loadMoreError.value = null
   try {
     const page = await $fetch('/api/sessions', {
       query: { beforeHeldOn: last.heldOn, beforeId: last.id },
     })
     pages.value.push(page as SessionsPage)
+  }
+  catch (e) {
+    loadMoreError.value = errorMessage(e, 'Could not load any more sessions')
   }
   finally {
     loadingMore.value = false
@@ -74,6 +80,14 @@ async function loadMore() {
         />
       </div>
     </div>
+
+    <LoadFailed
+      v-if="scheduleError"
+      :error="scheduleError"
+      what="the schedule"
+      :retrying="scheduleStatus === 'pending'"
+      @retry="refreshSchedule"
+    />
 
     <section
       v-if="upcoming.length"
@@ -141,8 +155,16 @@ async function loadMore() {
       Already delivered
     </h2>
 
+    <LoadFailed
+      v-if="error"
+      :error="error"
+      what="the delivery log"
+      :retrying="status === 'pending'"
+      @retry="refresh"
+    />
+
     <UAlert
-      v-if="!sessions.length"
+      v-else-if="!sessions.length"
       icon="i-lucide-calendar-off"
       color="neutral"
       variant="subtle"
@@ -188,6 +210,15 @@ async function loadMore() {
         </div>
       </NuxtLink>
     </div>
+
+    <UAlert
+      v-if="loadMoreError"
+      icon="i-lucide-triangle-alert"
+      color="error"
+      variant="subtle"
+      title="Could not load any more sessions"
+      :description="loadMoreError"
+    />
 
     <div
       v-if="hasMore"

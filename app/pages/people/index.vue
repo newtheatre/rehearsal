@@ -6,28 +6,35 @@ const search = ref('')
 // Searching server-side: the directory is paged, so filtering the page in the
 // browser would only ever search the part of the membership already loaded.
 const query = computed(() => ({ ...(search.value.trim() ? { q: search.value.trim() } : {}) }))
-const { data } = await useFetch('/api/people', { query })
+const { data, status, error, refresh } = await useFetch('/api/people', { query })
 type PeoplePage = NonNullable<typeof data.value>
 
 const pages = ref<PeoplePage[]>([])
+// Cleared on a failure too: leaving the last search's results on screen under
+// a new search is its own wrong answer.
 watch(data, (value) => {
-  if (value) pages.value = [value]
+  pages.value = value ? [value] : []
 }, { immediate: true })
 
 const people = computed(() => pages.value.flatMap(page => page.people))
 const hasMore = computed(() => pages.value.at(-1)?.hasMore ?? false)
 const loadingMore = ref(false)
+const loadMoreError = ref<string | null>(null)
 
 async function loadMore() {
   const last = people.value.at(-1)
   if (!last) return
 
   loadingMore.value = true
+  loadMoreError.value = null
   try {
     const page = await $fetch('/api/people', {
       query: { ...query.value, afterName: last.name, afterId: last.id },
     })
     pages.value.push(page as PeoplePage)
+  }
+  catch (e) {
+    loadMoreError.value = errorMessage(e, 'Could not load any more people')
   }
   finally {
     loadingMore.value = false
@@ -55,8 +62,16 @@ async function loadMore() {
       />
     </div>
 
+    <LoadFailed
+      v-if="error"
+      :error="error"
+      what="the directory"
+      :retrying="status === 'pending'"
+      @retry="refresh"
+    />
+
     <UAlert
-      v-if="!people.length"
+      v-else-if="!people.length"
       icon="i-lucide-users"
       color="neutral"
       variant="subtle"
@@ -117,6 +132,15 @@ async function loadMore() {
         </div>
       </NuxtLink>
     </div>
+
+    <UAlert
+      v-if="loadMoreError"
+      icon="i-lucide-triangle-alert"
+      color="error"
+      variant="subtle"
+      title="Could not load any more people"
+      :description="loadMoreError"
+    />
 
     <div
       v-if="hasMore"

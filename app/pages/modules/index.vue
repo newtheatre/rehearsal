@@ -10,7 +10,7 @@ const ALL_DEPARTMENTS = '__all__'
 const selectedDepartment = ref<string>(ALL_DEPARTMENTS)
 
 const { data: departmentData } = useFetch('/api/departments')
-const { data, status } = await useFetch('/api/modules')
+const { data, status, error, refresh } = await useFetch('/api/modules')
 
 const departments = computed(() => departmentData.value?.departments ?? [])
 
@@ -81,8 +81,16 @@ const grouped = computed(() => {
       description="Drafts are hidden from ordinary members until they're activated."
     />
 
+    <LoadFailed
+      v-if="error"
+      :error="error"
+      what="the catalogue"
+      :retrying="status === 'pending'"
+      @retry="refresh"
+    />
+
     <div
-      v-if="status === 'pending'"
+      v-else-if="status === 'pending'"
       class="space-y-3"
     >
       <USkeleton

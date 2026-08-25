@@ -5,7 +5,7 @@
  */
 definePageMeta({ title: 'Requests' })
 
-const { data, refresh } = await useFetch('/api/module-requests')
+const { data, status, error, refresh } = await useFetch('/api/module-requests')
 const { data: catalogue } = await useFetch('/api/modules')
 
 const mine = computed(() => data.value?.mine ?? [])
@@ -84,6 +84,14 @@ const STATUS: Record<string, { label: string, color: 'neutral' | 'success' | 'wa
       color="error"
       variant="subtle"
       :description="actionError"
+    />
+
+    <LoadFailed
+      v-if="error"
+      :error="error"
+      what="your requests"
+      :retrying="status === 'pending'"
+      @retry="refresh"
     />
 
     <UCard>

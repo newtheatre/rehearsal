@@ -75,12 +75,13 @@ export default defineEventHandler(async (event) => {
     actorUserId: abilities.user.id,
     action: 'record.external',
     target: record!.id,
+    // No externalRef: it is free text about a person, and audit_log is never
+    // scrubbed by the erasure hook (docs/gdpr-retention.md).
     detail: {
       userId: person.id,
       moduleId: module.id,
       awardedAt: input.awardedAt,
       expiresAt: record!.expiresAt,
-      externalRef: input.externalRef,
     },
   })
 

@@ -6,6 +6,7 @@
 import { db, schema } from '@nuxthub/db'
 import { and, eq, gte, isNotNull, isNull, ne } from 'drizzle-orm'
 import {
+  freshAdmins,
   isDigestDay,
   planExpirySweep,
   type ExpiryPlan,
@@ -171,7 +172,9 @@ export async function runExpirySweep({
   else {
     // Dry run: tell the admins what would have happened, tell nobody else.
     const { subject, html } = renderDryRunReport({ asOf, counts: plan.counts, warnings: plan.warnings, digests: plan.digests })
-    const admins = inputs.people.filter(p => p.isTrainingAdmin)
+    // The report names every warned member, so stale cached admins get nothing:
+    // the flag has no revocation path (docs/data-model.md).
+    const admins = freshAdmins(inputs.people, asOf, inputs.adminCacheDays)
 
     for (const admin of admins) {
       try {

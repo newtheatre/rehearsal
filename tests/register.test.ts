@@ -18,7 +18,7 @@ mock.module('../server/utils/email', () => ({
   }),
 }))
 
-const { db, schema } = await import('./mocks/nuxthub-db')
+const { db, schema, resetQueryCount, widestBoundStatement } = await import('./mocks/nuxthub-db')
 const { makeEvent, signIn } = await import('./setup')
 type FakeEvent = import('./setup').FakeEvent
 const { seedDepartments, seedModule, seedRecord, seedUser } = await import('./helpers/fixtures')
@@ -224,6 +224,62 @@ describe('attendance is what awards', () => {
   })
 })
 
+describe('a register waits for the day', () => {
+  /** A session in the diary for next week, open, with alice signed up. */
+  async function futureSession() {
+    const later = new Date()
+    later.setDate(later.getDate() + 7)
+    const heldOn = later.toISOString().slice(0, 10)
+
+    const create = makeEvent({ method: 'POST', path: '/api/sessions/schedule', body: {
+      heldOn,
+      moduleIds: ['STGE-201'],
+      openNow: true,
+    } })
+    signIn(create, { id: 'trainer' })
+    const { id } = await call(scheduleHandler, create) as { id: string }
+
+    const join = makeEvent({ method: 'POST', path: '/x', params: { id } })
+    signIn(join, { id: 'alice' })
+    await call(signupHandler, join)
+    return id
+  }
+
+  it('refuses to open a register before the session has happened', async () => {
+    await seedRecord({ userId: 'alice', moduleId: 'TECH-111', expiresAt: null })
+    const id = await futureSession()
+
+    // Opening it early would hand everyone signed up a live practice window
+    // for the whole intervening week.
+    await expect(openTheRegister(id)).rejects.toMatchObject({ statusCode: 409 })
+  })
+
+  it('refuses to mark a register before the session has happened', async () => {
+    await seedRecord({ userId: 'alice', moduleId: 'TECH-111', expiresAt: null })
+    const id = await futureSession()
+
+    await expect(mark(id, [{ userId: 'alice', present: true }]))
+      .rejects.toMatchObject({ statusCode: 409 })
+
+    // Nothing awarded: a record dated next Friday would pass every gate today.
+    expect(await recordsFor('alice')).toHaveLength(0)
+    const row = await db.select().from(schema.sessions).where(eq(schema.sessions.id, id)).get()
+    expect(row!.status).not.toBe('DELIVERED')
+  })
+
+  it('marks it once the date has been moved to today', async () => {
+    await seedRecord({ userId: 'alice', moduleId: 'TECH-111', expiresAt: null })
+    const id = await futureSession()
+
+    await db.update(schema.sessions).set({ heldOn: TODAY })
+      .where(eq(schema.sessions.id, id))
+
+    await openTheRegister(id)
+    const result = await mark(id, [{ userId: 'alice', present: true }])
+    expect(result.recordCount).toBe(1)
+  })
+})
+
 describe('a register is marked once', () => {
   it('refuses a second submission and awards nothing twice', async () => {
     const id = await sessionWith(['alice'])
@@ -369,6 +425,26 @@ describe('prerequisites at register time', () => {
       { userId: 'bob', present: false },
     ])
     expect(result.recordCount).toBe(1)
+  })
+})
+
+describe('D1 parameter limits', () => {
+  it('marks a register larger than D1 can bind in one statement', async () => {
+    // 120 people: MAX_REGISTER is 200, so a register this size is deliberately
+    // allowed, and an unchunked IN list of them would bind 120.
+    const cohort = Array.from({ length: 120 }, (_, n) => `member-${String(n).padStart(3, '0')}`)
+    for (const userId of cohort) await seedUser(userId, `Member ${userId}`)
+
+    const id = await sessionWith(cohort)
+    await openTheRegister(id)
+
+    resetQueryCount()
+    const result = await mark(id, cohort.map(userId => ({ userId, present: true })))
+
+    // The rule itself: no statement's parameter count tracks the row count.
+    expect(widestBoundStatement()).toBeLessThanOrEqual(100)
+    // And nobody was quietly dropped by the chunking.
+    expect(result.recordCount).toBe(120)
   })
 })
 

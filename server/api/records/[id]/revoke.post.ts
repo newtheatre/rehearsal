@@ -38,12 +38,13 @@ export default defineEventHandler(async (event) => {
     actorUserId: admin.id,
     action: 'record.revoke',
     target: record.id,
+    // Ids only: the reason is in records.revoke_reason, which the erasure hook
+    // scrubs and audit_log never does (docs/gdpr-retention.md).
     detail: {
       userId: record.userId,
       moduleId: record.moduleId,
       awardedAt: record.awardedAt,
       source: record.source,
-      reason: input.reason,
     },
   })
 

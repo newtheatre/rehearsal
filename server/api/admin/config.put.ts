@@ -8,10 +8,14 @@ import { z } from 'zod'
 import { requirePermission } from '../../utils/auth'
 import { writeAudit } from '../../utils/audit'
 import { CONFIG_DEFAULTS } from '../../../shared/utils/configDefaults'
+import { isAcademicYearBoundary } from '../../utils/expiry'
 
 const schemas = {
   warning_window_days: z.coerce.number().int().min(1).max(365).transform(String),
-  academic_year_end: z.string().regex(/^\d{2}-\d{2}$/, 'Use MM-DD, e.g. 09-30'),
+  // Month first, and a day that exists: 31-08 or 09-31 would stamp an expiry
+  // no date parser accepts, which every gate then reads as valid.
+  academic_year_end: z.string().trim()
+    .refine(isAcademicYearBoundary, 'Use MM-DD, month first, e.g. 08-31'),
   session_edit_window_days: z.coerce.number().int().min(0).max(365).transform(String),
   notifications_mode: z.enum(['dry-run', 'live']),
   admin_cache_days: z.coerce.number().int().min(1).max(3650).transform(String),

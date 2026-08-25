@@ -11,6 +11,7 @@ import type { ModuleRow } from './modules'
 import { checkPrerequisitesForCohort, type PrerequisiteGap } from './prerequisites'
 import { runAtomic } from './batch'
 import { closeSessionWindowStatements } from './practice'
+import { chunk } from './d1'
 
 export type SessionRow = typeof schema.sessions.$inferSelect
 
@@ -38,11 +39,13 @@ export async function checkSessionPrerequisites(
   attendeeIds: string[],
   { warningWindowDays = 60 }: { warningWindowDays?: number } = {},
 ): Promise<{ warnings: AttendeeWarning[], blocking: AttendeeWarning[] }> {
-  const users = attendeeIds.length
-    ? await db.select({ id: schema.users.id, name: schema.users.name })
-        .from(schema.users).where(inArray(schema.users.id, attendeeIds)).all()
-    : []
-  const names = new Map(users.map(u => [u.id, u.name]))
+  // Chunked: a register runs to MAX_REGISTER, and D1 binds 100 at most (d1.ts).
+  const names = new Map<string, string>()
+  for (const batch of chunk(attendeeIds)) {
+    const rows = await db.select({ id: schema.users.id, name: schema.users.name })
+      .from(schema.users).where(inArray(schema.users.id, batch)).all()
+    for (const row of rows) names.set(row.id, row.name)
+  }
 
   const warnings: AttendeeWarning[] = []
   const blocking: AttendeeWarning[] = []
@@ -280,8 +283,18 @@ export async function listSessions(
       )
     : undefined
 
+  // Allow-listed: any member may read this, and `notes` are the trainer's
+  // working notes about the people in the room.
   const rows = await db.select({
-    session: schema.sessions,
+    id: schema.sessions.id,
+    heldOn: schema.sessions.heldOn,
+    status: schema.sessions.status,
+    startsAt: schema.sessions.startsAt,
+    endsAt: schema.sessions.endsAt,
+    location: schema.sessions.location,
+    capacity: schema.sessions.capacity,
+    trainerUserId: schema.sessions.trainerUserId,
+    deliveredAt: schema.sessions.deliveredAt,
     trainerName: schema.users.name,
   })
     .from(schema.sessions)
@@ -297,7 +310,7 @@ export async function listSessions(
 
   if (sessions.length === 0) return { sessions: [], hasMore: false }
 
-  const ids = sessions.map(s => s.session.id)
+  const ids = sessions.map(s => s.id)
   const [modules, attendees] = await Promise.all([
     db.select().from(schema.sessionModules)
       .where(inArray(schema.sessionModules.sessionId, ids)).all(),
@@ -306,9 +319,8 @@ export async function listSessions(
   ])
 
   return {
-    sessions: sessions.map(({ session, trainerName }) => ({
+    sessions: sessions.map(session => ({
       ...session,
-      trainerName,
       moduleIds: modules.filter(m => m.sessionId === session.id).map(m => m.moduleId),
       // Present, not signed up: an absentee got no record and did not attend.
       attendeeCount: attendees.filter(a => a.sessionId === session.id && a.status === 'ATTENDED').length,
@@ -362,6 +374,8 @@ export async function getSessionDetail(sessionId: string) {
 
 /** Whether this session is still inside its edit window. */
 export function withinEditWindow(session: SessionRow, editWindowDays: number, now = new Date()): boolean {
-  const age = now.getTime() - session.createdAt.getTime()
+  // From delivery: a scheduled session is the same row (ADR-0013), so its
+  // createdAt is the day it went in the diary, not the day it was taught.
+  const age = now.getTime() - (session.deliveredAt ?? session.createdAt).getTime()
   return age <= editWindowDays * 24 * 60 * 60 * 1000
 }

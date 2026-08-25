@@ -25,7 +25,7 @@ Module ids are the human ids (`TECH-111`, `LD-CERT`), they are the subcommittee'
 |---|---|
 | `id` text PK | `DEPT-LCT` or `XX-CERT`: the catalogue scheme |
 | `department` FK not null | |
-| `kind` text not null | `MODULE` \| `CERTIFICATION` \| `BRIEF` ([ADR-0003](decisions/0003-certifications-as-modules.md)) |
+| `kind` text not null | `MODULE` \| `CERTIFICATION` \| `BRIEF` ([ADR-0003](decisions/0003-certifications-as-modules.md)). **Fixed once the module has an unrevoked record**: validity is read off the live module row, so a flip rewrites every record already awarded. `PUT /api/modules/:id` answers 409; retire the module and create a new one instead |
 | `name` · `description` text | Member-visible |
 | `notes` text | Lead/admin-visible only (subcommittee working notes) |
 | `materials_url` text null | Drive doc/presentation/folder link; `https://` validated, nothing more |
@@ -35,7 +35,7 @@ Module ids are the human ids (`TECH-111`, `LD-CERT`), they are the subcommittee'
 | `external_evidence` text null | What the lead should accept, for example "FAW or EFAW certificate". Shown when recording; what was actually presented goes in `records.external_ref` |
 | `safety_critical` integer not null default 0 | Drives supervision copy + hard prerequisite blocks in the session flow |
 | `signoff_required` integer not null default 0 | 1 for certifications |
-| `grants_supervisor` / `grants_trainer` integer default 0 | Cert consequences ([records-and-expiry.md](records-and-expiry.md#kinds)) |
+| `grants_supervisor` / `grants_trainer` integer default 0 | Cert consequences ([records-and-expiry.md](records-and-expiry.md#kinds)). Turning either **on** is refused once the module has an unrevoked record, for the same reason as `kind`: standing is derived at request time, so it would confer itself on every existing holder. Turning one off narrows and is allowed |
 | `status` text not null default `DRAFT` | `DRAFT` (leads/admins only) \| `ACTIVE` \| `RETIRED` (kept for history, not offerable) |
 | `sort` · `created_at` · `updated_at` | |
 
@@ -51,7 +51,7 @@ Thin mirror: `id` text PK (canonical auth id) · `email` unique · `name` · `is
 
 `is_training_admin` is a **derived cache** of the auth-service role, refreshed on every upsert. It exists solely so the expiry cron can address the monthly digest: a cron has no session to read roles from. Never gate access on it; the session is the authority.
 
-Nothing here is told when a role is revoked, so the flag is trusted only while `updated_at` is inside `site_config.admin_cache_days` (default 90). A former officer whose role was removed and who stops signing in therefore drops out of the unscoped digest rather than receiving membership-wide personal data indefinitely. An admin who has never signed in here has no row and so gets no digest either. Making revocation immediate would need the auth service to call a role-change hook, which does not exist yet.
+Nothing here is told when a role is revoked, so the flag is trusted only while `updated_at` is inside `site_config.admin_cache_days` (default 90). A former officer whose role was removed and who stops signing in therefore drops out of the unscoped digest, and out of the dry-run sweep report, rather than receiving membership-wide personal data indefinitely. Both lists come from `freshAdmins` in `server/utils/expiryPlan.ts`, deliberately one implementation. An admin who has never signed in here has no row and so gets no digest either. Making revocation immediate would need the auth service to call a role-change hook, which does not exist yet.
 
 ### `sessions` / `session_modules` / `session_attendees`
 
@@ -83,7 +83,7 @@ Junction tables `session_modules` (`session_id` cascade, `module_id`) and `sessi
 
 **There is no `WAITLISTED` status.** Whether a `SIGNED_UP` person holds a place is derived from `signed_up_at` order against `capacity`, by one helper in `server/utils/scheduling.ts`. Storing it would let two simultaneous sign-ups both take the last place, and would put "am I in" in two places at once (CLAUDE.md invariant 4).
 
-Delivered sessions are editable by their trainer/admin for 14 days (`site_config.session_edit_window_days`); edits re-derive that session's records in one batch. After the window: corrections via revoke + grant. `PUT /api/sessions/:id` refuses a session that has not been delivered, because it has no records to re-derive.
+Delivered sessions are editable by their trainer/admin for 14 days (`site_config.session_edit_window_days`), counted from `delivered_at` and only from `created_at` when there is none, which is the log-after-the-fact path where the two are the same moment. A session scheduled well in advance is the same row, so counting from `created_at` would have expired the window before it was ever taught. Edits re-derive that session's records in one batch. After the window: corrections via revoke + grant. `PUT /api/sessions/:id` refuses a session that has not been delivered, because it has no records to re-derive.
 
 ### `module_requests`
 

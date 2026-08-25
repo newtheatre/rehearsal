@@ -9,7 +9,7 @@ import updateModule from '../server/api/modules/[id].put'
 import { db, schema } from './mocks/nuxthub-db'
 import { eq } from 'drizzle-orm'
 import { makeEvent, signIn, type FakeEvent } from './setup'
-import { seedDepartments, seedLead, seedModule, seedUser } from './helpers/fixtures'
+import { seedDepartments, seedLead, seedModule, seedRecord, seedUser } from './helpers/fixtures'
 import { replacePrerequisites } from '../server/utils/moduleWrites'
 
 type Handler = (event: FakeEvent) => Promise<unknown>
@@ -282,6 +282,88 @@ describe('PUT /api/modules/:id', () => {
 
     const updated = await db.select().from(schema.modules).where(eq(schema.modules.id, 'TECH-161')).get()
     expect(updated?.status).toBe('ACTIVE')
+  })
+})
+
+describe('a module with records cannot be rewritten retroactively', () => {
+  it('refuses to flip a brief with attendance into a qualification', async () => {
+    await setup()
+    await seedModule('NNT-002', { department: 'NNT', name: 'Get-In Brief', kind: 'BRIEF' })
+    await seedUser('alice')
+    await seedRecord({ userId: 'alice', moduleId: 'NNT-002', source: 'SESSION' })
+
+    // Every brief row carries a null expiry, so this would make the whole
+    // membership permanently qualified in one submit.
+    const event = putEvent('NNT-002', { kind: 'MODULE' })
+    signIn(event, { id: 'tm', roles: ['training:ADMIN'] })
+    await expect(call(updateModule, event)).rejects.toMatchObject({ statusCode: 409 })
+
+    const row = await db.select().from(schema.modules).where(eq(schema.modules.id, 'NNT-002')).get()
+    expect(row!.kind).toBe('BRIEF')
+  })
+
+  it('refuses to demote a held module to a brief, which would ungate it', async () => {
+    await setup()
+    await seedModule('TECH-111', { name: 'Rigging' })
+    await seedUser('alice')
+    await seedRecord({ userId: 'alice', moduleId: 'TECH-111', expiresAt: '2020-01-01' })
+
+    const event = putEvent('TECH-111', { kind: 'BRIEF' })
+    signIn(event, { id: 'ctd' })
+    await expect(call(updateModule, event)).rejects.toMatchObject({ statusCode: 409 })
+  })
+
+  it('refuses to confer trainer standing on people who already hold it', async () => {
+    await setup()
+    await seedModule('LD-CERT', {
+      department: 'TECH',
+      kind: 'CERTIFICATION',
+      signoffRequired: true,
+    })
+    await seedUser('alice')
+    await seedRecord({ userId: 'alice', moduleId: 'LD-CERT', expiresAt: null })
+
+    const event = putEvent('LD-CERT', { grantsTrainer: true })
+    signIn(event, { id: 'ctd' })
+    await expect(call(updateModule, event)).rejects.toMatchObject({ statusCode: 409 })
+
+    const row = await db.select().from(schema.modules).where(eq(schema.modules.id, 'LD-CERT')).get()
+    expect(row!.grantsTrainer).toBe(false)
+  })
+
+  it('allows the change when every record for it has been revoked', async () => {
+    await setup()
+    await seedModule('TECH-111', { name: 'Rigging' })
+    await seedUser('alice')
+    await seedRecord({
+      userId: 'alice',
+      moduleId: 'TECH-111',
+      revokedAt: new Date(),
+      revokedBy: 'ctd',
+      revokeReason: 'Wrong person',
+    })
+
+    const event = putEvent('TECH-111', { kind: 'BRIEF' })
+    signIn(event, { id: 'ctd' })
+    await call(updateModule, event)
+
+    const row = await db.select().from(schema.modules).where(eq(schema.modules.id, 'TECH-111')).get()
+    expect(row!.kind).toBe('BRIEF')
+  })
+
+  it('still allows an ordinary edit to a module with records', async () => {
+    await setup()
+    await seedModule('TECH-111', { name: 'Rigging' })
+    await seedUser('alice')
+    await seedRecord({ userId: 'alice', moduleId: 'TECH-111' })
+
+    const event = putEvent('TECH-111', { name: 'Rigging and Focusing', status: 'RETIRED' })
+    signIn(event, { id: 'ctd' })
+    await call(updateModule, event)
+
+    const row = await db.select().from(schema.modules).where(eq(schema.modules.id, 'TECH-111')).get()
+    expect(row!.name).toBe('Rigging and Focusing')
+    expect(row!.status).toBe('RETIRED')
   })
 })
 

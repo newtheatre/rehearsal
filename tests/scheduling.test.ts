@@ -241,7 +241,8 @@ describe('places are derived from sign-up order', () => {
   })
 
   it('still lets somebody withdraw once the register is open', async () => {
-    const id = await openSession()
+    // Today, not tomorrow: a register only opens on the day of the session.
+    const id = await openSession({ heldOn: today() })
     await signUpAs(id, 'alice')
 
     const open = makeEvent({ method: 'POST', path: '/x', params: { id } })

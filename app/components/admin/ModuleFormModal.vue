@@ -239,7 +239,9 @@ async function save() {
         <div class="grid gap-4 sm:grid-cols-2">
           <UFormField
             label="Kind"
-            help="Certifications are signed off; briefs recur per event"
+            :help="moduleId
+              ? 'Certifications are signed off; briefs recur per event. Fixed once a record has been awarded'
+              : 'Certifications are signed off; briefs recur per event'"
           >
             <USelect
               v-model="state.kind"

@@ -69,18 +69,18 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `GET /api/modules` | session | catalogue list; `DRAFT` included only for leads/admins |
 | `GET /api/modules/:id` | session | module detail incl. prerequisites and dependents; `notes` only for leads/admins |
 | `POST /api/modules` | lead (own dept) or admin | create; Zod-validated; audit-logged |
-| `PUT /api/modules/:id` | lead (own dept) or admin | update incl. status transitions and prerequisites; audit-logged |
+| `PUT /api/modules/:id` | lead (own dept) or admin | update incl. status transitions and prerequisites; audit-logged. **409** on changing `kind`, or turning on `grants_trainer`/`grants_supervisor`, once the module has an unrevoked record: those fields are read live, so the change would rewrite records already awarded ([ADR-0002](decisions/0002-expiry-stamped-at-award.md)) |
 | `GET /api/people` | session | directory with per-person valid/expiring/expired counts and certifications. Paged: `limit` (default 50, max 100) with a keyset cursor `(afterName, afterId)`; `q` and `module` filter in SQL. Returns `{ people, hasMore }` |
 | `GET /api/directory` | session | id and name only, for the attendee and lead pickers. No record aggregation, so it can return the whole membership (`limit` default 500) |
 | `GET /api/people/:id` | session | one person's records; revoked history and actions for leads/admins |
 | `POST /api/people/:id/signoff` | lead (module's dept) or admin | certification sign-off; **422 with the gaps named** if prerequisites are unmet. Optional `expiresAt` overrides module policy (after the award, within ten years, refused when the module never expires). `neverExpires: true` needs `record.manage` and is **API only on purpose**: it is break-glass against a lockout, not a routine choice, so no UI offers it |
 | `POST /api/people/:id/external` | lead (module's dept) or admin | external certificate; its own expiry wins over module config. 400 unless the module sets `allows_external` |
 | `POST /api/records/:id/revoke` | admin | revoke with a mandatory reason; idempotent |
-| `GET /api/sessions` | session | delivery log, newest first. **`DELIVERED` only**: a scheduled session is not in the log until its register is submitted. Paged: `limit` (default 50, max 100) with a keyset cursor `(beforeHeldOn, beforeId)`; `held_on` is a date, so the id breaks ties. Returns `{ sessions, hasMore }` |
+| `GET /api/sessions` | session | delivery log, newest first. **`DELIVERED` only**: a scheduled session is not in the log until its register is submitted. Paged: `limit` (default 50, max 100) with a keyset cursor `(beforeHeldOn, beforeId)`; `held_on` is a date, so the id breaks ties. Returns `{ sessions, hasMore }`. Column allow-listed: `id`, `heldOn`, `status`, `startsAt`, `endsAt`, `location`, `capacity`, `trainerUserId`, `trainerName`, `deliveredAt`, `moduleIds`, `attendeeCount`. **`notes` is not in it**: any member may read this list, and the trainer's working notes are for the steward only, as on `GET /api/sessions/:id` |
 | `POST /api/sessions/check` | trainer | dry run: the exact records that would be created, plus warnings |
 | `POST /api/sessions` | trainer | log a session already taught; creates records atomically |
 | `GET /api/sessions/:id` | session | one session, scheduled or delivered. `attendees` is `null` for anybody who may not steward it; `mine` says where the caller stands |
-| `PUT /api/sessions/:id` | trainer (own session) or admin | re-derive records inside the edit window. **409 unless the session is `DELIVERED`**: there are no records to re-derive otherwise |
+| `PUT /api/sessions/:id` | trainer (own session) or admin | re-derive records inside the edit window, measured from `delivered_at` (`created_at` only when a session was logged rather than scheduled). **409 unless the session is `DELIVERED`**: there are no records to re-derive otherwise |
 | `GET /api/sessions/upcoming` | session | the schedule, soonest first. `PLANNED` sessions are visible only to trainers and leads |
 | `POST /api/sessions/schedule` | trainer | put a session in the diary. **Creates no records.** `openNow: true` skips `PLANNED`. Times are `startsTime`/`endsTime` as `HH:MM` **wall-clock in Europe/London**, never instants: the server composes them with `heldOn`, because a browser would anchor them to whatever the device says |
 | `PUT /api/sessions/:id/schedule` | steward | amend a session that has not been taught; 409 once it is `DELIVERED` or `CANCELLED`. Raising capacity emails whoever it moved into a place and recomputes the FULL badge; returns `promoted`. Moving `heldOn` recomposes the stored instants from the same wall-clock times, so a session keeps its time of day when its date moves |
@@ -89,16 +89,16 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `POST /api/sessions/:id/signup` | session | take a place, or join the waitlist. Returns `{ hasPlace, waitlistPosition, warnings }` |
 | `DELETE /api/sessions/:id/signup` | session | withdraw. Allowed until the session is delivered or cancelled, including while the register is open. Returns how many people that moved into a place |
 | `POST /api/sessions/:id/attendees` | steward | add a walk-in. Bypasses the sign-up prerequisite gate on purpose; the register-time check still applies |
-| `POST /api/sessions/:id/register/open` | steward | start taking the register. Idempotent, and **closes sign-ups** |
+| `POST /api/sessions/:id/register/open` | steward | start taking the register. Idempotent, and **closes sign-ups**. 409 while `held_on` is still in the future: opening early would open everybody's practice windows early |
 | `GET /api/sessions/:id/register` | steward | who to mark off, in sign-up order, waitlist marked, plus `practiceTargets`: the sandboxes this session's modules unlock, or empty when they unlock none |
-| `POST /api/sessions/:id/register` | steward | **mark it, which creates the records.** 409 if already marked |
+| `POST /api/sessions/:id/register` | steward | **mark it, which creates the records.** 409 if already marked, and 409 while `held_on` is still in the future: records are stamped with `held_on`, and a record dated ahead of today is valid to every gate. Move the date to today first |
 | `GET /api/module-requests` | session | your own requests, paged (`limit` default 50) and returned with `hasMore`, plus the demand board if you lead a department |
 | `POST /api/module-requests` | session | ask for a module to be taught. 409 if you already have one open, 400 if it is not `ACTIVE` |
 | `DELETE /api/module-requests/:id` | session (own) | withdraw, which frees you to ask again later |
 | `POST /api/module-requests/:id/decline` | lead (module's dept) or admin | reply with a reason, which the requester is shown |
 | `POST /api/attendees/lookup` | trainer | resolve an email to a canonical id, creating a shadow account if needed |
 | `GET /api/admin/config` | admin | operator-tunable values, with defaults and whether each is stored |
-| `PUT /api/admin/config` | admin | change one value; per-key validation; audit-logged |
+| `PUT /api/admin/config` | admin | change one value; per-key validation; audit-logged. `academic_year_end` is `MM-DD`, month first, and must be a real calendar day: `31-08`, `09-31` and `02-29` are refused with 400 |
 | `GET /api/admin/expiry-preview` | admin | what the next sweep would do; optional `asOf` date; sends and records nothing |
 | `GET /api/admin/notifications` | admin | what has actually been sent |
 | `POST /api/admin/recalculate` | admin | preview an expiry recalculation, or apply it by echoing the change count. Returns `{ changes, unchanged, skippedOverridden }`; records whose expiry was set explicitly are never recomputed |

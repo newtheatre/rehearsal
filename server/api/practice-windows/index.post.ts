@@ -29,7 +29,9 @@ export default defineEventHandler(async (event) => {
     actorUserId: abilities.user.id,
     action: 'practice-window.grant',
     target: id,
-    detail: { userId: input.userId, targetKey: target.key, hours: input.hours, reason: input.reason },
+    // No reason: it is free text about a person, and audit_log is never
+    // scrubbed by the erasure hook (docs/gdpr-retention.md).
+    detail: { userId: input.userId, targetKey: target.key, hours: input.hours },
   })
 
   setResponseStatus(event, 201)

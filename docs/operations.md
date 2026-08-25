@@ -111,7 +111,7 @@ So flipping to dry-run silences the expiry warnings, the digests, the session re
 
 ### The expiry sweep
 
-Daily cron 06:00 UTC (`expiry:sweep`). `site_config.notifications_mode`: ships `dry-run` (report emailed to admins, nothing sent to members); flip to `live` at `/admin/notifications` after reviewing the preview, and back to dry-run after any change to expiry config or the warning window. Idempotent per (record, type) via `notification_log`; running twice sends nothing new. Monthly digests (leads: own dept; TM+ITM: all) go out on the 1st. **The digest's absence is itself an alert**, if it doesn't arrive, check the cron.
+Daily cron 06:00 UTC (`expiry:sweep`). `site_config.notifications_mode`: ships `dry-run` (report emailed to admins, nothing sent to members). The dry-run report lists every warned member by name with the modules they hold, so it goes to the same freshly-cached admins the digest does, and an outgoing officer drops out of it on the same `admin_cache_days` window; flip to `live` at `/admin/notifications` after reviewing the preview, and back to dry-run after any change to expiry config or the warning window. Idempotent per (record, type) via `notification_log`; running twice sends nothing new. Monthly digests (leads: own dept; TM+ITM: all) go out on the 1st. **The digest's absence is itself an alert**, if it doesn't arrive, check the cron.
 
 Monthly digests go to department leads (their own department) and to training admins (everything). Admin scope comes from a cached flag with no revocation path, so it is honoured only while the person has used the system inside `site_config.admin_cache_days` (default 90). **After a committee handover, an outgoing officer stops receiving the unscoped digest once that window passes**, and sooner if you clear the flag by hand.
 
@@ -132,6 +132,26 @@ Department leads get their own departments; `training:ADMIN` holders get everyth
 **Break-glass: an expiry that never expires.** `POST /api/people/:id/signoff` accepts `neverExpires: true`, which needs `record.manage` and is deliberately absent from the UI. It exists for one situation: a certification the system depends on has lapsed, and nobody holds it, so no one can sign it back. The bootstrap Trainer certification is the worked example, since without it no session can be logged at all. It is audit-logged like any other sign-off and shows on the person's page. It should stay rare: if a module should never expire, that is module policy, not a per-record decision.
 
 Editing a module's expiry affects future awards only ([ADR-0002](decisions/0002-expiry-stamped-at-award.md)). To apply it to existing records, use `/admin` → recalculation: it previews the exact diff (person, module, old date → new date), requires the change count to be echoed back before applying, and audit-logs every row it moved. The apply is a single atomic batch with its audit entry inside it, so a run either moves every row and is logged, or moves none. It never touches records whose expiry was set explicitly, whether that came from an external certificate or from a signer, nor revoked or superseded ones. The count is reported as `skippedOverridden`.
+
+### One-off: scrubbing free text out of historical audit detail
+
+Five mutations wrote a person's free text into `audit_log.detail` as well as into its own column: `record.revoke` (`reason`), `record.signoff` (`note`), `record.external` (`externalRef`), `practice-window.grant` (`reason`) and `request.decline` (`reason`), and `lead.add` wrote a real name. The handlers no longer do, but rows written before that keep the text, and `audit_log` has no update path in the app: an erasure scrubs the column and cannot reach the copy, so a substring search from `/admin` still re-identifies the person.
+
+Clearing them is a hand-applied, destructive change, run before the fix is merged and never from CI. Take an export first (`npx wrangler d1 export training --remote --output backup-$(date +%F).sql`), then strip the keys from the detail JSON, leaving the id-shaped fields alone:
+
+```sql
+UPDATE audit_log SET detail = json_remove(detail, '$.reason')
+  WHERE action IN ('record.revoke', 'practice-window.grant', 'request.decline')
+    AND json_extract(detail, '$.reason') IS NOT NULL;
+UPDATE audit_log SET detail = json_remove(detail, '$.note')
+  WHERE action = 'record.signoff' AND json_extract(detail, '$.note') IS NOT NULL;
+UPDATE audit_log SET detail = json_remove(detail, '$.externalRef')
+  WHERE action = 'record.external' AND json_extract(detail, '$.externalRef') IS NOT NULL;
+UPDATE audit_log SET detail = json_remove(detail, '$.name')
+  WHERE action = 'lead.add' AND json_extract(detail, '$.name') IS NOT NULL;
+```
+
+Check the row counts each statement reports against a `SELECT count(*)` run beforehand, and record the date it was run here. Until it has been, the gap is [known-issues.md](known-issues.md).
 
 ## Annual handover checklist (add to the Archivist runbook)
 

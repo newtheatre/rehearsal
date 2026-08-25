@@ -56,7 +56,9 @@ export default defineEventHandler(async (event) => {
     actorUserId: admin.id,
     action: 'lead.add',
     target: created!.id,
-    detail: { department, userId, name: user.name },
+    // No name: the audit view resolves it from the mirror at read time, which
+    // is what makes an erased actor read as "Deleted user".
+    detail: { department, userId },
   })
 
   setResponseStatus(event, 201)

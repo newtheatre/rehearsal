@@ -92,6 +92,35 @@ describe('dry run', () => {
     expect(await db.select().from(schema.notificationLog).all()).toHaveLength(0)
   })
 
+  it('says nothing to an admin the mirror has not seen inside the cache window', async () => {
+    await setup()
+    await seedRecord({ userId: 'alice', moduleId: 'NNT-001', expiresAt: '2026-09-30' })
+    // An officer whose role was removed at the changeover and who never came
+    // back: the cached flag has no revocation path.
+    await db.update(schema.users).set({ updatedAt: new Date('2026-01-01T00:00:00Z') })
+      .where(eq(schema.users.id, 'tm'))
+
+    const result = await runExpirySweep({ asOf: ASOF })
+
+    expect(result.mode).toBe('dry-run')
+    expect(result.plan.warnings).toHaveLength(1)
+    // The report names every warned member and the modules they hold.
+    expect(sent).toEqual([])
+  })
+
+  it('still reports to an admin who has used the system recently', async () => {
+    await setup()
+    await seedRecord({ userId: 'alice', moduleId: 'NNT-001', expiresAt: '2026-09-30' })
+    await db.update(schema.users).set({ updatedAt: new Date('2026-08-01T00:00:00Z') })
+      .where(eq(schema.users.id, 'tm'))
+
+    await runExpirySweep({ asOf: ASOF })
+
+    // Over-correcting into silence would be as bad as reporting to the wrong
+    // person: the report's absence is meant to be an alert.
+    expect(sent.map(s => s.to)).toEqual(['tm@dev.newtheatre.org.uk'])
+  })
+
   it('leaves the same warning outstanding for the first live run', async () => {
     await setup()
     await seedRecord({ userId: 'alice', moduleId: 'NNT-001', expiresAt: '2026-09-30' })

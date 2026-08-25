@@ -25,7 +25,7 @@ Module ids are the human ids (`TECH-111`, `LD-CERT`), they are the subcommittee'
 |---|---|
 | `id` text PK | `DEPT-LCT` or `XX-CERT`: the catalogue scheme |
 | `department` FK not null | |
-| `kind` text not null | `MODULE` \| `CERTIFICATION` \| `BRIEF` ([ADR-0003](decisions/0003-certifications-as-modules.md)) |
+| `kind` text not null | `MODULE` \| `CERTIFICATION` \| `BRIEF` ([ADR-0003](decisions/0003-certifications-as-modules.md)). **Fixed once the module has an unrevoked record**: validity is read off the live module row, so a flip rewrites every record already awarded. `PUT /api/modules/:id` answers 409; retire the module and create a new one instead |
 | `name` · `description` text | Member-visible |
 | `notes` text | Lead/admin-visible only (subcommittee working notes) |
 | `materials_url` text null | Drive doc/presentation/folder link; `https://` validated, nothing more |
@@ -35,7 +35,7 @@ Module ids are the human ids (`TECH-111`, `LD-CERT`), they are the subcommittee'
 | `external_evidence` text null | What the lead should accept, for example "FAW or EFAW certificate". Shown when recording; what was actually presented goes in `records.external_ref` |
 | `safety_critical` integer not null default 0 | Drives supervision copy + hard prerequisite blocks in the session flow |
 | `signoff_required` integer not null default 0 | 1 for certifications |
-| `grants_supervisor` / `grants_trainer` integer default 0 | Cert consequences ([records-and-expiry.md](records-and-expiry.md#kinds)) |
+| `grants_supervisor` / `grants_trainer` integer default 0 | Cert consequences ([records-and-expiry.md](records-and-expiry.md#kinds)). Turning either **on** is refused once the module has an unrevoked record, for the same reason as `kind`: standing is derived at request time, so it would confer itself on every existing holder. Turning one off narrows and is allowed |
 | `status` text not null default `DRAFT` | `DRAFT` (leads/admins only) \| `ACTIVE` \| `RETIRED` (kept for history, not offerable) |
 | `sort` · `created_at` · `updated_at` | |
 

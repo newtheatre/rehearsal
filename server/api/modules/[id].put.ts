@@ -3,7 +3,7 @@
  */
 
 import { db, schema } from '@nuxthub/db'
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { assertExpiryConsistent, moduleIdSchema, moduleUpdateSchema } from '../../utils/validation'
 import { requireDepartmentSteward } from '../../utils/auth'
 import { useAbilities } from '../../utils/abilities'
@@ -52,6 +52,23 @@ export default defineEventHandler(async (event) => {
     grantsTrainer: input.grantsTrainer ?? existing.grantsTrainer,
     allowsExternal: input.allowsExternal ?? existing.allowsExternal,
   })
+
+  // Validity is read off the live module row, so these three fields rewrite
+  // records already awarded. Retroactivity is the recalculation's job (ADR-0002).
+  const retroactive = merged.kind !== existing.kind
+    || (merged.grantsTrainer && !existing.grantsTrainer)
+    || (merged.grantsSupervisor && !existing.grantsSupervisor)
+
+  if (retroactive) {
+    const held = await db.select({ id: schema.records.id }).from(schema.records)
+      .where(and(eq(schema.records.moduleId, id), isNull(schema.records.revokedAt))).get()
+    if (held) {
+      throw createError({
+        statusCode: 409,
+        statusMessage: `${id} has records awarded against it, so its kind and the standing it confers are fixed: retire it and create a new module instead`,
+      })
+    }
+  }
 
   // Validate the row the update would leave behind: the body's own schema
   // only sees the fields it submitted (a lone expiryMonths passes it).

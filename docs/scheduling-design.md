@@ -225,8 +225,9 @@ because "why did that not happen" is a question people ask in March about someth
 
 ## 6. The register, which is the only thing that creates a record
 
-On the day, the lead opens the register. This stamps `register_opened_at` and opens practice windows
-(§7). **Both opening and marking are refused with a 409 while `held_on` is still in the future**, and
+On the day, the lead opens the register. This stamps `register_opened_at`, opens practice windows
+(§7) and writes the audit entry, all in one batch: a stamp that outlived its windows would be
+permanent, because the stamp is what makes a second tap a no-op. **Both opening and marking are refused with a 409 while `held_on` is still in the future**, and
 that is enforced, not merely expected: records are stamped with `held_on`, so marking a register
 early would award training dated next week that every gate reads as held today, and opening one
 early would hand everybody signed up a live practice window for the whole intervening period. A
@@ -296,8 +297,13 @@ hand a fresher the till.
   committee-editable data in the admin UI, beside the eligibility rules, and it is empty until
   somebody fills it in. Most modules are in no target, so most sessions open nothing.
 - Opening a register inserts one window per signed-up attendee for each `ACTIVE` target whose modules
-  the session teaches, expiring at the session end plus a grace period. The register page says which
-  sandboxes it opened, or that these modules have none, so a lead is never guessing.
+  the session teaches, expiring at the session end plus a grace period. **The stamp and the windows
+  are one batch**, because `register_opened_at` is the guard that stops a second tap re-opening
+  everything: stamped without its windows, it would shut the sandbox for the whole room for the
+  lesson with no way back but opening one window per person by hand ([ADR-0009](decisions/0009-atomic-writes-use-batch-not-transactions.md)).
+- `GET /api/sessions/:id/register` reports both `practiceTargets` (what these modules would unlock)
+  and `practiceOpen` (what has a live window right now). The page's "practice is open" banner is
+  driven by the second, so it cannot claim a sandbox is open when no window exists.
 - A lead may also open one by hand for a named person, for coaching outside a scheduled session. Same
   table, `session_id` null, a reason required.
 - Submitting the register closes them. So does the expiry, so does a lead closing one early, and so

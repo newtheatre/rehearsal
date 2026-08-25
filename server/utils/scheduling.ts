@@ -354,10 +354,10 @@ export async function withdraw(options: {
   return { promoted: heldAfter.filter(item => !heldBefore.has(item.id)) }
 }
 
-/** Stamp the register open. What that unlocks is stage 4's business. */
-export async function openRegister(sessionId: string): Promise<void> {
-  await db.update(schema.sessions)
-    .set({ registerOpenedAt: new Date(), updatedAt: new Date() })
+/** Stamping the register open, for the caller to batch with what it unlocks. */
+export function openRegisterStatement(sessionId: string, now = new Date()): BatchStatement {
+  return db.update(schema.sessions)
+    .set({ registerOpenedAt: now, updatedAt: now })
     .where(eq(schema.sessions.id, sessionId))
 }
 

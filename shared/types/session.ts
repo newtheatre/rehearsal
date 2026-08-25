@@ -38,6 +38,8 @@ export interface RegisterView {
   marked: boolean
   /** Sandboxes this session's modules unlock, or empty when they unlock none. */
   practiceTargets: string[]
+  /** Of those, the ones with a live window now: a match is not a window. */
+  practiceOpen: string[]
   register: RegisterEntry[]
 }
 

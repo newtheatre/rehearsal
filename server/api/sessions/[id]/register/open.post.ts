@@ -1,10 +1,11 @@
 /** POST /api/sessions/:id/register/open: start taking the register. */
 
 import { requireTrainer } from '../../../../utils/auth'
-import { loadSessionRow, moduleIdsFor, openRegister, registerFor } from '../../../../utils/scheduling'
+import { loadSessionRow, moduleIdsFor, openRegisterStatement, registerFor } from '../../../../utils/scheduling'
 import { assertMaySteward } from '../../../../utils/sessionAuth'
-import { openWindowsForSession } from '../../../../utils/practice'
-import { writeAudit } from '../../../../utils/audit'
+import { openWindowStatements } from '../../../../utils/practice'
+import { auditStatement } from '../../../../utils/audit'
+import { runAtomic } from '../../../../utils/batch'
 import { formatDate, today } from '../../../../../shared/utils/dates'
 
 export default defineEventHandler(async (event) => {
@@ -40,22 +41,27 @@ export default defineEventHandler(async (event) => {
   // register and one set of practice windows.
   let opened: { targetKey: string, userIds: string[] }[] = []
   if (!session.registerOpenedAt) {
-    await openRegister(session.id)
-
-    opened = await openWindowsForSession({
+    const windows = await openWindowStatements({
       sessionId: session.id,
       moduleIds: await moduleIdsFor(session.id),
       userIds: register.filter(entry => entry.status === 'SIGNED_UP').map(entry => entry.userId),
       endsAt: session.endsAt,
       openedBy: abilities.user.id,
     })
+    opened = windows.opened
 
-    await writeAudit({
-      actorUserId: abilities.user.id,
-      action: 'session.register.open',
-      target: session.id,
-      detail: { heldOn: session.heldOn, practiceOpened: opened.map(item => item.targetKey) },
-    })
+    // One batch: the stamp is the retry guard, so it must not land without the
+    // windows it is the guard for (ADR-0009).
+    await runAtomic([
+      openRegisterStatement(session.id),
+      ...windows.statements,
+      auditStatement({
+        actorUserId: abilities.user.id,
+        action: 'session.register.open',
+        target: session.id,
+        detail: { heldOn: session.heldOn, practiceOpened: opened.map(item => item.targetKey) },
+      }),
+    ])
   }
 
   return {

@@ -2,7 +2,7 @@
 
 import { requireTrainer } from '../../../../utils/auth'
 import { loadSessionRow, moduleIdsFor, registerFor } from '../../../../utils/scheduling'
-import { targetsForModules } from '../../../../utils/practice'
+import { openTargetKeysForSession, targetsForModules } from '../../../../utils/practice'
 import { assertMaySteward } from '../../../../utils/sessionAuth'
 
 export default defineEventHandler(async (event) => {
@@ -26,6 +26,9 @@ export default defineEventHandler(async (event) => {
     registerOpened: session.registerOpenedAt !== null,
     marked: session.status === 'DELIVERED',
     practiceTargets: targets.map(target => target.key),
+    // What is actually unlocked right now, which is what the page may claim:
+    // a matching target is not a window.
+    practiceOpen: await openTargetKeysForSession(session.id),
     register: await registerFor(session),
   }
 })

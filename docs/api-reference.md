@@ -145,7 +145,9 @@ repeated id would otherwise pass both and could award somebody the same request 
 answers `409` with `requiresAllAbsentAcknowledgement` when nobody is marked present, until
 `acknowledgeAllAbsent: true`, because one tap on an untouched register would otherwise award
 nobody and send everybody a no-show note. It also answers `409` if the register has already been marked (a double tap, a retry, or a second lead
-on a second phone must not award the same training twice), `409` if the register exceeds
+on a second phone must not award the same training twice: the status check is a read, so a partial
+unique index on `records` is what enforces it when two submissions genuinely race, and the loser is
+answered `409` with nothing written), `409` if the register exceeds
 `MAX_REGISTER` (200) with an instruction to split the session, `422` for a safety-critical
 prerequisite gap among the people **present**, and `409` for ordinary gaps until
 `acknowledgeWarnings: true`. Prerequisites are checked again here

@@ -141,6 +141,10 @@ export const records = sqliteTable('records', {
   index('records_current_idx').on(table.userId, table.moduleId, table.awardedAt),
   index('records_module_idx').on(table.moduleId),
   index('records_expires_at_idx').on(table.expiresAt),
+  // One live award per person per module per session: the DELIVERED guard is a
+  // read, so this is what stops two phones awarding the same training twice.
+  uniqueIndex('records_session_award_unq').on(table.sessionId, table.userId, table.moduleId)
+    .where(sql`session_id is not null and revoked_at is null`),
 ])
 
 export const sessionsRelations = relations(sessions, ({ one, many }) => ({

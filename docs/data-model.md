@@ -111,6 +111,8 @@ Opening sign-ups on a session marks the matching open requests `SCHEDULED`; a `P
 
 Index `(user_id, module_id, awarded_at)`. Never hard-deleted, including by migrations.
 
+**Partial unique index `records_session_award_unq` on `(session_id, user_id, module_id)` where `session_id is not null and revoked_at is null`.** One live award per person per module per session. The `DELIVERED` check in the register handler is a read taken several round trips before the write, so two leads submitting from two phones can both pass it; this index is what actually stops the second delivery, and because a D1 batch is one transaction the loser aborts whole rather than leaving half a set of duplicates. **Partial is load-bearing:** `applySessionEdit` revokes a session's records and re-inserts the same triple in one batch, which a plain unique index would refuse. The revocation is ordered before the re-insert, so the index sees only one live row at a time.
+
 ### `practice_targets` / `practice_windows`
 
 Which modules have a sandbox in a consumer app, and who currently has one open ([ADR-0014](decisions/0014-practice-targets-are-data.md), [scheduling-design.md](scheduling-design.md) §7).

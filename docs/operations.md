@@ -42,6 +42,24 @@ migration, so the gap is visible where uptime monitoring already looks.
 Rollback = redeploy previous commit; migrations roll **forward** only. Before any migration touching
 `records`: `npx wrangler d1 export training --remote --output backup-$(date +%F).sql`.
 
+### Before `0010_free_mach_iv` applies: check for duplicate session awards
+
+That migration adds a partial unique index over `(session_id, user_id, module_id)` on live
+records, and **creating a unique index fails if the table already breaks it**. Two leads marking
+one register from two phones could previously both deliver it, so a production database may hold
+duplicates. Look before you merge:
+
+```sql
+select session_id, user_id, module_id, count(*) as n
+from records
+where session_id is not null and revoked_at is null
+group by 1, 2, 3 having n > 1;
+```
+
+Any rows returned are revoked by hand first, keeping the earliest of each set, through
+`POST /api/records/:id/revoke` with a reason ("Duplicate of a double-submitted register"), which
+is the append-only correction path (ADR-0008). Never delete them.
+
 ## Backups
 
 Weekly `wrangler d1 export` to the R2 backups bucket (GitHub Actions cron), retained 8 weeks; monthly snapshots 12 months (personal data, retention applies to backups too). Annual restore drill at handover, logged in the estate tracker.

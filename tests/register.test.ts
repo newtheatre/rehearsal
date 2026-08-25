@@ -315,6 +315,24 @@ describe('a register is marked once', () => {
       .rejects.toMatchObject({ statusMessage: expect.stringContaining('Bob Barnes') })
   })
 
+  it('awards once when two submissions race, and refuses the loser', async () => {
+    const id = await sessionWith(['alice', 'bob'])
+    await openTheRegister(id)
+
+    // Neither await lands before the other starts: both read status OPEN and
+    // both pass the guard, so the index has to be what stops the second.
+    const marks = [{ userId: 'alice', present: true }, { userId: 'bob', present: true }]
+    const results = await Promise.allSettled([mark(id, marks), mark(id, marks)])
+
+    expect(results.filter(r => r.status === 'fulfilled')).toHaveLength(1)
+    const loser = results.find(r => r.status === 'rejected')
+    expect(loser).toBeDefined()
+    expect((loser as PromiseRejectedResult).reason).toMatchObject({ statusCode: 409 })
+
+    expect(await recordsFor('alice')).toHaveLength(1)
+    expect(await recordsFor('bob')).toHaveLength(1)
+  })
+
   it('refuses a person marked twice, present and absent, and writes nothing', async () => {
     const id = await sessionWith(['alice', 'bob'])
     await openTheRegister(id)

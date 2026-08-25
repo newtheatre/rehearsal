@@ -253,7 +253,10 @@ All of that is one batch. The absentee emails are sent after it, never inside it
 
 **Submitting twice is refused.** A `DELIVERED` session cannot be re-submitted; a double-tapped
 button, a retried request or a second lead on a second phone must not be able to award the same
-training twice. Corrections after the fact go through the existing edit window and, past it,
+training twice. The status check is a read taken several round trips before the write, so it
+catches the ordinary cases but not two genuinely simultaneous submissions. The partial unique
+index `records_session_award_unq` ([data-model.md](data-model.md#records)) is what catches those:
+the losing batch aborts whole and its request is answered `409`. Corrections after the fact go through the existing edit window and, past it,
 revocation plus a new grant, unchanged ([ADR-0008](decisions/0008-records-revoked-never-deleted.md)).
 
 ### 6.1 Not attending

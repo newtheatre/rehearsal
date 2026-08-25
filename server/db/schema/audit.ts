@@ -1,4 +1,5 @@
-import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, integer, index, uniqueIndex } from 'drizzle-orm/sqlite-core'
+import { sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 
 /**
@@ -25,7 +26,7 @@ export const auditLog = sqliteTable('audit_log', {
 export const notificationLog = sqliteTable('notification_log', {
   id: text('id').primaryKey().$defaultFn(() => nanoid()),
   userId: text('user_id').notNull(),
-  type: text('type').notNull(), // 'expiry.window', 'expiry.14day', 'digest.monthly'
+  type: text('type').notNull(), // 'expiry.window', 'session.reminder', … (data-model.md)
   recordId: text('record_id'),
   moduleId: text('module_id'),
   sessionId: text('session_id'), // set for the session reminder and register nag
@@ -37,4 +38,8 @@ export const notificationLog = sqliteTable('notification_log', {
   // The digest read filters on type and date, and the daily prune on date.
   index('notification_log_type_sent_idx').on(table.type, table.sentAt),
   index('notification_log_sent_at_idx').on(table.sentAt),
+  // The promotion email is claimed by insert, so this index is the guard that
+  // two withdrawals landing together cannot both tell one person.
+  uniqueIndex('notification_log_promotion_unq').on(table.sessionId, table.userId, table.type)
+    .where(sql`type = 'session.promotion'`),
 ])

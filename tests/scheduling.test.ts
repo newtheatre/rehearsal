@@ -66,6 +66,7 @@ async function setup() {
   await seedUser('alice', 'Alice Adams')
   await seedUser('bob', 'Bob Barnes')
   await seedUser('cara', 'Cara Cole')
+  await seedUser('dave', 'Dave Doyle')
 
   await seedRecord({ userId: 'trainer', moduleId: 'LEAD-CERT', expiresAt: null })
 }
@@ -253,6 +254,33 @@ describe('places are derived from sign-up order', () => {
     await expect(withdrawAs(id, 'alice')).resolves.toMatchObject({ promoted: 0 })
   })
 
+  it('tells each person a simultaneous pair of withdrawals moved into a place', async () => {
+    const id = await openSession({ capacity: 2 })
+    for (const user of ['alice', 'bob', 'cara', 'dave']) await signUpAs(id, user)
+    sent.length = 0
+
+    // Both requests read the register before either write lands, so a promotion
+    // set derived from one snapshot names the same person twice.
+    await Promise.all([withdrawAs(id, 'alice'), withdrawAs(id, 'bob')])
+
+    const told = sent.filter(mail => mail.subject.includes('place has come free'))
+    expect(told.map(mail => mail.to).sort()).toEqual([
+      'cara@dev.newtheatre.org.uk',
+      'dave@dev.newtheatre.org.uk',
+    ])
+  })
+
+  it('does not tell the same person twice when two people withdraw at once', async () => {
+    const id = await openSession({ capacity: 2 })
+    for (const user of ['alice', 'bob', 'cara', 'dave']) await signUpAs(id, user)
+    sent.length = 0
+
+    await Promise.all([withdrawAs(id, 'alice'), withdrawAs(id, 'bob')])
+
+    const toCara = sent.filter(mail => mail.to === 'cara@dev.newtheatre.org.uk')
+    expect(toCara).toHaveLength(1)
+  })
+
   it('promotes nobody when the person leaving was on the waitlist', async () => {
     const id = await openSession({ capacity: 1 })
     await signUpAs(id, 'alice')
@@ -433,6 +461,24 @@ describe('times are Europe/London wall-clock', () => {
 })
 
 describe('D1 parameter limits', () => {
+  it('emails a waitlist longer than D1 can bind in one statement', async () => {
+    const id = await openSession({ capacity: 1 })
+    for (let n = 0; n < 40; n++) {
+      await seedUser(`member-${n}`, `Member ${n}`)
+      await signUpAs(id, `member-${n}`)
+    }
+    sent.length = 0
+    resetQueryCount()
+
+    const event = makeEvent({ method: 'PUT', path: '/x', params: { id }, body: { capacity: 60 } })
+    signIn(event, { id: 'trainer' })
+    await call(reschedule, event)
+
+    // The rule itself: no statement's parameter count tracks the row count.
+    expect(widestBoundStatement()).toBeLessThan(100)
+    expect(sent).toHaveLength(39)
+  })
+
   it('lists a schedule larger than D1 can bind in one statement', async () => {
     // 120 sessions: an IN list of the ids just returned would bind 121
     // parameters, over the cap of 100.

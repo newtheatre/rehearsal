@@ -360,6 +360,21 @@ why. This is a real divergence from how notifications behave today, so it is wri
 
 Idempotency for the two bulk sends is the existing `notification_log`, keyed on the new `session_id`.
 
+**The promotion email is claimed, not merely sent.** Two people withdrawing from the same session
+within the same second each read the sign-ups before the other's write lands, so a promotion set
+derived from one snapshot names the same person twice and misses the person who really crossed the
+line. Withdrawal therefore re-reads after its own write, which widens the set rather than getting it
+exactly right, and the send is claimed by inserting `session.promotion` into `notification_log` under
+a partial unique index. The insert is the guard, because D1 has no interactive transaction and a
+read taken before a write cannot decide who to email.
+
+The property this buys is at-most-once per person per session, and it holds in the case it is not
+wanted too: somebody promoted, who then withdraws, re-joins the waitlist and is promoted again, is
+not emailed a second time. They still see the place on the session page and in the reminder the day
+before. A second identical email to one person is the failure worth preventing; a member missing the
+only email that would have told them is the failure this is really about. A send that fails after its
+claim is not retried for the same reason, and `sendEach` logs the address it could not reach.
+
 ## 9. Permissions
 
 No new manifest permissions.

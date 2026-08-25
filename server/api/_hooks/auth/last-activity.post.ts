@@ -20,11 +20,16 @@ export default defineEventHandler(async (event) => {
   requireHookAuth(event)
   const { userIds } = await readValidatedBody(event, bodySchema.parse)
 
-  const latest = new Map<string, number | null>()
+  // One clock for the whole request, so two rows are not judged against
+  // different nows.
+  const now = Date.now()
+  const latest = new Map<string, number>()
   const note = (userId: string, at: number | null) => {
-    if (at === null) return
+    // The date is the guard, never the row's status: the contract is activity
+    // already had, and the caller's arithmetic goes negative on anything else.
+    if (at === null || Number.isNaN(at) || at > now) return
     const current = latest.get(userId)
-    if (current === undefined || current === null || at > current) latest.set(userId, at)
+    if (current === undefined || at > current) latest.set(userId, at)
   }
 
   // Chunked for D1's bound-parameter cap (d1.ts). This is the endpoint
@@ -54,17 +59,15 @@ export default defineEventHandler(async (event) => {
 
     for (const row of records) note(row.userId, isoDateToEpoch(row.awardedAt))
 
-    // A scheduled session's held_on is in the future, so it is activity only
-    // once it has happened; before that, signing up or booking it is.
+    // Signing up and booking are activity as they happen, so they are noted
+    // whatever the row says; the session's own date only once it has arrived.
     for (const row of attended) {
-      note(row.userId, row.status === 'ATTENDED'
-        ? isoDateToEpoch(row.heldOn)
-        : row.signedUpAt?.getTime() ?? null)
+      note(row.userId, row.signedUpAt?.getTime() ?? null)
+      if (row.status === 'ATTENDED') note(row.userId, isoDateToEpoch(row.heldOn))
     }
     for (const row of delivered) {
-      note(row.userId, row.status === 'DELIVERED'
-        ? isoDateToEpoch(row.heldOn)
-        : row.createdAt.getTime())
+      note(row.userId, row.createdAt.getTime())
+      if (row.status === 'DELIVERED') note(row.userId, isoDateToEpoch(row.heldOn))
     }
   }
 

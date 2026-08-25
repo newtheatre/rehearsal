@@ -19,10 +19,20 @@ export default defineEventHandler(async (event) => {
   await requireServiceToken(event)
   const { module: moduleId, state } = await getValidatedQuery(event, querySchema.parse)
 
-  const module = await db.select({ id: schema.modules.id }).from(schema.modules)
+  const module = await db.select({ id: schema.modules.id, kind: schema.modules.kind })
+    .from(schema.modules)
     .where(eq(schema.modules.id, moduleId)).get()
   if (!module) {
     throw createError({ statusCode: 404, statusMessage: 'Unknown module' })
+  }
+
+  // A brief has no validity, so "who holds it" has no answer to give a rota
+  // badge. Refused rather than answered with a null state (ADR-0003).
+  if (module.kind === 'BRIEF') {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'A brief has no holders: it recurs per event and never gates',
+    })
   }
 
   setConsumerCacheHeaders(event)

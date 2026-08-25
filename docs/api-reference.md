@@ -25,7 +25,7 @@ Query: `status=ACTIVE` (default) | `all` (includes DRAFT/RETIRED, for admin tool
 
 ### `GET /records?module=TECH-112&state=VALID`
 
-→ `{ module, users: [{ id, name, state, expiresAt }] }`: who currently holds X (find-a-supervisor, rota UI badges). `state` filter optional; default VALID+EXPIRING. 404 unknown module.
+→ `{ module, users: [{ id, name, state, expiresAt }] }`: who currently holds X (find-a-supervisor, rota UI badges). `state` filter optional; default VALID+EXPIRING. 404 unknown module. **400 for a BRIEF module**: a brief recurs per event and has no validity, so it has no holders to badge, and answering with a null `state` (neither VALID, EXPIRING nor EXPIRED) would invite a consumer to gate on it ([ADR-0003](decisions/0003-certifications-as-modules.md)). Ask `GET /users/:id/records` instead, which reports a brief's `lastAttended`.
 
 ### `GET /eligibility/:key?userId=<id>` <a name="eligibility"></a>
 

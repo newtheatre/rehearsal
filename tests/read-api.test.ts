@@ -224,6 +224,15 @@ describe('GET /api/v1/records', () => {
       bearer: token, query: { module: 'ZZZ-999' },
     }))).rejects.toThrow()
   })
+
+  it('refuses a brief rather than answering with a null state', async () => {
+    await setup()
+    await seedRecord({ userId: 'alice', moduleId: 'NNT-002', awardedAt: '2020-01-01', expiresAt: null })
+
+    await expect(call(recordsHandler, apiEvent('/api/v1/records', {
+      bearer: token, query: { module: 'NNT-002' },
+    }))).rejects.toMatchObject({ statusCode: 400 })
+  })
 })
 
 describe('GET /api/v1/eligibility/:key', () => {

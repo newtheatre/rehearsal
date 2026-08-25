@@ -98,6 +98,8 @@ export default defineEventHandler(async (event) => {
     actorUserId: abilities.user.id,
     action: 'record.signoff',
     target: record!.id,
+    // No note: it is free text about a person, and audit_log is never scrubbed
+    // by the erasure hook (docs/gdpr-retention.md).
     detail: {
       userId: person.id,
       moduleId: module.id,
@@ -106,7 +108,6 @@ export default defineEventHandler(async (event) => {
       expiryOverridden: record!.expiryOverridden,
       // The date policy would have stamped, so "how much extra?" is answerable.
       policyExpiresAt: computeExpiresAt(module, input.awardedAt, { academicYearEnd }),
-      note: input.note ?? null,
     },
   })
 

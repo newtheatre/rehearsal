@@ -133,6 +133,26 @@ Department leads get their own departments; `training:ADMIN` holders get everyth
 
 Editing a module's expiry affects future awards only ([ADR-0002](decisions/0002-expiry-stamped-at-award.md)). To apply it to existing records, use `/admin` → recalculation: it previews the exact diff (person, module, old date → new date), requires the change count to be echoed back before applying, and audit-logs every row it moved. The apply is a single atomic batch with its audit entry inside it, so a run either moves every row and is logged, or moves none. It never touches records whose expiry was set explicitly, whether that came from an external certificate or from a signer, nor revoked or superseded ones. The count is reported as `skippedOverridden`.
 
+### One-off: scrubbing free text out of historical audit detail
+
+Five mutations wrote a person's free text into `audit_log.detail` as well as into its own column: `record.revoke` (`reason`), `record.signoff` (`note`), `record.external` (`externalRef`), `practice-window.grant` (`reason`) and `request.decline` (`reason`), and `lead.add` wrote a real name. The handlers no longer do, but rows written before that keep the text, and `audit_log` has no update path in the app: an erasure scrubs the column and cannot reach the copy, so a substring search from `/admin` still re-identifies the person.
+
+Clearing them is a hand-applied, destructive change, run before the fix is merged and never from CI. Take an export first (`npx wrangler d1 export training --remote --output backup-$(date +%F).sql`), then strip the keys from the detail JSON, leaving the id-shaped fields alone:
+
+```sql
+UPDATE audit_log SET detail = json_remove(detail, '$.reason')
+  WHERE action IN ('record.revoke', 'practice-window.grant', 'request.decline')
+    AND json_extract(detail, '$.reason') IS NOT NULL;
+UPDATE audit_log SET detail = json_remove(detail, '$.note')
+  WHERE action = 'record.signoff' AND json_extract(detail, '$.note') IS NOT NULL;
+UPDATE audit_log SET detail = json_remove(detail, '$.externalRef')
+  WHERE action = 'record.external' AND json_extract(detail, '$.externalRef') IS NOT NULL;
+UPDATE audit_log SET detail = json_remove(detail, '$.name')
+  WHERE action = 'lead.add' AND json_extract(detail, '$.name') IS NOT NULL;
+```
+
+Check the row counts each statement reports against a `SELECT count(*)` run beforehand, and record the date it was run here. Until it has been, the gap is [known-issues.md](known-issues.md).
+
 ## Annual handover checklist (add to the Archivist runbook)
 
 1. Auth service: `training:ADMIN` to incoming TM + ITM; outgoing revoked after a two-week overlap.

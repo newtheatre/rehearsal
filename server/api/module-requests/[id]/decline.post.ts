@@ -35,7 +35,9 @@ export default defineEventHandler(async (event) => {
     actorUserId: abilities.user.id,
     action: 'request.decline',
     target: request.id,
-    detail: { moduleId: request.moduleId, userId: request.userId, reason },
+    // No reason: it is free text about a person, and audit_log is never
+    // scrubbed by the erasure hook (docs/gdpr-retention.md).
+    detail: { moduleId: request.moduleId, userId: request.userId },
   })
 
   return { id: request.id, status: 'DECLINED' }

@@ -33,7 +33,9 @@ async function setup() {
   const rows = [
     { actorUserId: 'tm', action: 'module.create', target: 'TECH-111', detail: '{"name":"Rigging"}' },
     { actorUserId: 'ctd', action: 'record.signoff', target: 'rec-1', detail: '{"moduleId":"LD-CERT"}' },
-    { actorUserId: 'tm', action: 'record.revoke', target: 'rec-2', detail: '{"reason":"Wrong person"}' },
+    // Ids only, which is all a detail may carry: audit_log is searchable from
+    // /admin and the erasure hook never scrubs it (docs/gdpr-retention.md).
+    { actorUserId: 'tm', action: 'record.revoke', target: 'rec-2', detail: '{"userId":"alice","moduleId":"STGE-201"}' },
     { actorUserId: null, action: 'expiry.sweep', target: '2026-08-14', detail: '{"mode":"dry-run"}' },
   ]
   for (const [i, row] of rows.entries()) {
@@ -71,7 +73,7 @@ describe('reading the audit log', () => {
     const result = await call(auditHandler, adminEvent()) as AuditResponse
 
     const revoke = result.entries.find(e => e.action === 'record.revoke')!
-    expect(revoke.detail).toEqual({ reason: 'Wrong person' })
+    expect(revoke.detail).toEqual({ userId: 'alice', moduleId: 'STGE-201' })
   })
 
   it('filters by action and by actor', async () => {
@@ -90,7 +92,7 @@ describe('reading the audit log', () => {
     const byTarget = await call(auditHandler, adminEvent({ q: 'TECH-111' })) as AuditResponse
     expect(byTarget.entries).toHaveLength(1)
 
-    const byDetail = await call(auditHandler, adminEvent({ q: 'Wrong person' })) as AuditResponse
+    const byDetail = await call(auditHandler, adminEvent({ q: 'STGE-201' })) as AuditResponse
     expect(byDetail.entries.map(e => e.action)).toEqual(['record.revoke'])
   })
 

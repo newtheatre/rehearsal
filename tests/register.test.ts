@@ -18,7 +18,7 @@ mock.module('../server/utils/email', () => ({
   }),
 }))
 
-const { db, schema } = await import('./mocks/nuxthub-db')
+const { db, schema, resetQueryCount, widestBoundStatement } = await import('./mocks/nuxthub-db')
 const { makeEvent, signIn } = await import('./setup')
 type FakeEvent = import('./setup').FakeEvent
 const { seedDepartments, seedModule, seedRecord, seedUser } = await import('./helpers/fixtures')
@@ -425,6 +425,26 @@ describe('prerequisites at register time', () => {
       { userId: 'bob', present: false },
     ])
     expect(result.recordCount).toBe(1)
+  })
+})
+
+describe('D1 parameter limits', () => {
+  it('marks a register larger than D1 can bind in one statement', async () => {
+    // 120 people: MAX_REGISTER is 200, so a register this size is deliberately
+    // allowed, and an unchunked IN list of them would bind 120.
+    const cohort = Array.from({ length: 120 }, (_, n) => `member-${String(n).padStart(3, '0')}`)
+    for (const userId of cohort) await seedUser(userId, `Member ${userId}`)
+
+    const id = await sessionWith(cohort)
+    await openTheRegister(id)
+
+    resetQueryCount()
+    const result = await mark(id, cohort.map(userId => ({ userId, present: true })))
+
+    // The rule itself: no statement's parameter count tracks the row count.
+    expect(widestBoundStatement()).toBeLessThanOrEqual(100)
+    // And nobody was quietly dropped by the chunking.
+    expect(result.recordCount).toBe(120)
   })
 })
 

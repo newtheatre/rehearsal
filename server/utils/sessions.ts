@@ -11,6 +11,7 @@ import type { ModuleRow } from './modules'
 import { checkPrerequisitesForCohort, type PrerequisiteGap } from './prerequisites'
 import { runAtomic } from './batch'
 import { closeSessionWindowStatements } from './practice'
+import { chunk } from './d1'
 
 export type SessionRow = typeof schema.sessions.$inferSelect
 
@@ -38,11 +39,13 @@ export async function checkSessionPrerequisites(
   attendeeIds: string[],
   { warningWindowDays = 60 }: { warningWindowDays?: number } = {},
 ): Promise<{ warnings: AttendeeWarning[], blocking: AttendeeWarning[] }> {
-  const users = attendeeIds.length
-    ? await db.select({ id: schema.users.id, name: schema.users.name })
-        .from(schema.users).where(inArray(schema.users.id, attendeeIds)).all()
-    : []
-  const names = new Map(users.map(u => [u.id, u.name]))
+  // Chunked: a register runs to MAX_REGISTER, and D1 binds 100 at most (d1.ts).
+  const names = new Map<string, string>()
+  for (const batch of chunk(attendeeIds)) {
+    const rows = await db.select({ id: schema.users.id, name: schema.users.name })
+      .from(schema.users).where(inArray(schema.users.id, batch)).all()
+    for (const row of rows) names.set(row.id, row.name)
+  }
 
   const warnings: AttendeeWarning[] = []
   const blocking: AttendeeWarning[] = []

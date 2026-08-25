@@ -47,7 +47,7 @@ Module ids are the human ids (`TECH-111`, `LD-CERT`), they are the subcommittee'
 
 ### `users`
 
-Thin mirror: `id` text PK (canonical auth id) · `email` unique · `name` · `is_training_admin` · `anonymised_at` null · `merged_into` FK null · `updated_at`. Upserted by `ensureLocalUser` in the auth middleware, which skips any row with `anonymised_at` **or** `merged_into` set, so neither an erasure nor a merge can be undone by a still-valid session cookie. Email is for pickers and notifications only: never exposed via the API.
+Thin mirror: `id` text PK (canonical auth id) · `email` unique · `name` · `is_training_admin` · `anonymised_at` null · `merged_into` FK null · `updated_at`. Upserted by `ensureLocalUser` in the auth middleware, which skips any row with `anonymised_at` **or** `merged_into` set, so neither an erasure nor a merge can be undone by a still-valid session cookie. The upsert is debounced to one write a minute per user per isolate, and a failed one is not fatal to a read ([ADR-0016](decisions/0016-the-user-mirror-is-best-effort-on-a-read.md)): the row is then up to one request stale and self-heals on the next. Email is for pickers and notifications only: never exposed via the API.
 
 `merged_into` is the tombstone the merge hook leaves in place of a delete ([ADR-0015](decisions/0015-a-merged-mirror-row-is-tombstoned.md)): the row keeps the losing id so nothing can resurrect it, and its email and name are scrubbed because the person's identity now lives on the winning row. **Every query that lists people must exclude tombstoned rows**, as `GET /api/directory`, `GET /api/people`, `ensureKnownUser`, `addressableUsers`, `POST /api/admin/leads` and the expiry sweep do. Rows here are never deleted.
 

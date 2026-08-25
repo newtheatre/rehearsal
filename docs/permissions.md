@@ -76,4 +76,6 @@ Day one, nobody holds LEAD-CERT. Admins grant the first Trainer certs to the est
 
 Global server middleware fails closed: everything requires a session except `/api/health` and the auth redirects. The middleware also runs `ensureLocalUser`.
 
+That upsert is **best effort on a read and required on a write**: if it fails, a `GET`, `HEAD` or `OPTIONS` logs the database error and carries on, while any other method rethrows and the request 500s ([ADR-0016](decisions/0016-the-user-mirror-is-best-effort-on-a-read.md)). No read needs the mirror row to answer; a mutation may write a row that foreign-keys it, and refusing beats half-writing a record.
+
 Two subtrees carry a different credential rather than a session, and each is enforced by its own middleware beside the global one, not by every route remembering: `/api/v1/**` needs a service token (`server/middleware/consumer-api.ts`, which also sets the consumer cache header) and `/api/_hooks/**` needs the auth service's shared secret (`server/middleware/hooks.ts`). A new route under either is therefore guarded the moment it exists.

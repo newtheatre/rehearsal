@@ -42,6 +42,34 @@ function shadowAnswers(response: { id: string, email: string, name: string }) {
   ;(globalThis as Record<string, unknown>).$fetch = async () => response
 }
 
+/**
+ * Run something with the mirror upsert failing the way D1 does, capturing
+ * whatever reached the log.
+ */
+async function withFailingMirror<T>(run: () => Promise<T>): Promise<string[]> {
+  const g = globalThis as Record<string, unknown>
+  const realMirror = g.ensureLocalUser
+  const realLog = console.error
+  const logged: string[] = []
+
+  g.ensureLocalUser = async () => {
+    throw Object.assign(new Error('Failed query: insert into "users"\nparams: member@newtheatre.org.uk'), {
+      query: 'insert into "users" ("id", "email", "name") values (?, ?, ?)',
+      cause: new Error('D1_ERROR: Network connection lost.'),
+    })
+  }
+  console.error = (...args: unknown[]) => void logged.push(args.join(' '))
+
+  try {
+    await run()
+    return logged
+  }
+  finally {
+    g.ensureLocalUser = realMirror
+    console.error = realLog
+  }
+}
+
 async function lookup(email: string) {
   const event = makeEvent({ method: 'POST', path: '/api/attendees/lookup', body: { email } })
   signIn(event, { id: 'trainer' })
@@ -182,6 +210,34 @@ describe('global API middleware', () => {
 
     expect((event.context.user as { id: string }).id).toBe('auth-canonical-id')
     expect(await db.select().from(schema.users).get()).toBeTruthy()
+  })
+
+  it('lets a read through when the mirror upsert cannot reach the database', async () => {
+    const event = makeEvent({ method: 'GET', path: '/api/modules' })
+    signIn(event, { id: 'auth-canonical-id' })
+    delete event.context.user
+
+    const logged = await withFailingMirror(async () => {
+      await expect(call(authMiddleware, event)).resolves.toBeUndefined()
+    })
+
+    expect((event.context.user as { id: string }).id).toBe('auth-canonical-id')
+    expect(logged.join(' ')).toContain('mirror upsert on GET /api/modules')
+    expect(logged.join(' ')).toContain('Network connection lost')
+    // The bound values are the member's name and address.
+    expect(logged.join(' ')).not.toContain('member@newtheatre.org.uk')
+  })
+
+  it('still refuses a write when the mirror upsert cannot reach the database', async () => {
+    const event = makeEvent({ method: 'POST', path: '/api/sessions' })
+    signIn(event, { id: 'auth-canonical-id' })
+
+    // A record FKs the mirror row: better to refuse than to half-write one.
+    const logged = await withFailingMirror(async () => {
+      await expect(call(authMiddleware, event)).rejects.toThrow('Failed query')
+    })
+
+    expect(logged).toHaveLength(0)
   })
 
   it('exempts the hook and consumer-API paths, which carry their own auth', async () => {

@@ -8,6 +8,22 @@ The UI review of 2026-08-24 raised nine defects across the register, the demand 
 shell, and all nine were fixed rather than filed. The practice-target key field, which could
 silently overwrite a live target, went with them.
 
+## P2: the user-mirror upsert fails against D1 often enough to notice, and nobody knows why
+
+Every authenticated `/api/**` request upserts the caller into the local user mirror
+(`server/utils/ensureLocalUser.ts`, called from the global middleware). In the seven days to
+2026-08-25 that statement failed around 320 times against roughly 7,310 requests. The stack was all
+that reached the log, and it named `D1PreparedQuery.run`, which in Drizzle's D1 driver is only ever
+an insert, update or delete: the mirror upsert is the only write on the routes that reported it.
+
+The failure is now survivable and no longer silent: a read continues without the mirror row and the
+driver's own message is logged ([ADR-0016](decisions/0016-the-user-mirror-is-best-effort-on-a-read.md)).
+What actually fails is still unknown, so nothing retries and nothing is tuned for a particular
+cause. Watch the `[db]` lines described in [operations.md](operations.md#db-log-lines) for a week
+after the deploy: the driver's message and code are what decide whether this is a transient worth
+one retry, an overloaded database, or a real fault in the statement. Delete this entry when it has
+an answer.
+
 ## P3: two phones opening one register at the same instant insert duplicate practice windows
 
 `POST /api/sessions/:id/register/open` is guarded by "has `register_opened_at` been stamped", which

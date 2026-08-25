@@ -59,9 +59,13 @@ async function seedDepartmentsWithAdmn() {
   await db.insert(schema.departments).values({ code: 'ADMN', name: 'ADMN', sort: 9 })
 }
 
-/** Create a target through the real admin route. */
+/** Create a target through the real admin route, as the page sends it. */
 async function putTarget(body: Record<string, unknown>) {
-  const event = makeEvent({ method: 'PUT', path: '/api/admin/practice-targets', body })
+  const event = makeEvent({
+    method: 'PUT',
+    path: '/api/admin/practice-targets',
+    body: { moduleIds: [], status: 'ACTIVE', ...body },
+  })
   signIn(event, { id: 'admin', roles: ['training:ADMIN'] })
   return call(targetsPutHandler, event)
 }
@@ -413,6 +417,35 @@ describe('targets are data', () => {
 
     const after = await sessionTeaching(['TECH-111'], ['bob'])
     expect((await openTheRegister(after)).practiceOpened).toEqual(['bar-till'])
+  })
+
+  it('refuses a payload that omits the module list or the status', async () => {
+    // A full replacement, so a missing field would empty a live target's
+    // module list or un-retire one that was shut on purpose.
+    await expect(putTarget({ key: 'bar-till', name: 'Bar till', moduleIds: undefined }))
+      .rejects.toThrow()
+    await expect(putTarget({ key: 'bar-till', name: 'Bar till', status: undefined }))
+      .rejects.toThrow()
+
+    const target = await db.select().from(schema.practiceTargets)
+      .where(eq(schema.practiceTargets.key, 'bar-till')).get()
+    expect(target!.moduleIds).toEqual(['ADMN-102', 'ADMN-103'])
+  })
+
+  it('refuses a create on a key that is already taken', async () => {
+    // The page checks against a list it last refreshed, so two admins can both
+    // pass it; the server holds the line.
+    await expect(putTarget({
+      key: 'bar-till',
+      name: 'Something else',
+      moduleIds: ['TECH-111'],
+      create: true,
+    })).rejects.toMatchObject({ statusCode: 409 })
+
+    const target = await db.select().from(schema.practiceTargets)
+      .where(eq(schema.practiceTargets.key, 'bar-till')).get()
+    expect(target!.name).toBe('Bar till')
+    expect(target!.moduleIds).toEqual(['ADMN-102', 'ADMN-103'])
   })
 
   it('needs config.manage to edit', async () => {

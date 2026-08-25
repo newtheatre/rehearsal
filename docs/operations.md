@@ -116,6 +116,7 @@ The expiry sweep does the matching housekeeping for the ledger itself: it delete
 Creating one is committee policy expressed as data, so it needs no deploy here or in the consumer. Three things to know before editing:
 
 - **Never rename a key.** A consumer hardcodes it; renaming turns their sandbox into a loud 404. Retire and create instead.
+- **A save replaces the whole target.** `moduleIds` and `status` are required on the wire rather than defaulted, so a hand-written call that omits one is refused with a 400 instead of silently emptying the module list (after which no register opens that sandbox again) or re-activating a target somebody retired. Creating on a key that already exists is refused with a 409 by the server, not merely by the page.
 - **The module list is what teaching opens the sandbox**, not what somebody needs to be allowed near it. Do not copy an eligibility rule's `requires` into it: `bar` requires the general induction, and putting the induction here would open the till to every fresher taught it.
 - **Retiring a target closes nothing by itself**, but open windows on it stop answering immediately, because the endpoint checks the target's status as well as the window's.
 

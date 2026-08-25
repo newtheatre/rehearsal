@@ -112,7 +112,7 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `GET /api/admin/eligibility-rules` | admin | rules and what they require; `requires` is `null` for a rule stored in an unparseable form |
 | `PUT /api/admin/eligibility-rules` | admin | create or update a rule; audit-logged with before and after |
 | `GET /api/admin/practice-targets` | admin | targets, and every window open right now |
-| `PUT /api/admin/practice-targets` | admin | create or update a target; module ids validated; audit-logged |
+| `PUT /api/admin/practice-targets` | admin | create or update a target; module ids validated; audit-logged with before and after, in the same batch as the write. **A full replacement, so `moduleIds` and `status` are required**: omitting them would empty a live target's module list or un-retire one that was shut on purpose. Send `create: true` to mean create, which answers **409** if the key is taken: a consumer hardcodes the key, so an accidental overwrite is not recoverable by editing it back |
 | `POST /api/practice-windows` | trainer or lead | open a sandbox by hand for ad-hoc coaching; a reason is required |
 | `DELETE /api/practice-windows/:id` | trainer or lead | shut one early |
 

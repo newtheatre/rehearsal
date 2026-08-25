@@ -19,6 +19,7 @@ export default defineTask({
         mode: result.mode,
         sent: result.sent,
         failed: result.failed.length,
+        pruned: result.pruned,
         ...result.plan.counts,
       },
     }

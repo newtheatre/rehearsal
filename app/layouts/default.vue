@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 const { user } = useUserSession()
-const { data: me } = useMe()
+const { data: me, status: meStatus, error: meError, refresh: refreshMe } = useMe()
 const config = useRuntimeConfig()
 
 /**
@@ -87,6 +87,14 @@ const links = computed(() => [
 
     <main class="flex-1">
       <UContainer class="py-8">
+        <LoadFailed
+          v-if="meError"
+          class="mb-6"
+          :error="meError"
+          what="what you can do here"
+          :retrying="meStatus === 'pending'"
+          @retry="refreshMe"
+        />
         <slot />
       </UContainer>
     </main>

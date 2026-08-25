@@ -24,6 +24,19 @@ after the deploy: the driver's message and code are what decide whether this is 
 one retry, an overloaded database, or a real fault in the statement. Delete this entry when it has
 an answer.
 
+## P3: a failed catalogue lookup still empties a picker without saying so
+
+The dashboard, the catalogue, the admin catalogue, the directory and the app shell now say when a
+fetch failed and offer a retry. Seven pages read `GET /api/modules` as a lookup rather than as their
+subject, and still do not: `sessions/new.vue`, `sessions/[id]/edit.vue`, `sessions/schedule.vue`,
+`requests.vue`, `people/[id].vue`, `admin/practice-targets.vue` and `admin/api.vue`. On a failure
+the module picker is simply empty, which reads as "there are no modules" to a trainer trying to log
+a session.
+
+The treatment is the one `LoadFailed` already provides; what each page needs is a decision about
+where the banner goes and which empty state it replaces. Worth doing next time one of those pages
+is open for another reason.
+
 ## P3: two phones opening one register at the same instant insert duplicate practice windows
 
 `POST /api/sessions/:id/register/open` is guarded by "has `register_opened_at` been stamped", which

@@ -12,6 +12,12 @@ import { daysBetween } from '../../shared/utils/dates'
  */
 export const FINAL_WARNING_DAYS = 14
 
+/**
+ * How many days into the month the digest may still go out. It retries a send
+ * that failed on the 1st without turning the digest into an any-day email.
+ */
+export const DIGEST_WINDOW_DAYS = 3
+
 export type NotificationType = 'expiry.window' | 'expiry.14day' | 'digest.monthly'
 
 export interface SweepRecord {
@@ -61,7 +67,7 @@ export interface ExpiryPlan {
     windowWarnings: number
     finalWarnings: number
     digests: number
-    /** Records whose person has no mirror row: cannot be emailed. */
+    /** Records whose person has no deliverable address: cannot be emailed. */
     unaddressable: number
   }
 }
@@ -78,8 +84,8 @@ export interface SweepInputs {
   alreadyNotified: ReadonlySet<string>
   /** User ids that already received a digest this month. */
   digestSentThisMonth: ReadonlySet<string>
-  /** Digests go out on the 1st. */
-  isDigestDay: boolean
+  /** Digests go out on the 1st, retried while the window is open. */
+  isDigestWindow: boolean
   /** How long the cached admin flag is trusted for. */
   adminCacheDays: number
 }
@@ -142,7 +148,7 @@ export function planExpirySweep(input: SweepInputs): ExpiryPlan {
     }))
     .sort((a, b) => a.name.localeCompare(b.name) || a.type.localeCompare(b.type))
 
-  const digests = input.isDigestDay
+  const digests = input.isDigestWindow
     ? planDigests(input, byId, expiring, expired)
     : []
 
@@ -220,7 +226,10 @@ function planDigests(
   return digests.sort((a, b) => a.name.localeCompare(b.name))
 }
 
-/** Is this the day the monthly digest goes out? */
-export function isDigestDay(asOf: string): boolean {
-  return asOf.endsWith('-01')
+/**
+ * Is the month's digest still due? `digestSentThisMonth` is what stops a
+ * second one, so a send that failed on the 1st is retried inside the window.
+ */
+export function isDigestWindow(asOf: string): boolean {
+  return Number(asOf.slice(8, 10)) <= DIGEST_WINDOW_DAYS
 }

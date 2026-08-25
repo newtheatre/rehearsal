@@ -227,6 +227,14 @@ describe('live run', () => {
   })
 })
 
+/**
+ * The ledger stamps wall-clock time, while the sweep is asked about a date, so
+ * a test running against a future `asOf` has to stamp it itself.
+ */
+async function stampLedger(asOf: string) {
+  await db.update(schema.notificationLog).set({ sentAt: new Date(`${asOf}T06:00:00Z`) })
+}
+
 describe('monthly digest', () => {
   it('goes out on the 1st and not again that month', async () => {
     await setup()
@@ -235,6 +243,7 @@ describe('monthly digest', () => {
 
     const first = await runExpirySweep({ asOf: '2026-09-01', force: 'live' })
     expect(first.plan.digests).toHaveLength(2) // lead + admin
+    await stampLedger('2026-09-01')
 
     sent.length = 0
     const second = await runExpirySweep({ asOf: '2026-09-02', force: 'live' })
@@ -242,6 +251,82 @@ describe('monthly digest', () => {
 
     const third = await runExpirySweep({ asOf: '2026-10-01', force: 'live' })
     expect(third.plan.digests).toHaveLength(2)
+  })
+
+  it('retries a digest that failed to send, the next morning', async () => {
+    await setup()
+    await seedLead('TECH', 'alice')
+    await seedRecord({ userId: 'alice', moduleId: 'NNT-001', expiresAt: '2026-09-30' })
+
+    const email = await import('../server/utils/email')
+    const send = email.sendEmail as ReturnType<typeof mock>
+    send.mockRejectedValue(new Error('Resend rate limit'))
+
+    const first = await runExpirySweep({ asOf: '2026-09-01', force: 'live' })
+    expect(first.failed.filter(f => f.type === 'digest.monthly')).toHaveLength(2)
+    expect(await db.select().from(schema.notificationLog)
+      .where(eq(schema.notificationLog.type, 'digest.monthly')).all()).toHaveLength(0)
+
+    send.mockReset()
+    send.mockImplementation(async ({ to, subject }: { to: string, subject: string }) => {
+      sent.push({ to, subject })
+    })
+    sent.length = 0
+
+    // Nothing was logged, so the month's digest is still owed.
+    const second = await runExpirySweep({ asOf: '2026-09-02', force: 'live' })
+    expect(second.plan.digests).toHaveLength(2)
+    expect(second.failed).toEqual([])
+    expect(sent.filter(item => item.subject.startsWith('NNT training digest'))).toHaveLength(2)
+  })
+
+  it('does not become an any-day email once the window closes', async () => {
+    await setup()
+    await seedLead('TECH', 'alice')
+    await seedRecord({ userId: 'alice', moduleId: 'NNT-001', expiresAt: '2026-09-30' })
+
+    const missed = await runExpirySweep({ asOf: '2026-09-14', force: 'live' })
+    expect(missed.plan.digests).toEqual([])
+  })
+})
+
+describe('who the sweep may address', () => {
+  it('skips erased, merged-away and never-signed-in mirror rows', async () => {
+    await setup()
+    await seedUser('erased', 'Erased Person')
+    await seedUser('ghost', 'Merged Away')
+    await db.update(schema.users)
+      .set({ email: 'deleted-erased@anonymised.invalid', anonymisedAt: new Date() })
+      .where(eq(schema.users.id, 'erased'))
+    await db.update(schema.users)
+      .set({ email: 'merged-ghost@placeholder.invalid', mergedInto: 'alice' })
+      .where(eq(schema.users.id, 'ghost'))
+
+    await seedRecord({ userId: 'erased', moduleId: 'NNT-001', expiresAt: '2026-09-30' })
+    await seedRecord({ userId: 'ghost', moduleId: 'NNT-001', expiresAt: '2026-09-30' })
+
+    const result = await runExpirySweep({ asOf: ASOF, force: 'live' })
+
+    // A reserved .invalid address can only bounce, and a bounce that Resend
+    // accepts would log the warning as sent and suppress it for good.
+    expect(sent).toEqual([])
+    expect(result.plan.counts.unaddressable).toBe(2)
+  })
+})
+
+describe('ledger retention', () => {
+  it('prunes rows past 24 months, whatever the mode', async () => {
+    await setup()
+    await db.insert(schema.notificationLog).values([
+      { userId: 'alice', type: 'expiry.window', recordId: 'old', sentAt: new Date('2024-01-01') },
+      { userId: 'alice', type: 'expiry.window', recordId: 'recent', sentAt: new Date('2026-01-01') },
+    ])
+
+    const result = await runExpirySweep({ asOf: ASOF })
+
+    expect(result.pruned).toBe(1)
+    const left = await db.select().from(schema.notificationLog).all()
+    expect(left.map(row => row.recordId)).toEqual(['recent'])
   })
 })
 

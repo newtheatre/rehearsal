@@ -34,4 +34,7 @@ export const notificationLog = sqliteTable('notification_log', {
   index('notification_log_user_idx').on(table.userId),
   index('notification_log_record_type_idx').on(table.recordId, table.type),
   index('notification_log_session_type_idx').on(table.sessionId, table.type),
+  // The digest read filters on type and date, and the daily prune on date.
+  index('notification_log_type_sent_idx').on(table.type, table.sentAt),
+  index('notification_log_sent_at_idx').on(table.sentAt),
 ])

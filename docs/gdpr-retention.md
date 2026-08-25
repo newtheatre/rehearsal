@@ -38,7 +38,7 @@ Module requests are included too: the note somebody wrote asking for training is
 
 - **Records**: kept while the account exists; anonymised (not deleted) when the auth service's erasure or inactivity sweep reaches the person. The sweep's `last-activity` hook answer from this app (latest record/session) correctly keeps active members out of the sweep.
 - **Sessions/attendance**: same lifecycle as records.
-- **`notification_log`**: pruned after 24 months (operational only).
+- **`notification_log`**: pruned after 24 months (operational only). Applied by the daily expiry sweep, in both dry-run and live mode, and counted as `pruned` in its audit row ([operations.md](operations.md#notifications)).
 - **Backups**: weekly/monthly cycle means erased data persists in encrypted backups up to 12 months: same documented ceiling as the rest of the estate.
 
 Proposed periods ride the committee policy ratification; values live in config/docs, not code.

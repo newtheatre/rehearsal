@@ -10,7 +10,7 @@ const SKIP = new Set(['node_modules', '.nuxt', '.output', '.wrangler', '.git', '
 const EXTS = ['.ts', '.vue', '.mjs', '.js', '.prisma']
 // The no-em-dash rule covers prose and UI copy too, so this list is wider.
 const PROSE_EXTS = [...EXTS, '.md', '.yml', '.yaml', '.sh', '.csv', '.jsonc', '.css', '.example']
-const EM_DASH = /\u2014/
+const EM_DASH = /\u2014|&(?:mdash|#8212|#x2014);/i
 
 const BANNED_TAGS = /@(param|returns?|prop|props|emits?|module|route|authenticated|admin-only|method|example|see|throws)\b/
 const HISTORY = /\b(used to|originally|an earlier version|previously|it used to|we used to|this used to|no longer needed|before this)\b/i

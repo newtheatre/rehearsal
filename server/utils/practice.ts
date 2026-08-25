@@ -115,6 +115,24 @@ export function closeSessionWindowStatements(sessionId: string, closedBy: string
   ]
 }
 
+/** Statements closing one person's windows on a session, for the caller to batch. */
+export function closeAttendeeWindowStatements(
+  sessionId: string,
+  userId: string,
+  closedBy: string,
+  now = new Date(),
+): BatchStatement[] {
+  return [
+    db.update(schema.practiceWindows)
+      .set({ closedAt: now, closedBy })
+      .where(and(
+        eq(schema.practiceWindows.sessionId, sessionId),
+        eq(schema.practiceWindows.userId, userId),
+        isNull(schema.practiceWindows.closedAt),
+      )),
+  ]
+}
+
 /**
  * Open means not closed, inside its window, and on a target that has not been
  * retired underneath it. Both readers below use this one definition.

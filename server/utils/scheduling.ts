@@ -11,7 +11,7 @@ import { chunk } from './d1'
 import { londonInstant, londonTimeOf, today } from '../../shared/utils/dates'
 import type { SessionRow } from './sessions'
 import type { RegisterEntry } from '../../shared/types/session'
-import { closeSessionWindowStatements } from './practice'
+import { closeAttendeeWindowStatements, closeSessionWindowStatements } from './practice'
 
 export type AttendeeRow = typeof schema.sessionAttendees.$inferSelect
 
@@ -344,6 +344,8 @@ export async function withdraw(options: {
   await runAtomic([
     db.update(schema.sessionAttendees).set({ status: 'CANCELLED' })
       .where(eq(schema.sessionAttendees.id, row.id)),
+    // Off the register with no way back, so the sandbox goes too (ADR-0014).
+    ...closeAttendeeWindowStatements(session.id, userId, userId),
   ])
 
   const after = before.filter(item => item.id !== row.id)

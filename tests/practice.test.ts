@@ -22,6 +22,7 @@ import targetsPutHandler from '../server/api/admin/practice-targets/index.put'
 import grantHandler from '../server/api/practice-windows/index.post'
 import closeHandler from '../server/api/practice-windows/[id]/index.delete'
 import addAttendeeHandler from '../server/api/sessions/[id]/attendees.post'
+import withdrawHandler from '../server/api/sessions/[id]/signup.delete'
 
 type Handler = (event: FakeEvent) => Promise<unknown>
 const call = (handler: unknown, event: FakeEvent) => (handler as Handler)(event)
@@ -268,6 +269,21 @@ describe('closing', () => {
     await call(markHandler, mark)
 
     expect(await ask('bar-till', 'alice')).toMatchObject({ active: false })
+  })
+
+  it('closes it for somebody who withdraws after the register opened', async () => {
+    const id = await sessionTeaching(['ADMN-102'], ['alice', 'bob'])
+    await openTheRegister(id)
+    expect(await ask('bar-till', 'alice')).toMatchObject({ active: true })
+
+    const leave = makeEvent({ method: 'DELETE', path: '/x', params: { id } })
+    signIn(leave, { id: 'alice' })
+    await call(withdrawHandler, leave)
+
+    // She has gone home, and cannot rejoin: the sandbox goes with her.
+    expect(await ask('bar-till', 'alice')).toMatchObject({ active: false })
+    // And only hers: the rest of the room is still being taught.
+    expect(await ask('bar-till', 'bob')).toMatchObject({ active: true })
   })
 
   it('closes it when the session is cancelled', async () => {

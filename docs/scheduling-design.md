@@ -307,7 +307,9 @@ hand a fresher the till.
 - A lead may also open one by hand for a named person, for coaching outside a scheduled session. Same
   table, `session_id` null, a reason required.
 - Submitting the register closes them. So does the expiry, so does a lead closing one early, and so
-  does a daily sweep for anything left behind.
+  does a daily sweep for anything left behind. So does withdrawing: a person who leaves after the
+  register opened cannot rejoin it (§5.2), so their sandbox closes with them and the rest of the
+  room keeps theirs.
 
 `GET /api/v1/practice/:key` answers, for a service token. **It is `no-store`**, unlike the
 five-minute eligibility cache: a window a lead just closed has to stop answering true immediately, or

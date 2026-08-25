@@ -11,6 +11,7 @@ import { addressableUsers, sendEach, sessionEmailSummary } from '../../../../uti
 import { renderMissedYou } from '../../../../utils/email'
 import { describeGaps } from '../../../../utils/prerequisites'
 import { writeAudit } from '../../../../utils/audit'
+import { formatDate, today } from '../../../../../shared/utils/dates'
 
 export default defineEventHandler(async (event) => {
   const abilities = await requireTrainer(event)
@@ -28,6 +29,15 @@ export default defineEventHandler(async (event) => {
   }
   if (session.status === 'CANCELLED') {
     throw createError({ statusCode: 409, statusMessage: 'That session was cancelled' })
+  }
+
+  // Records are stamped with held_on, and a record dated ahead of today is
+  // valid to every gate in the system (validation.ts, awardedAtSchema).
+  if (session.heldOn > today()) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: `That session is not until ${formatDate(session.heldOn)}. If it has been taught, move its date to today first, then mark the register.`,
+    })
   }
 
   // Read before the body is parsed, so an over-long register is refused with

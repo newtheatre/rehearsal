@@ -226,7 +226,12 @@ because "why did that not happen" is a question people ask in March about someth
 ## 6. The register, which is the only thing that creates a record
 
 On the day, the lead opens the register. This stamps `register_opened_at` and opens practice windows
-(§7). The register is a phone screen: the sign-up list, one big control per person, present or
+(§7). **Both opening and marking are refused with a 409 while `held_on` is still in the future**, and
+that is enforced, not merely expected: records are stamped with `held_on`, so marking a register
+early would award training dated next week that every gate reads as held today, and opening one
+early would hand everybody signed up a live practice window for the whole intervening period. A
+session taught earlier than planned is moved to today through `PUT /api/sessions/:id/schedule`
+first, which the refusal says. The register is a phone screen: the sign-up list, one big control per person, present or
 absent, plus a way to add someone who turned up unannounced.
 
 **The marks must match the register exactly**, in both directions. A mark naming somebody no longer

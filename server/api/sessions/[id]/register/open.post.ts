@@ -5,6 +5,7 @@ import { loadSessionRow, moduleIdsFor, openRegister, registerFor } from '../../.
 import { assertMaySteward } from '../../../../utils/sessionAuth'
 import { openWindowsForSession } from '../../../../utils/practice'
 import { writeAudit } from '../../../../utils/audit'
+import { formatDate, today } from '../../../../../shared/utils/dates'
 
 export default defineEventHandler(async (event) => {
   const abilities = await requireTrainer(event)
@@ -21,6 +22,15 @@ export default defineEventHandler(async (event) => {
       statusMessage: session.status === 'DELIVERED'
         ? 'That register has already been marked'
         : 'Open sign-ups before taking the register',
+    })
+  }
+
+  // Opening a register hands everyone signed up a live practice window, so it
+  // waits for the day itself, as does the marking that follows it.
+  if (session.heldOn > today()) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: `That session is not until ${formatDate(session.heldOn)}. Take the register on the day.`,
     })
   }
 

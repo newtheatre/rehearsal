@@ -89,9 +89,9 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `POST /api/sessions/:id/signup` | session | take a place, or join the waitlist. Returns `{ hasPlace, waitlistPosition, warnings }` |
 | `DELETE /api/sessions/:id/signup` | session | withdraw. Allowed until the session is delivered or cancelled, including while the register is open. Returns how many people that moved into a place |
 | `POST /api/sessions/:id/attendees` | steward | add a walk-in. Bypasses the sign-up prerequisite gate on purpose; the register-time check still applies |
-| `POST /api/sessions/:id/register/open` | steward | start taking the register. Idempotent, and **closes sign-ups** |
+| `POST /api/sessions/:id/register/open` | steward | start taking the register. Idempotent, and **closes sign-ups**. 409 while `held_on` is still in the future: opening early would open everybody's practice windows early |
 | `GET /api/sessions/:id/register` | steward | who to mark off, in sign-up order, waitlist marked, plus `practiceTargets`: the sandboxes this session's modules unlock, or empty when they unlock none |
-| `POST /api/sessions/:id/register` | steward | **mark it, which creates the records.** 409 if already marked |
+| `POST /api/sessions/:id/register` | steward | **mark it, which creates the records.** 409 if already marked, and 409 while `held_on` is still in the future: records are stamped with `held_on`, and a record dated ahead of today is valid to every gate. Move the date to today first |
 | `GET /api/module-requests` | session | your own requests, paged (`limit` default 50) and returned with `hasMore`, plus the demand board if you lead a department |
 | `POST /api/module-requests` | session | ask for a module to be taught. 409 if you already have one open, 400 if it is not `ACTIVE` |
 | `DELETE /api/module-requests/:id` | session (own) | withdraw, which frees you to ask again later |

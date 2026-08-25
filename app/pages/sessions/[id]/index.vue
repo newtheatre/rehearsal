@@ -73,6 +73,9 @@ const isScheduled = computed(() =>
   data.value ? ['PLANNED', 'OPEN', 'FULL'].includes(data.value.status) : false,
 )
 
+/** The register awards records dated held_on, so it waits for the day. */
+const registerDay = computed(() => Boolean(data.value && data.value.heldOn <= today()))
+
 const whenLine = computed(() => {
   if (!data.value) return ''
   if (!data.value.startsAt) return formatDate(data.value.heldOn)
@@ -289,10 +292,19 @@ const whenLine = computed(() => {
         @click="openSignups"
       />
       <UButton
-        v-else
+        v-else-if="registerDay"
         :to="`/sessions/${data.id}/register`"
         :label="data.registerOpened ? 'Carry on with the register' : 'Take the register'"
         icon="i-lucide-clipboard-check"
+      />
+      <UButton
+        v-else
+        label="Take the register"
+        icon="i-lucide-clipboard-check"
+        color="neutral"
+        variant="outline"
+        disabled
+        :title="`Available on ${formatDate(data.heldOn)}`"
       />
       <UButton
         v-if="data.canAmend"

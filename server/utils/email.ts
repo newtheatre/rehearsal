@@ -260,18 +260,27 @@ export function renderMissedYou(options: {
   }
 }
 
+/**
+ * `session_reminder_days` is operator-tunable, so the copy names the day the
+ * session is actually on rather than assuming the reminder is the day before.
+ */
 export function renderSessionReminder(options: {
   name: string
   session: SessionEmailSummary
   hasPlace: boolean
+  daysAhead: number
 }): { subject: string, html: string } {
+  const date = formatDate(options.session.heldOn)
+  const heading = options.daysAhead === 0 ? 'Today' : options.daysAhead === 1 ? 'Tomorrow' : `On ${date}`
+  const when = options.daysAhead === 0 ? 'today' : options.daysAhead === 1 ? 'tomorrow' : `on ${date}`
+
   return {
-    subject: `Tomorrow: ${options.session.moduleNames.join(', ')}`,
+    subject: `${heading}: ${options.session.moduleNames.join(', ')}`,
     html: layout(`
       <p>Hello ${esc(firstName(options.name))},</p>
       <p>${options.hasPlace
-        ? 'A reminder that you have a place at this session tomorrow.'
-        : 'A reminder about this session tomorrow. You are on the waitlist, so you do not have a place, but people often withdraw on the day and it is worth coming along.'}</p>
+        ? `A reminder that you have a place at this session ${when}.`
+        : `A reminder about this session ${when}. You are on the waitlist, so you do not have a place, but people often withdraw on the day and it is worth coming along.`}</p>
       ${sessionCard(options.session)}
       <p>${options.hasPlace
         ? 'If you can no longer make it, please withdraw so somebody on the waitlist can take the place.'

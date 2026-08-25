@@ -105,6 +105,8 @@ Two daily crons: the expiry sweep at 06:00 UTC (`expiry-sweep`) and the session 
 
 Daily cron 09:00 UTC (`session-sweep`). Sends the reminders for the day `session_reminder_days` ahead (default 1) and nags the lead of any session whose date has passed with an **unmarked register** (`register_nag_days`, default 2, then weekly). An unmarked register means nobody got a record, so the nag is the safety net for the commonest failure this feature has. It never marks anything itself.
 
+The reminder names the day from the session's own date: "Tomorrow" at the default of 1, "Today" at 0, and the date itself for anything longer. Raising the lead time is therefore safe, which matters because the reminder is idempotent per (session, member): a member told the wrong day gets no second, corrected email.
+
 The nag phase is bounded by `register_nag_stop_days` (default 60), because each session in it costs per-session reads every morning and a weekly email to a lead who may have left. **Stopping the emails is not dropping the session.** Anything past the cutoff is counted as `stale` in the sweep's result and listed at `/admin/notifications` under "Unmarked registers", flagged as no longer nagged, until somebody marks or cancels it. Chase those by hand: marking a register works however old it is, and still awards the records.
 
 Both are idempotent through `notification_log`, now keyed on `session_id` as well. The sweep also closes any practice window left open past its expiry, which is housekeeping rather than a notification and so runs whatever the mode.

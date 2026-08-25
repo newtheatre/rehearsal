@@ -5,15 +5,15 @@
 
 import { describe, it, expect, beforeEach, mock } from 'bun:test'
 
-const sent: { to: string, subject: string }[] = []
+const sent: { to: string, subject: string, html: string }[] = []
 
 // Intercept at the email boundary so the sweep's own logic runs for real.
 const actualEmail = await import('../server/utils/email')
 
 mock.module('../server/utils/email', () => ({
   ...actualEmail,
-  sendEmail: mock(async ({ to, subject }: { to: string, subject: string }) => {
-    sent.push({ to, subject })
+  sendEmail: mock(async ({ to, subject, html }: { to: string, subject: string, html: string }) => {
+    sent.push({ to, subject, html })
   }),
 }))
 
@@ -53,6 +53,22 @@ async function unmarkedSession(daysAgo: number) {
   await db.insert(schema.sessionModules).values({ sessionId: session!.id, moduleId: 'NNT-001' })
   await db.insert(schema.sessionAttendees).values({
     sessionId: session!.id, userId: 'alice', status: 'SIGNED_UP',
+  })
+  return session!.id
+}
+
+/** A session still to come, with somebody signed up to it. */
+async function upcomingSession(daysAhead: number) {
+  const [session] = await db.insert(schema.sessions).values({
+    heldOn: addDays(ASOF, daysAhead),
+    status: 'OPEN',
+    trainerUserId: 'trainer',
+    createdBy: 'trainer',
+  }).returning({ id: schema.sessions.id })
+
+  await db.insert(schema.sessionModules).values({ sessionId: session!.id, moduleId: 'NNT-001' })
+  await db.insert(schema.sessionAttendees).values({
+    sessionId: session!.id, userId: 'alice', status: 'SIGNED_UP', signedUpAt: new Date(),
   })
   return session!.id
 }
@@ -139,5 +155,42 @@ describe('GET /api/admin/unmarked-sessions', () => {
     const event = makeEvent({ method: 'GET', path: '/api/admin/unmarked-sessions' })
     signIn(event, { id: 'alice' })
     await expect(call(unmarkedHandler, event)).rejects.toMatchObject({ statusCode: 403 })
+  })
+})
+
+describe('the session reminder', () => {
+  it('says tomorrow when the reminder is set to a day ahead', async () => {
+    await upcomingSession(1)
+
+    const result = await runSessionSweep(ASOF)
+
+    expect(result.reminders).toBe(1)
+    expect(sent[0]!.subject).toStartWith('Tomorrow:')
+    expect(sent[0]!.html).toContain('a place at this session tomorrow')
+  })
+
+  it('names the day when the operator sets a longer lead time', async () => {
+    await db.insert(schema.siteConfig).values({ key: 'session_reminder_days', value: '7' })
+    await upcomingSession(7)
+
+    const result = await runSessionSweep(ASOF)
+
+    // Telling somebody a session a week away is tomorrow is how they turn up
+    // on the wrong day, and the reminder is sent once.
+    expect(result.reminders).toBe(1)
+    expect(sent[0]!.subject).not.toContain('Tomorrow')
+    expect(sent[0]!.subject).toContain('01/09/2026')
+    expect(sent[0]!.html).not.toContain('tomorrow')
+    expect(sent[0]!.html).toContain('on 01/09/2026')
+  })
+
+  it('says today when the reminder goes out on the day', async () => {
+    await db.insert(schema.siteConfig).values({ key: 'session_reminder_days', value: '0' })
+    await upcomingSession(0)
+
+    await runSessionSweep(ASOF)
+
+    expect(sent[0]!.subject).toStartWith('Today:')
+    expect(sent[0]!.html).toContain('a place at this session today')
   })
 })

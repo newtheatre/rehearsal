@@ -340,7 +340,7 @@ of it obeys the copy rule already written there: a nudge, never a disciplinary n
 | Sign-up confirmed | member signs up | no |
 | Moved off the waitlist | a withdrawal moved them into a place | no |
 | Session cancelled | lead cancels | no |
-| Session tomorrow | daily task | **yes** |
+| Session reminder | daily task, `session_reminder_days` ahead | **yes** |
 | Sorry we missed you | register submitted, marked absent | no |
 | Your register is unmarked | daily task | **yes** |
 

@@ -306,6 +306,11 @@ hand a fresher the till.
   driven by the second, so it cannot claim a sandbox is open when no window exists.
 - A lead may also open one by hand for a named person, for coaching outside a scheduled session. Same
   table, `session_id` null, a reason required.
+- **What a session teaches is frozen once its register is open.** Amending `moduleIds` from then on
+  is refused with a 409, because the windows came from the snapshot taken at register-open and
+  nothing reconciles them afterwards: a dropped module would leave its sandbox open for a lesson
+  that no longer teaches it, and an added one would open nothing for anybody in the room. Mark the
+  register, or cancel the session, and schedule what is actually being taught.
 - Submitting the register closes them. So does the expiry, so does a lead closing one early, and so
   does a daily sweep for anything left behind. So does withdrawing: a person who leaves after the
   register opened cannot rejoin it (§5.2), so their sandbox closes with them and the rest of the

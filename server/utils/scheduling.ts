@@ -176,6 +176,7 @@ export async function updateSchedule(options: {
   statements.push(db.update(schema.sessions).set(fields).where(eq(schema.sessions.id, sessionId)))
 
   if (input.moduleIds) {
+    await assertModulesUnchangedOnceOpen(session, input.moduleIds)
     statements.push(db.delete(schema.sessionModules).where(eq(schema.sessionModules.sessionId, sessionId)))
     statements.push(...input.moduleIds.map(moduleId =>
       db.insert(schema.sessionModules).values({ sessionId, moduleId }),
@@ -195,6 +196,23 @@ export async function updateSchedule(options: {
 
   const heldAfter = splitByCapacity(signups, capacity).confirmed
   return { promoted: heldAfter.filter(row => !heldBefore.has(row.id)) }
+}
+
+/**
+ * Practice windows come from the register-open snapshot and are never
+ * reconciled, so what a session teaches is frozen from then on (ADR-0014).
+ */
+async function assertModulesUnchangedOnceOpen(session: SessionRow, moduleIds: string[]): Promise<void> {
+  if (!session.registerOpenedAt) return
+
+  const before = new Set(await moduleIdsFor(session.id))
+  const after = new Set(moduleIds)
+  if (before.size === after.size && [...after].every(moduleId => before.has(moduleId))) return
+
+  throw createError({
+    statusCode: 409,
+    statusMessage: 'The register is open: mark it, or cancel the session, before changing what it teaches',
+  })
 }
 
 /** Put a planned session in front of members. */

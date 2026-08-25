@@ -318,6 +318,21 @@ describe('changing capacity', () => {
     expect(entry!.detail).not.toContain('Sam')
     expect(entry!.detail).toContain('notes')
   })
+
+  it('names the modules an amendment moved, so the change can be reconstructed', async () => {
+    const id = await openSession()
+    const event = makeEvent({ method: 'PUT', path: '/x', params: { id }, body: {
+      moduleIds: ['TECH-111'],
+    } })
+    signIn(event, { id: 'trainer' })
+    await call(reschedule, event)
+
+    // Catalogue ids, not free text about people: what a session teaches has to
+    // be answerable afterwards.
+    const entry = await db.select().from(schema.auditLog)
+      .where(eq(schema.auditLog.action, 'session.reschedule')).get()
+    expect(entry!.detail).toContain('TECH-111')
+  })
 })
 
 describe('sign-up gating', () => {

@@ -23,6 +23,7 @@ import grantHandler from '../server/api/practice-windows/index.post'
 import closeHandler from '../server/api/practice-windows/[id]/index.delete'
 import addAttendeeHandler from '../server/api/sessions/[id]/attendees.post'
 import withdrawHandler from '../server/api/sessions/[id]/signup.delete'
+import amendHandler from '../server/api/sessions/[id]/schedule.put'
 
 type Handler = (event: FakeEvent) => Promise<unknown>
 const call = (handler: unknown, event: FakeEvent) => (handler as Handler)(event)
@@ -336,6 +337,49 @@ describe('closing', () => {
     })
 
     await expect(ask('bar-till', 'alice')).rejects.toMatchObject({ statusCode: 404 })
+  })
+})
+
+describe('amending an open register', () => {
+  async function amend(id: string, body: Record<string, unknown>) {
+    const event = makeEvent({ method: 'PUT', path: '/x', params: { id }, body })
+    signIn(event, { id: 'trainer' })
+    return call(amendHandler, event)
+  }
+
+  it('refuses to change what a session teaches once its register is open', async () => {
+    const id = await sessionTeaching(['ADMN-102'], ['alice'])
+    await openTheRegister(id)
+
+    // Dropping the module would leave the till open for a lesson that no
+    // longer teaches it; adding one would open nothing for the room.
+    await expect(amend(id, { moduleIds: ['ADMN-103'] })).rejects.toMatchObject({ statusCode: 409 })
+    await expect(amend(id, { moduleIds: ['ADMN-102', 'ADMN-103'] })).rejects.toMatchObject({ statusCode: 409 })
+
+    const modules = await db.select().from(schema.sessionModules)
+      .where(eq(schema.sessionModules.sessionId, id)).all()
+    expect(modules.map(row => row.moduleId)).toEqual(['ADMN-102'])
+    expect((await readRegister(id)).practiceOpen).toEqual(['bar-till'])
+  })
+
+  it('still allows the rest of an amend, which resends the same modules', async () => {
+    const id = await sessionTeaching(['ADMN-102'], ['alice'])
+    await openTheRegister(id)
+
+    // The amend form posts moduleIds on every submit, so an unchanged list
+    // must not read as a change.
+    await amend(id, { moduleIds: ['ADMN-102'], capacity: 12 })
+    const session = await db.select().from(schema.sessions).where(eq(schema.sessions.id, id)).get()
+    expect(session!.capacity).toBe(12)
+  })
+
+  it('leaves an amend before the register alone', async () => {
+    const id = await sessionTeaching(['ADMN-102'], ['alice'])
+    await amend(id, { moduleIds: ['ADMN-103'] })
+
+    const modules = await db.select().from(schema.sessionModules)
+      .where(eq(schema.sessionModules.sessionId, id)).all()
+    expect(modules.map(row => row.moduleId)).toEqual(['ADMN-103'])
   })
 })
 

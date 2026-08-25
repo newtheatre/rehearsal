@@ -40,7 +40,7 @@ Both stamp `awarded_at` from the session's `held_on` and compute expiry from mod
 
 All dates are computed and displayed in `Europe/London` (`shared/utils/dates.ts`). The Worker runs in UTC, so an unpinned date is a day out for the first hour of every BST day, which would keep a lapsed record valid for that hour.
 
-`ACADEMIC_YEAR` is a fixed date, not a duration, so completions still expire together rather than a year after each person's own award. The boundary (`08-31`) lives in `site_config`.
+`ACADEMIC_YEAR` is a fixed date, not a duration, so completions still expire together rather than a year after each person's own award. The boundary (`08-31`) lives in `site_config`, as `MM-DD` **month first**. `PUT /api/admin/config` refuses anything that is not a real calendar day, `31-08` and `09-31` alike, and the stamping code refuses to run against one: a stored `2027-31-08` parses as `NaN`, which reads as valid to every gate and expires to nobody. `02-29` is refused with them, because the boundary has to fall in every year.
 
 An award inside the last 60 days before that boundary runs to the **following** one instead ([ADR-0011](decisions/0011-academic-year-carry-over.md)), so no award is ever worth less than a term. This keeps the mode a fixed date: it chooses which boundary, never a duration. The consequence is that the 1 September rollover has two cohorts, and the people trained in the run-up to it are not in this year's.
 

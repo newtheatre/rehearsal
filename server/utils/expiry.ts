@@ -22,10 +22,25 @@ export const ACADEMIC_YEAR_END = CONFIG_DEFAULTS.academic_year_end
 export const ACADEMIC_YEAR_CARRY_OVER_DAYS = 60
 
 /**
+ * A real MM-DD day. 2001 is deliberately not a leap year: the boundary has to
+ * fall in every year, so 02-29 is refused alongside 09-31.
+ */
+export function isAcademicYearBoundary(value: string): boolean {
+  if (!/^\d{2}-\d{2}$/.test(value)) return false
+  const parsed = new Date(`2001-${value}T00:00:00Z`)
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(5, 10) === value
+}
+
+/**
  * The next academic-year boundary after `awardedAt`, carrying over to the
  * following one when this one is too close to be worth holding (ADR-0011).
  */
 export function nextAcademicYearEnd(awardedAt: string, boundary: string = ACADEMIC_YEAR_END): string {
+  // Refuse rather than stamp: a date no parser accepts reads as VALID forever.
+  if (!isAcademicYearBoundary(boundary)) {
+    throw new Error(`academic_year_end "${boundary}" is not a real MM-DD date`)
+  }
+
   const year = Number(awardedAt.slice(0, 4))
   const candidate = `${year}-${boundary}` > awardedAt ? `${year}-${boundary}` : `${year + 1}-${boundary}`
 

@@ -86,6 +86,13 @@ describe('nextAcademicYearEnd', () => {
   it('leaves a September award alone, which is when induction actually runs', () => {
     expect(nextAcademicYearEnd('2026-09-05')).toBe('2027-08-31')
   })
+
+  it('refuses a boundary that is not a real day rather than stamping one', () => {
+    // A stamped '2027-31-08' parses as NaN, so it never expires and never
+    // warns: refusing loudly is the only safe answer.
+    expect(() => nextAcademicYearEnd('2026-10-12', '31-08')).toThrow()
+    expect(() => nextAcademicYearEnd('2026-10-12', '09-31')).toThrow()
+  })
 })
 
 describe('addMonths', () => {

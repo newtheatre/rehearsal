@@ -227,6 +227,33 @@ describe('PUT /api/admin/config', () => {
       .rejects.toThrow()
   })
 
+  it('rejects a boundary in British day-month order', async () => {
+    await setup()
+    // 31-08 is MM-DD shaped and stamps 2027-31-08, which no parser accepts
+    // and every gate then reads as valid.
+    await expect(call(configHandler, configEvent({ key: 'academic_year_end', value: '31-08' })))
+      .rejects.toMatchObject({ statusCode: 400 })
+  })
+
+  it('rejects a boundary on a day that does not exist', async () => {
+    await setup()
+    await expect(call(configHandler, configEvent({ key: 'academic_year_end', value: '09-31' })))
+      .rejects.toMatchObject({ statusCode: 400 })
+
+    // 2001 is not a leap year, so a 29 February boundary goes with them.
+    await expect(call(configHandler, configEvent({ key: 'academic_year_end', value: '02-29' })))
+      .rejects.toMatchObject({ statusCode: 400 })
+  })
+
+  it('accepts a real boundary', async () => {
+    await setup()
+    await call(configHandler, configEvent({ key: 'academic_year_end', value: '09-30' }))
+
+    const row = await db.select().from(schema.siteConfig)
+      .where(eq(schema.siteConfig.key, 'academic_year_end')).get()
+    expect(row!.value).toBe('09-30')
+  })
+
   it('rejects an out-of-range warning window', async () => {
     await setup()
     await expect(call(configHandler, configEvent({ key: 'warning_window_days', value: 0 })))

@@ -98,7 +98,7 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `POST /api/module-requests/:id/decline` | lead (module's dept) or admin | reply with a reason, which the requester is shown |
 | `POST /api/attendees/lookup` | trainer | resolve an email to a canonical id, creating a shadow account if needed |
 | `GET /api/admin/config` | admin | operator-tunable values, with defaults and whether each is stored |
-| `PUT /api/admin/config` | admin | change one value; per-key validation; audit-logged |
+| `PUT /api/admin/config` | admin | change one value; per-key validation; audit-logged. `academic_year_end` is `MM-DD`, month first, and must be a real calendar day: `31-08`, `09-31` and `02-29` are refused with 400 |
 | `GET /api/admin/expiry-preview` | admin | what the next sweep would do; optional `asOf` date; sends and records nothing |
 | `GET /api/admin/notifications` | admin | what has actually been sent |
 | `POST /api/admin/recalculate` | admin | preview an expiry recalculation, or apply it by echoing the change count. Returns `{ changes, unchanged, skippedOverridden }`; records whose expiry was set explicitly are never recomputed |

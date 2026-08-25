@@ -42,7 +42,14 @@ async function setup() {
 
 async function seedSession(id: string, heldOn: string, trainer: string, attendees: string[]) {
   await db.insert(schema.sessions).values({
-    id, heldOn, trainerUserId: trainer, createdBy: trainer, notes: 'Alice struggled with the ladder',
+    id,
+    heldOn,
+    trainerUserId: trainer,
+    createdBy: trainer,
+    // Booked a week before it is taught, as every real session is: created
+    // today against a date months back is a state nothing can produce.
+    createdAt: new Date(Date.parse(`${heldOn}T00:00:00Z`) - 7 * 86_400_000),
+    notes: 'Alice struggled with the ladder',
   })
   for (const userId of attendees) {
     await db.insert(schema.sessionAttendees).values({ sessionId: id, userId })
@@ -275,6 +282,45 @@ describe('last activity', () => {
     // Signing up is activity; the session's date has not happened yet.
     expect(result.alice).not.toBeNull()
     expect(result.alice!).toBeLessThanOrEqual(Date.now())
+  })
+
+  it('reports the sign-up when a register was marked before the session date', async () => {
+    await setup()
+    const future = new Date()
+    future.setDate(future.getDate() + 30)
+    const signedUpAt = new Date(Date.now() - 86_400_000)
+
+    // The state a register marked early leaves behind. The date is the guard,
+    // not the status, or the answer is a timestamp nobody has reached.
+    await db.insert(schema.sessions).values({
+      id: 's-early',
+      heldOn: future.toISOString().slice(0, 10),
+      trainerUserId: 'trainer',
+      createdBy: 'trainer',
+      status: 'DELIVERED',
+    })
+    await db.insert(schema.sessionAttendees).values({
+      sessionId: 's-early', userId: 'alice', status: 'ATTENDED', signedUpAt,
+    })
+
+    const result = await call(lastActivityHandler,
+      hookEvent({ userIds: ['alice', 'trainer'] })) as Record<string, number | null>
+
+    // Not null: dropping the row would age them faster than the truth.
+    expect(result.alice).toBe(signedUpAt.getTime())
+    expect(result.trainer).not.toBeNull()
+    expect(result.trainer!).toBeLessThanOrEqual(Date.now())
+  })
+
+  it('is not stuck by a record whose awarded_at will not parse', async () => {
+    await setup()
+    await seedRecord({ userId: 'alice', moduleId: 'NNT-001', awardedAt: 'not-a-date', expiresAt: null })
+    await seedRecord({ userId: 'alice', moduleId: 'TECH-111', awardedAt: '2026-01-05', expiresAt: null })
+
+    const result = await call(lastActivityHandler,
+      hookEvent({ userIds: ['alice'] })) as Record<string, number | null>
+
+    expect(result.alice).toBe(Date.parse('2026-01-05T00:00:00Z'))
   })
 })
 

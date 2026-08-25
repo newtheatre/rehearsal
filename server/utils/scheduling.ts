@@ -367,12 +367,17 @@ export async function withdraw(options: {
     ...closeAttendeeWindowStatements(session.id, userId, userId),
   ])
 
-  const after = before.filter(item => item.id !== row.id)
+  // Re-read rather than edit the snapshot: a withdrawal that landed alongside
+  // this one moved somebody else, and nothing else would ever tell them.
+  const after = await signupsFor(session.id)
   const badge = badgeStatement(session, after.length)
   if (badge) await runAtomic([badge])
 
+  // Anybody who signed up after the snapshot was never behind the line, and
+  // signUp has already told them where they stand.
+  const known = new Set(before.map(item => item.id))
   const heldAfter = splitByCapacity(after, session.capacity).confirmed
-  return { promoted: heldAfter.filter(item => !heldBefore.has(item.id)) }
+  return { promoted: heldAfter.filter(item => known.has(item.id) && !heldBefore.has(item.id)) }
 }
 
 /** Stamping the register open, for the caller to batch with what it unlocks. */

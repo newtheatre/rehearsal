@@ -5,7 +5,7 @@
 
 import { db, schema } from '@nuxthub/db'
 import { eq, inArray, isNull, and } from 'drizzle-orm'
-import { renderRequestAnswered, sendEmail, type SessionEmailSummary } from './email'
+import { renderRequestAnswered, renderWaitlistPromotion, sendEmail, type SessionEmailSummary } from './email'
 import { chunk } from './d1'
 
 export interface Recipient {
@@ -73,6 +73,45 @@ export async function tellRequesters(sessionId: string, userIds: string[]): Prom
     name: recipient.name,
     session: summary,
   }))
+  return sent
+}
+
+/**
+ * Claim the waitlist promotion for these people, returning only the ones this
+ * request won. The partial unique index is the guard, not a prior read.
+ */
+export async function claimPromotions(sessionId: string, userIds: string[]): Promise<Set<string>> {
+  const won = new Set<string>()
+  if (userIds.length === 0) return won
+
+  // Five bound parameters a row, so the chunk stays well inside D1's cap.
+  for (const batch of chunk(userIds, 15)) {
+    const rows = await db.insert(schema.notificationLog)
+      .values(batch.map(userId => ({ userId, sessionId, type: 'session.promotion' })))
+      .onConflictDoNothing()
+      .returning({ userId: schema.notificationLog.userId })
+    for (const row of rows) won.add(row.userId)
+  }
+  return won
+}
+
+/**
+ * Tell whoever a promotion moved into a place, at most once each per session:
+ * two withdrawals landing together must not both name the same person.
+ */
+export async function tellPromoted(sessionId: string, userIds: string[]): Promise<number> {
+  if (userIds.length === 0) return 0
+
+  const summary = await sessionEmailSummary(sessionId)
+  if (!summary) return 0
+
+  const recipients = await addressableUsers(userIds)
+  const claimed = await claimPromotions(sessionId, recipients.map(recipient => recipient.id))
+
+  const { sent } = await sendEach(
+    recipients.filter(recipient => claimed.has(recipient.id)),
+    recipient => renderWaitlistPromotion({ name: recipient.name, session: summary }),
+  )
   return sent
 }
 

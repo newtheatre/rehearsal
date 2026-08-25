@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `notification_log_promotion_unq` ON `notification_log` (`session_id`,`user_id`,`type`) WHERE type = 'session.promotion';

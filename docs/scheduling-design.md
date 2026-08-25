@@ -156,7 +156,10 @@ nothing else: it creates no obligation, no queue position and no promise.
 - A member sees their own requests and may withdraw one.
 - A department lead sees a **demand board** for their departments: modules ordered by open request
   count, with the names, so "six people want TECH-111 and four of them are new this term" is a
-  glance rather than a spreadsheet.
+  glance rather than a spreadsheet. Nothing on a timer closes a request, so the board is paged in
+  SQL: the busiest 25 modules, with the first 10 names under each and a remainder count. The
+  ordering count is a `count(*)` over every open request, never the length of the page, because the
+  number is what a lead decides an evening from.
 - Scheduling a session that teaches a requested module offers to resolve the matching requests to
   `SCHEDULED` and links them to it. The requesters are told.
 - A lead may `DECLINE` a request with a reason (the module is retired in practice, the person needs a
@@ -340,7 +343,7 @@ of it obeys the copy rule already written there: a nudge, never a disciplinary n
 | Sign-up confirmed | member signs up | no |
 | Moved off the waitlist | a withdrawal moved them into a place | no |
 | Session cancelled | lead cancels | no |
-| Session tomorrow | daily task | **yes** |
+| Session reminder | daily task, `session_reminder_days` ahead | **yes** |
 | Sorry we missed you | register submitted, marked absent | no |
 | Your register is unmarked | daily task | **yes** |
 
@@ -356,6 +359,21 @@ why. This is a real divergence from how notifications behave today, so it is wri
 [operations.md](operations.md) and nowhere else, because a comment cannot carry it.
 
 Idempotency for the two bulk sends is the existing `notification_log`, keyed on the new `session_id`.
+
+**The promotion email is claimed, not merely sent.** Two people withdrawing from the same session
+within the same second each read the sign-ups before the other's write lands, so a promotion set
+derived from one snapshot names the same person twice and misses the person who really crossed the
+line. Withdrawal therefore re-reads after its own write, which widens the set rather than getting it
+exactly right, and the send is claimed by inserting `session.promotion` into `notification_log` under
+a partial unique index. The insert is the guard, because D1 has no interactive transaction and a
+read taken before a write cannot decide who to email.
+
+The property this buys is at-most-once per person per session, and it holds in the case it is not
+wanted too: somebody promoted, who then withdraws, re-joins the waitlist and is promoted again, is
+not emailed a second time. They still see the place on the session page and in the reminder the day
+before. A second identical email to one person is the failure worth preventing; a member missing the
+only email that would have told them is the failure this is really about. A send that fails after its
+claim is not retried for the same reason, and `sendEach` logs the address it could not reach.
 
 ## 9. Permissions
 

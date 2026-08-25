@@ -147,6 +147,7 @@ export async function runSessionSweep(asOf: string = today()): Promise<SessionSw
         name: recipient.name,
         session: summary,
         hasPlace: held.get(recipient.id) ?? false,
+        daysAhead: daysBetween(asOf, session.heldOn),
       }))
       if (ok) reminders++
     }

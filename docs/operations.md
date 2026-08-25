@@ -103,7 +103,9 @@ Two daily crons: the expiry sweep at 06:00 UTC (`expiry-sweep`) and the session 
 
 ### The session sweep
 
-Sends tomorrow's reminders (`session_reminder_days`, default 1) and nags the lead of any session whose date has passed with an **unmarked register** (`register_nag_days`, default 2, then weekly). An unmarked register means nobody got a record, so the nag is the safety net for the commonest failure this feature has. It never marks anything itself.
+Daily cron 09:00 UTC (`session-sweep`). Sends the reminders for the day `session_reminder_days` ahead (default 1) and nags the lead of any session whose date has passed with an **unmarked register** (`register_nag_days`, default 2, then weekly). An unmarked register means nobody got a record, so the nag is the safety net for the commonest failure this feature has. It never marks anything itself.
+
+The reminder names the day from the session's own date: "Tomorrow" at the default of 1, "Today" at 0, and the date itself for anything longer. Raising the lead time is therefore safe, which matters because the reminder is idempotent per (session, member): a member told the wrong day gets no second, corrected email.
 
 The nag phase is bounded by `register_nag_stop_days` (default 60), because each session in it costs per-session reads every morning and a weekly email to a lead who may have left. **Stopping the emails is not dropping the session.** Anything past the cutoff is counted as `stale` in the sweep's result and listed at `/admin/notifications` under "Unmarked registers", flagged as no longer nagged, until somebody marks or cancels it. Chase those by hand: marking a register works however old it is, and still awards the records.
 
@@ -134,7 +136,7 @@ So flipping to dry-run silences the expiry warnings, the digests, the session re
 
 ### The expiry sweep
 
-Daily cron 06:00 UTC (`expiry:sweep`). `site_config.notifications_mode`: ships `dry-run` (report emailed to admins, nothing sent to members). The dry-run report lists every warned member by name with the modules they hold, so it goes to the same freshly-cached admins the digest does, and an outgoing officer drops out of it on the same `admin_cache_days` window; flip to `live` at `/admin/notifications` after reviewing the preview, and back to dry-run after any change to expiry config or the warning window. Idempotent per (record, type) via `notification_log`; running twice sends nothing new. Monthly digests (leads: own dept; TM+ITM: all) go out on the 1st. **The digest's absence is itself an alert**, if it doesn't arrive, check the cron.
+Daily cron 06:00 UTC (`expiry-sweep`). `site_config.notifications_mode`: ships `dry-run` (report emailed to admins, nothing sent to members). The dry-run report lists every warned member by name with the modules they hold, so it goes to the same freshly-cached admins the digest does, and an outgoing officer drops out of it on the same `admin_cache_days` window; flip to `live` at `/admin/notifications` after reviewing the preview, and back to dry-run after any change to expiry config or the warning window. Idempotent per (record, type) via `notification_log`; running twice sends nothing new. Monthly digests (leads: own dept; TM+ITM: all) go out on the 1st. **The digest's absence is itself an alert**, if it doesn't arrive, check the cron.
 
 Monthly digests go to department leads (their own department) and to training admins (everything). Admin scope comes from a cached flag with no revocation path, so it is honoured only while the person has used the system inside `site_config.admin_cache_days` (default 90). **After a committee handover, an outgoing officer stops receiving the unscoped digest once that window passes**, and sooner if you clear the flag by hand.
 

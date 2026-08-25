@@ -5,8 +5,7 @@ import { requireTrainer } from '../../../utils/auth'
 import { assertAwardable, loadModules } from '../../../utils/records'
 import { loadSessionRow, updateSchedule } from '../../../utils/scheduling'
 import { assertMaySteward } from '../../../utils/sessionAuth'
-import { addressableUsers, sendEach, sessionEmailSummary } from '../../../utils/sessionNotify'
-import { renderWaitlistPromotion } from '../../../utils/email'
+import { tellPromoted } from '../../../utils/sessionNotify'
 import { writeAudit } from '../../../utils/audit'
 import { today } from '../../../../shared/utils/dates'
 
@@ -51,14 +50,7 @@ export default defineEventHandler(async (event) => {
 
   // Raising capacity gives somebody a place, and they were promised an email
   // the moment one came free.
-  const summary = promoted.length ? await sessionEmailSummary(session.id) : null
-  if (summary) {
-    const recipients = await addressableUsers(promoted.map(row => row.userId))
-    await sendEach(recipients, recipient => renderWaitlistPromotion({
-      name: recipient.name,
-      session: summary,
-    }))
-  }
+  const told = await tellPromoted(session.id, promoted.map(row => row.userId))
 
-  return { id: session.id, promoted: promoted.length }
+  return { id: session.id, promoted: told }
 })

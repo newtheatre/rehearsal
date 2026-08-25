@@ -2,8 +2,7 @@
 
 import { useAbilities } from '../../../utils/abilities'
 import { loadSessionRow, withdraw, withdrawBlockedReason, SignupError } from '../../../utils/scheduling'
-import { addressableUsers, sendEach, sessionEmailSummary } from '../../../utils/sessionNotify'
-import { renderWaitlistPromotion } from '../../../utils/email'
+import { tellPromoted } from '../../../utils/sessionNotify'
 
 export default defineEventHandler(async (event) => {
   const abilities = await useAbilities(event)
@@ -26,14 +25,7 @@ export default defineEventHandler(async (event) => {
     throw error
   }
 
-  const summary = promoted.length > 0 ? await sessionEmailSummary(session.id) : null
-  if (summary) {
-    const recipients = await addressableUsers(promoted.map(row => row.userId))
-    await sendEach(recipients, recipient => renderWaitlistPromotion({
-      name: recipient.name,
-      session: summary,
-    }))
-  }
+  const told = await tellPromoted(session.id, promoted.map(row => row.userId))
 
-  return { withdrawn: true, promoted: promoted.length }
+  return { withdrawn: true, promoted: told }
 })

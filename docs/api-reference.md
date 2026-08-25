@@ -80,7 +80,7 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `POST /api/sessions/check` | trainer | dry run: the exact records that would be created, plus warnings |
 | `POST /api/sessions` | trainer | log a session already taught; creates records atomically |
 | `GET /api/sessions/:id` | session | one session, scheduled or delivered. `attendees` is `null` for anybody who may not steward it; `mine` says where the caller stands |
-| `PUT /api/sessions/:id` | trainer (own session) or admin | re-derive records inside the edit window. **409 unless the session is `DELIVERED`**: there are no records to re-derive otherwise |
+| `PUT /api/sessions/:id` | trainer (own session) or admin | re-derive records inside the edit window, measured from `delivered_at` (`created_at` only when a session was logged rather than scheduled). **409 unless the session is `DELIVERED`**: there are no records to re-derive otherwise |
 | `GET /api/sessions/upcoming` | session | the schedule, soonest first. `PLANNED` sessions are visible only to trainers and leads |
 | `POST /api/sessions/schedule` | trainer | put a session in the diary. **Creates no records.** `openNow: true` skips `PLANNED`. Times are `startsTime`/`endsTime` as `HH:MM` **wall-clock in Europe/London**, never instants: the server composes them with `heldOn`, because a browser would anchor them to whatever the device says |
 | `PUT /api/sessions/:id/schedule` | steward | amend a session that has not been taught; 409 once it is `DELIVERED` or `CANCELLED`. Raising capacity emails whoever it moved into a place and recomputes the FULL badge; returns `promoted`. Moving `heldOn` recomposes the stored instants from the same wall-clock times, so a session keeps its time of day when its date moves |

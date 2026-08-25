@@ -374,6 +374,8 @@ export async function getSessionDetail(sessionId: string) {
 
 /** Whether this session is still inside its edit window. */
 export function withinEditWindow(session: SessionRow, editWindowDays: number, now = new Date()): boolean {
-  const age = now.getTime() - session.createdAt.getTime()
+  // From delivery: a scheduled session is the same row (ADR-0013), so its
+  // createdAt is the day it went in the diary, not the day it was taught.
+  const age = now.getTime() - (session.deliveredAt ?? session.createdAt).getTime()
   return age <= editWindowDays * 24 * 60 * 60 * 1000
 }

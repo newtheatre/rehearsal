@@ -393,6 +393,46 @@ describe('editing a session', () => {
     await expect(call(updateSessionHandler, edit)).rejects.toMatchObject({ statusCode: 403 })
   })
 
+  it('measures the window from delivery, not from the day it went in the diary', async () => {
+    await setup()
+    const id = await logSession()
+
+    // Scheduled six weeks ahead and taught today: a scheduled session and a
+    // delivered one are the same row (ADR-0013).
+    await db.update(schema.sessions)
+      .set({ createdAt: new Date(Date.now() - 44 * 86_400_000), deliveredAt: new Date() })
+      .where(eq(schema.sessions.id, id))
+
+    const edit = makeEvent({
+      method: 'PUT',
+      path: `/api/sessions/${id}`,
+      params: { id },
+      body: { ...validSession, attendeeIds: ['alice'] },
+    })
+    signIn(edit, { id: 'trainer' })
+
+    await expect(call(updateSessionHandler, edit)).resolves.toMatchObject({ recordsCreated: 1 })
+  })
+
+  it('refuses once the window since delivery has passed', async () => {
+    await setup()
+    const id = await logSession()
+
+    await db.update(schema.sessions)
+      .set({ createdAt: new Date(), deliveredAt: new Date(Date.now() - 20 * 86_400_000) })
+      .where(eq(schema.sessions.id, id))
+
+    const edit = makeEvent({
+      method: 'PUT',
+      path: `/api/sessions/${id}`,
+      params: { id },
+      body: validSession,
+    })
+    signIn(edit, { id: 'trainer' })
+
+    await expect(call(updateSessionHandler, edit)).rejects.toMatchObject({ statusCode: 409 })
+  })
+
   it('refuses once the edit window has passed', async () => {
     await setup()
     const id = await logSession()

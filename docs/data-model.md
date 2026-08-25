@@ -83,7 +83,7 @@ Junction tables `session_modules` (`session_id` cascade, `module_id`) and `sessi
 
 **There is no `WAITLISTED` status.** Whether a `SIGNED_UP` person holds a place is derived from `signed_up_at` order against `capacity`, by one helper in `server/utils/scheduling.ts`. Storing it would let two simultaneous sign-ups both take the last place, and would put "am I in" in two places at once (CLAUDE.md invariant 4).
 
-Delivered sessions are editable by their trainer/admin for 14 days (`site_config.session_edit_window_days`); edits re-derive that session's records in one batch. After the window: corrections via revoke + grant. `PUT /api/sessions/:id` refuses a session that has not been delivered, because it has no records to re-derive.
+Delivered sessions are editable by their trainer/admin for 14 days (`site_config.session_edit_window_days`), counted from `delivered_at` and only from `created_at` when there is none, which is the log-after-the-fact path where the two are the same moment. A session scheduled well in advance is the same row, so counting from `created_at` would have expired the window before it was ever taught. Edits re-derive that session's records in one batch. After the window: corrections via revoke + grant. `PUT /api/sessions/:id` refuses a session that has not been delivered, because it has no records to re-derive.
 
 ### `module_requests`
 

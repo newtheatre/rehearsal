@@ -64,6 +64,16 @@ export default defineEventHandler(async (event) => {
   }
 
   const marked = new Set(input.marks.map(mark => mark.userId))
+
+  // Set membership is checked in both directions above, which cannot see a
+  // repeated id: one mark can then award somebody the other marks absent.
+  if (marked.size !== input.marks.length) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: 'Somebody is marked twice on your register. Reload it.',
+    })
+  }
+
   const unmarked = register.filter(entry => !marked.has(entry.userId))
   if (unmarked.length > 0) {
     throw createError({
@@ -114,12 +124,20 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  // The status guard above is a read, so two submissions can both pass it. The
+  // partial unique index on records is the real guard (docs/data-model.md).
   const result = await deliverSession({
     session,
     modules,
     marks: input.marks,
     actorUserId: abilities.user.id,
     academicYearEnd,
+  }).catch(async (error) => {
+    const now = await loadSessionRow(session.id)
+    if (now?.status === 'DELIVERED') {
+      throw createError({ statusCode: 409, statusMessage: 'That register has already been marked' })
+    }
+    throw error
   })
 
   await writeAudit({

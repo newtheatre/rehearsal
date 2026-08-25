@@ -4,8 +4,7 @@
  */
 
 import { z } from 'zod'
-import { addMonths } from './expiry'
-import { today } from '../../shared/utils/dates'
+import { addMonths, today } from '../../shared/utils/dates'
 
 /** `TECH-111` (DEPT-LCT) or `LD-CERT`. Matches the catalogue parser. */
 export const moduleIdSchema = z.string().trim().toUpperCase()
@@ -203,9 +202,13 @@ export const practiceTargetSchema = z.object({
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().max(1000).nullable().optional(),
   consumer: z.string().trim().max(60).nullable().optional(),
-  moduleIds: z.array(moduleIdSchema).max(40).default([]),
+  // No defaults: this is a full replacement, so an omitted module list would
+  // empty a live target and an omitted status would un-retire one.
+  moduleIds: z.array(moduleIdSchema).max(40),
   graceHours: z.number().int().min(0).max(48).nullable().optional(),
-  status: z.enum(['ACTIVE', 'RETIRED']).default('ACTIVE'),
+  status: z.enum(['ACTIVE', 'RETIRED']),
+  /** Says which of create and update the caller meant; the server decides. */
+  create: z.boolean().default(false),
 })
 
 export const grantPracticeSchema = z.object({

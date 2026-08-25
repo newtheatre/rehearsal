@@ -4,10 +4,10 @@
  */
 
 import { db, schema } from '@nuxthub/db'
-import { and, eq, gte, isNotNull, isNull, ne } from 'drizzle-orm'
+import { and, eq, gte, isNotNull, isNull, lt, ne, notLike } from 'drizzle-orm'
 import {
   freshAdmins,
-  isDigestDay,
+  isDigestWindow,
   planExpirySweep,
   type ExpiryPlan,
   type NotificationType,
@@ -17,7 +17,7 @@ import {
 import { renderDigest, renderDryRunReport, renderMemberWarning, sendEmail } from './email'
 import { getConfig, getConfigNumber } from './siteConfig'
 import { notSupersededCondition } from './validity'
-import { today } from '../../shared/utils/dates'
+import { addMonths, today } from '../../shared/utils/dates'
 import { writeAudit } from './audit'
 import { chunk } from './d1'
 
@@ -27,6 +27,16 @@ export interface SweepResult {
   plan: ExpiryPlan
   sent: number
   failed: { to: string, type: NotificationType, error: string }[]
+  /** Ledger rows past their retention, deleted whatever the mode. */
+  pruned: number
+}
+
+/** Retention for the ledger, promised in docs/gdpr-retention.md. */
+export const NOTIFICATION_RETENTION_MONTHS = 24
+
+/** The oldest ledger row the sweep keeps. */
+function retentionCutoff(asOf: string): Date {
+  return new Date(`${addMonths(asOf, -NOTIFICATION_RETENTION_MONTHS)}T00:00:00Z`)
 }
 
 /** First day of `asOf`'s month, as epoch ms: the digest idempotency window. */
@@ -66,7 +76,14 @@ export async function gatherSweepInputs(asOf: string, warningWindowDays: number,
       name: schema.users.name,
       isTrainingAdmin: schema.users.isTrainingAdmin,
       mirrorUpdatedAt: schema.users.updatedAt,
-    }).from(schema.users).all(),
+    }).from(schema.users)
+      // Deliverable addresses only. An erased, merged-away or never-signed-in
+      // mirror row holds a reserved .invalid address that can only bounce.
+      .where(and(
+        isNull(schema.users.anonymisedAt),
+        isNull(schema.users.mergedInto),
+        notLike(schema.users.email, '%.invalid'),
+      )).all(),
     db.select({
       department: schema.departmentLeads.department,
       userId: schema.departmentLeads.userId,
@@ -75,7 +92,12 @@ export async function gatherSweepInputs(asOf: string, warningWindowDays: number,
       recordId: schema.notificationLog.recordId,
       type: schema.notificationLog.type,
     }).from(schema.notificationLog)
-      .where(isNotNull(schema.notificationLog.recordId)).all(),
+      // Bounded by the same retention the prune applies: an older row is
+      // about an expiry that has long since passed.
+      .where(and(
+        isNotNull(schema.notificationLog.recordId),
+        gte(schema.notificationLog.sentAt, retentionCutoff(asOf)),
+      )).all(),
     db.select({ userId: schema.notificationLog.userId })
       .from(schema.notificationLog)
       .where(and(
@@ -92,7 +114,7 @@ export async function gatherSweepInputs(asOf: string, warningWindowDays: number,
     leads,
     alreadyNotified: new Set(notified.map(n => `${n.recordId}:${n.type}`)),
     digestSentThisMonth: new Set(digestsThisMonth.map(d => d.userId)),
-    isDigestDay: isDigestDay(asOf),
+    isDigestWindow: isDigestWindow(asOf),
     adminCacheDays,
   }
 }
@@ -187,12 +209,25 @@ export async function runExpirySweep({
     }
   }
 
+  // Housekeeping, not a notification, so it runs whatever the mode: the
+  // retention promise is not the operator's to switch off.
+  const pruned = await pruneNotificationLog(asOf)
+
   await writeAudit({
     actorUserId: null, // the cron has no actor
     action: 'expiry.sweep',
     target: asOf,
-    detail: { mode, counts: plan.counts, sent, failed: failed.length },
+    detail: { mode, counts: plan.counts, sent, failed: failed.length, pruned },
   })
 
-  return { asOf, mode, plan, sent, failed }
+  return { asOf, mode, plan, sent, failed, pruned }
+}
+
+/** One predicate, so the parameter count never tracks the number of rows. */
+export async function pruneNotificationLog(asOf: string = today()): Promise<number> {
+  const gone = await db.delete(schema.notificationLog)
+    .where(lt(schema.notificationLog.sentAt, retentionCutoff(asOf)))
+    .returning({ id: schema.notificationLog.id })
+
+  return gone.length
 }

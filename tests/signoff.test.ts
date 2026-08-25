@@ -326,6 +326,27 @@ describe('external certificates', () => {
     signIn(event, { id: 'tm', roles: ['training:ADMIN'] })
     await expect(call(externalHandler, event)).rejects.toMatchObject({ statusCode: 400 })
   })
+
+  it('rejects a certificate expiring more than ten years after the award', async () => {
+    await setup()
+    const event = makeEvent({
+      method: 'POST',
+      path: '/api/people/alice/external',
+      params: { id: 'alice' },
+      body: {
+        moduleId: 'SFTY-101',
+        awardedAt: '2026-08-01',
+        // 2226, not 2026: the century a tired lead types at the end of a get-in.
+        expiresAt: '2226-08-01',
+        externalRef: 'SU EFAW certificate',
+      },
+    })
+    signIn(event, { id: 'tm', roles: ['training:ADMIN'] })
+
+    await expect(call(externalHandler, event)).rejects.toMatchObject({ statusCode: 400 })
+    expect(await db.select().from(schema.records).all()).toHaveLength(0)
+  })
+
   it('refuses a module that does not allow external certificates', async () => {
     await setup()
     // TECH-111 is ordinary training with no external route enabled.

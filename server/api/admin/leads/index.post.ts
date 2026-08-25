@@ -3,7 +3,7 @@
  */
 
 import { db, schema } from '@nuxthub/db'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import { requirePermission } from '../../../utils/auth'
 import { departmentCodeSchema } from '../../../utils/validation'
@@ -22,7 +22,8 @@ export default defineEventHandler(async (event) => {
     db.select({ code: schema.departments.code }).from(schema.departments)
       .where(eq(schema.departments.code, department)).get(),
     db.select({ id: schema.users.id, name: schema.users.name }).from(schema.users)
-      .where(eq(schema.users.id, userId)).get(),
+      // A merged-away id is nobody: the person is the winning account now.
+      .where(and(eq(schema.users.id, userId), isNull(schema.users.mergedInto))).get(),
   ])
 
   if (!departmentRow) {

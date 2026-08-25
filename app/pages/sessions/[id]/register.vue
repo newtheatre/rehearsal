@@ -261,12 +261,12 @@ async function submit(acknowledgeWarnings = false, acknowledgeAllAbsent = false)
 
     <template v-else>
       <UAlert
-        v-if="data.practiceTargets.length"
+        v-if="data.practiceOpen.length"
         icon="i-lucide-graduation-cap"
         color="neutral"
         variant="subtle"
         title="Practice is open for this room"
-        :description="`Everyone signed up can practise ${data.practiceTargets.join(', ')} until shortly after the session ends.`"
+        :description="`Everyone signed up can practise ${data.practiceOpen.join(', ')} until shortly after the session ends.`"
       />
 
       <div class="border border-default rounded-lg divide-y divide-default overflow-hidden">

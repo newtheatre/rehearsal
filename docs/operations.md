@@ -42,6 +42,24 @@ migration, so the gap is visible where uptime monitoring already looks.
 Rollback = redeploy previous commit; migrations roll **forward** only. Before any migration touching
 `records`: `npx wrangler d1 export training --remote --output backup-$(date +%F).sql`.
 
+### Before `0010_free_mach_iv` applies: check for duplicate session awards
+
+That migration adds a partial unique index over `(session_id, user_id, module_id)` on live
+records, and **creating a unique index fails if the table already breaks it**. Two leads marking
+one register from two phones could previously both deliver it, so a production database may hold
+duplicates. Look before you merge:
+
+```sql
+select session_id, user_id, module_id, count(*) as n
+from records
+where session_id is not null and revoked_at is null
+group by 1, 2, 3 having n > 1;
+```
+
+Any rows returned are revoked by hand first, keeping the earliest of each set, through
+`POST /api/records/:id/revoke` with a reason ("Duplicate of a double-submitted register"), which
+is the append-only correction path (ADR-0008). Never delete them.
+
 ## Backups
 
 Weekly `wrangler d1 export` to the R2 backups bucket (GitHub Actions cron), retained 8 weeks; monthly snapshots 12 months (personal data, retention applies to backups too). Annual restore drill at handover, logged in the estate tracker.
@@ -89,6 +107,8 @@ Sends tomorrow's reminders (`session_reminder_days`, default 1) and nags the lea
 
 Both are idempotent through `notification_log`, now keyed on `session_id` as well. The sweep also closes any practice window left open past its expiry, which is housekeeping rather than a notification and so runs whatever the mode.
 
+The expiry sweep does the matching housekeeping for the ledger itself: it deletes `notification_log` rows older than 24 months, which is the retention promised in [gdpr-retention.md](gdpr-retention.md), and reports the count as `pruned` in its result and its audit entry. It also runs whatever the mode, for the same reason: a retention promise is not the operator's to switch off.
+
 ### Practice targets <a name="practice-targets"></a>
 
 `/admin/practice-targets` decides which modules open a sandbox in a consumer app ([ADR-0014](decisions/0014-practice-targets-are-data.md)). **It ships empty, and that is the safe state**: with no targets, no session opens anything.
@@ -96,6 +116,7 @@ Both are idempotent through `notification_log`, now keyed on `session_id` as wel
 Creating one is committee policy expressed as data, so it needs no deploy here or in the consumer. Three things to know before editing:
 
 - **Never rename a key.** A consumer hardcodes it; renaming turns their sandbox into a loud 404. Retire and create instead.
+- **A save replaces the whole target.** `moduleIds` and `status` are required on the wire rather than defaulted, so a hand-written call that omits one is refused with a 400 instead of silently emptying the module list (after which no register opens that sandbox again) or re-activating a target somebody retired. Creating on a key that already exists is refused with a 409 by the server, not merely by the page.
 - **The module list is what teaching opens the sandbox**, not what somebody needs to be allowed near it. Do not copy an eligibility rule's `requires` into it: `bar` requires the general induction, and putting the induction here would open the till to every fresher taught it.
 - **Retiring a target closes nothing by itself**, but open windows on it stop answering immediately, because the endpoint checks the target's status as well as the window's.
 
@@ -118,6 +139,8 @@ Monthly digests go to department leads (their own department) and to training ad
 Members get two warnings per record: one on entering the warning window (`warning_window_days`, default 60) and a final one 14 days out. Expired training is not emailed to the member, the warnings already went out, but it appears in the digest until it is renewed.
 
 **A dry run records nothing as sent.** That is deliberate: flipping to live afterwards still delivers everything the dry run described, rather than silently swallowing a round of warnings. The same applies to a failed send: nothing is logged, so the next morning retries it.
+
+**The digest retries for three days, and then stops.** A member warning is re-planned every morning until it sends, but a digest is a monthly thing, so it is planned only while the day of the month is 1, 2 or 3 (`DIGEST_WINDOW_DAYS`). Inside that window `notification_log` is what stops a second one, so a send that Resend rate-limited on the 1st goes out on the 2nd. Past it, the month's digest is gone: if Resend was down for the first three days of a month, check the `expiry.sweep` audit rows for that month and re-send by hand. The window exists so that flipping to live mid-month does not fire a full round of digests on flip day, and so the digest's absence keeps meaning "check the cron".
 
 **Preview before switching.** `/admin/notifications` shows exactly what the next sweep would do and takes an "as of" date, so you can ask what happens on 1 September without waiting for it. The preview sends and records nothing at all.
 
@@ -179,4 +202,4 @@ Check the row counts each statement reports against a `SELECT count(*)` run befo
 
 ## Monitoring
 
-`GET /api/health` on the uptime monitor. Termly glance: `audit_log` anomalies, token `last_used_at`, Resend bounces, digest arrival. The cron self-reports failures to the ITM by email.
+`GET /api/health` on the uptime monitor. Termly glance: `audit_log` anomalies, token `last_used_at`, Resend bounces, digest arrival. **Nothing emails the ITM when a cron partially fails**: a failed send survives only as the `failed` count in that run's `expiry.sweep` audit row, so the termly glance is what finds it.

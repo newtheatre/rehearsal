@@ -3,7 +3,7 @@
  */
 
 import { db, schema } from '@nuxthub/db'
-import { asc, like } from 'drizzle-orm'
+import { and, asc, isNull, like } from 'drizzle-orm'
 import { z } from 'zod'
 import { useAbilities } from '../utils/abilities'
 
@@ -20,7 +20,9 @@ export default defineEventHandler(async (event) => {
   // what keeps it cheap enough to return the whole membership.
   const people = await db.select({ id: schema.users.id, name: schema.users.name })
     .from(schema.users)
-    .where(q ? like(schema.users.name, `%${q}%`) : undefined)
+    // A merged-away id is a ghost with no records: picking it would award a
+    // safety record against an id the auth service no longer answers for.
+    .where(and(isNull(schema.users.mergedInto), q ? like(schema.users.name, `%${q}%`) : undefined))
     .orderBy(asc(schema.users.name), asc(schema.users.id))
     .limit(limit)
     .all()

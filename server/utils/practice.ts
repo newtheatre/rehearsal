@@ -46,25 +46,34 @@ export async function windowExpiry(
   return new Date(base.getTime() + graceHours * 3_600_000)
 }
 
-/**
- * Open one window per person per matching target. Returns what it opened so
- * the register can say which sandboxes it unlocked, or that there were none.
- */
-export async function openWindowsForSession(options: {
+export interface OpenWindowOptions {
   sessionId: string
   moduleIds: string[]
   userIds: string[]
   endsAt: Date | null
   openedBy: string
-}): Promise<{ targetKey: string, userIds: string[] }[]> {
+}
+
+export interface OpenedWindows {
+  statements: BatchStatement[]
+  opened: { targetKey: string, userIds: string[] }[]
+}
+
+/**
+ * One window per person per matching target, as statements the caller batches
+ * with whatever must land alongside them.
+ */
+export async function openWindowStatements(options: OpenWindowOptions): Promise<OpenedWindows> {
   const targets = await targetsForModules(options.moduleIds)
-  if (targets.length === 0 || options.userIds.length === 0) return []
+  if (targets.length === 0 || options.userIds.length === 0) return { statements: [], opened: [] }
 
   const now = new Date()
   const statements: BatchStatement[] = []
   const opened: { targetKey: string, userIds: string[] }[] = []
 
   for (const target of targets) {
+    // Resolved here, not mid-batch: it reads site config, and a batch is built
+    // before any of it runs.
     const expiresAt = await windowExpiry(target, options.endsAt, now)
     for (const userId of options.userIds) {
       statements.push(db.insert(schema.practiceWindows).values({
@@ -79,6 +88,17 @@ export async function openWindowsForSession(options: {
     opened.push({ targetKey: target.key, userIds: options.userIds })
   }
 
+  return { statements, opened }
+}
+
+/**
+ * Open them on their own. Returns what it opened so a caller can say which
+ * sandboxes it unlocked, or that there were none.
+ */
+export async function openWindowsForSession(
+  options: OpenWindowOptions,
+): Promise<{ targetKey: string, userIds: string[] }[]> {
+  const { statements, opened } = await openWindowStatements(options)
   await runAtomic(statements)
   return opened
 }
@@ -126,6 +146,17 @@ export async function hasOpenWindow(
     .orderBy(desc(schema.practiceWindows.expiresAt), desc(schema.practiceWindows.id))
     .get()
     .then(row => row?.window)
+}
+
+/** The targets a session actually has live windows on, not merely matching ones. */
+export async function openTargetKeysForSession(sessionId: string, now: Date = new Date()): Promise<string[]> {
+  const rows = await db.selectDistinct({ targetKey: schema.practiceWindows.targetKey })
+    .from(schema.practiceWindows)
+    .innerJoin(schema.practiceTargets, eq(schema.practiceWindows.targetKey, schema.practiceTargets.key))
+    .where(and(eq(schema.practiceWindows.sessionId, sessionId), openWindowFilter(now)))
+    .all()
+
+  return rows.map(row => row.targetKey).sort()
 }
 
 /** Every open window, for the lead's view of what is currently unlocked. */

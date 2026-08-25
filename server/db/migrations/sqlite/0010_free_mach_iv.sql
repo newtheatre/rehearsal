@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `records_session_award_unq` ON `records` (`session_id`,`user_id`,`module_id`) WHERE session_id is not null and revoked_at is null;

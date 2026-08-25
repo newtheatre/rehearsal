@@ -8,6 +8,20 @@ The UI review of 2026-08-24 raised nine defects across the register, the demand 
 shell, and all nine were fixed rather than filed. The practice-target key field, which could
 silently overwrite a live target, went with them.
 
+## P3: two phones opening one register at the same instant insert duplicate practice windows
+
+`POST /api/sessions/:id/register/open` is guarded by "has `register_opened_at` been stamped", which
+is a read. Two leads tapping at the same instant both read it as null, and each inserts a full set
+of practice windows for the room. Everything else about the double tap is safe: the stamp, the
+windows and the audit entry are one batch, so neither attempt half-lands, and `hasOpenWindow`
+orders by `expires_at` descending, so holding two windows never shortens the answer a consumer
+gets. What is left is duplicate rows in `practice_windows` and a second `session.register.open`
+audit entry.
+
+Closing it needs a unique index over `(session_id, user_id, target_key)`, which is a schema change
+rather than a handler one, and `practice_windows` also holds ad-hoc grants with a null `session_id`
+that must stay unconstrained. Worth doing when something else takes that table to a migration.
+
 ## P2: audit rows written before 2026-08-25 still carry free text about people
 
 Five mutations used to copy a person's free text into `audit_log.detail` (revoke and decline

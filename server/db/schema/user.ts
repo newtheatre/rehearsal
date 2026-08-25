@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, integer, index, type AnySQLiteColumn } from 'drizzle-orm/sqlite-core'
 
 /**
  * Thin mirror of the canonical identity; ids are never minted here (CLAUDE.md
@@ -22,5 +22,13 @@ export const users = sqliteTable('users', {
    */
   anonymisedAt: integer('anonymised_at', { mode: 'timestamp_ms' }),
 
+  /**
+   * Set by the merge hook to the winning id. The row stays so the losing id
+   * cannot be resurrected by a cookie that outlives the merge (ADR-0015).
+   */
+  mergedInto: text('merged_into').references((): AnySQLiteColumn => users.id),
+
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()).$onUpdateFn(() => new Date()),
-})
+}, table => [
+  index('users_merged_into_idx').on(table.mergedInto),
+])

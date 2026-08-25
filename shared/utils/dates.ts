@@ -68,3 +68,13 @@ export function formatDateTime(value: string | Date | number, { seconds = false 
     timeStyle: seconds ? 'medium' : 'short',
   })
 }
+
+/** `isoDate` plus N calendar months, clamped to the end of a short month. */
+export function addMonths(isoDate: string, months: number): string {
+  const [y, m, d] = isoDate.split('-').map(Number)
+  const target = new Date(Date.UTC(y!, m! - 1 + months, 1))
+  // Clamp: 31 Jan + 1 month is 28/29 Feb, not 3 March.
+  const lastDayOfTargetMonth = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate()
+  target.setUTCDate(Math.min(d!, lastDayOfTargetMonth))
+  return target.toISOString().slice(0, 10)
+}

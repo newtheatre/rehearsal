@@ -4,7 +4,7 @@
 
 import { db, schema } from '@nuxthub/db'
 import { eq } from 'drizzle-orm'
-import { externalRecordSchema } from '../../../utils/validation'
+import { assertExpiryPlausible, externalRecordSchema } from '../../../utils/validation'
 import { useAbilities } from '../../../utils/abilities'
 import { requirePermission } from '../../../utils/auth'
 import { getConfig } from '../../../utils/siteConfig'
@@ -50,11 +50,14 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  if (input.expiresAt && input.expiresAt <= input.awardedAt) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'The certificate expires on or before the date it was awarded',
-    })
+  // The same plausibility floor and ten-year cap the sign-off route applies:
+  // a mistyped century is a typo, not a policy (ADR-0012).
+  if (input.expiresAt) {
+    assertExpiryPlausible(
+      input.awardedAt,
+      input.expiresAt,
+      'The certificate expires on or before the date it was awarded',
+    )
   }
 
   const academicYearEnd = await getConfig('academic_year_end')

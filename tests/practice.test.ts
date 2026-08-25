@@ -7,6 +7,7 @@ import { today } from '../shared/utils/dates'
 
 import { describe, it, expect, beforeEach } from 'bun:test'
 import { db, schema } from './mocks/nuxthub-db'
+import { eq } from 'drizzle-orm'
 import { makeEvent, signIn, runtimeConfig, type FakeEvent } from './setup'
 import { seedDepartments, seedModule, seedRecord, seedUser } from './helpers/fixtures'
 import { hashServiceToken, TOKEN_PREFIX } from '../server/utils/serviceToken'
@@ -14,6 +15,7 @@ import scheduleHandler from '../server/api/sessions/schedule.post'
 import signupHandler from '../server/api/sessions/[id]/signup.post'
 import openRegisterHandler from '../server/api/sessions/[id]/register/open.post'
 import markHandler from '../server/api/sessions/[id]/register/index.post'
+import readRegisterHandler from '../server/api/sessions/[id]/register/index.get'
 import cancelHandler from '../server/api/sessions/[id]/cancel.post'
 import practiceHandler from '../server/api/v1/practice/[key].get'
 import targetsPutHandler from '../server/api/admin/practice-targets/index.put'
@@ -57,9 +59,13 @@ async function seedDepartmentsWithAdmn() {
   await db.insert(schema.departments).values({ code: 'ADMN', name: 'ADMN', sort: 9 })
 }
 
-/** Create a target through the real admin route. */
+/** Create a target through the real admin route, as the page sends it. */
 async function putTarget(body: Record<string, unknown>) {
-  const event = makeEvent({ method: 'PUT', path: '/api/admin/practice-targets', body })
+  const event = makeEvent({
+    method: 'PUT',
+    path: '/api/admin/practice-targets',
+    body: { moduleIds: [], status: 'ACTIVE', ...body },
+  })
   signIn(event, { id: 'admin', roles: ['training:ADMIN'] })
   return call(targetsPutHandler, event)
 }
@@ -79,6 +85,12 @@ async function sessionTeaching(moduleIds: string[], attendees: string[]) {
     await call(signupHandler, event)
   }
   return id
+}
+
+async function readRegister(id: string) {
+  const event = makeEvent({ method: 'GET', path: '/x', params: { id } })
+  signIn(event, { id: 'trainer' })
+  return call(readRegisterHandler, event) as Promise<{ practiceTargets: string[], practiceOpen: string[] }>
 }
 
 async function openTheRegister(id: string) {
@@ -150,6 +162,48 @@ describe('what a session opens', () => {
 
     expect(await ask('bar-till', 'alice')).toMatchObject({ active: true })
     expect(await ask('bar-till', 'bob')).toMatchObject({ active: false })
+  })
+
+  it('leaves the register unopened when the windows fail, so a retry does it all', async () => {
+    const id = await sessionTeaching(['ADMN-102'], ['alice'])
+
+    // A transient D1 failure on the write. The stamp is the retry guard, so it
+    // must not survive a batch that did not open a single window.
+    type Batching = { batch: (...args: unknown[]) => Promise<unknown> }
+    const batching = db as unknown as Batching
+    const realBatch = batching.batch.bind(batching)
+    batching.batch = async () => {
+      throw new Error('D1 hiccup')
+    }
+
+    try {
+      await expect(openTheRegister(id)).rejects.toThrow()
+    }
+    finally {
+      batching.batch = realBatch
+    }
+
+    const session = await db.select().from(schema.sessions).where(eq(schema.sessions.id, id)).get()
+    expect(session!.registerOpenedAt).toBeNull()
+    expect(await db.select().from(schema.practiceWindows).all()).toHaveLength(0)
+    expect(await db.select().from(schema.auditLog)
+      .where(eq(schema.auditLog.action, 'session.register.open')).all()).toHaveLength(0)
+
+    expect((await openTheRegister(id)).practiceOpened).toEqual(['bar-till'])
+    expect(await ask('bar-till', 'alice')).toMatchObject({ active: true })
+    expect(await db.select().from(schema.auditLog)
+      .where(eq(schema.auditLog.action, 'session.register.open')).all()).toHaveLength(1)
+  })
+
+  it('reports what is open, not merely what matches, so the page cannot overclaim', async () => {
+    const id = await sessionTeaching(['ADMN-102'], ['alice'])
+
+    const before = await readRegister(id)
+    expect(before.practiceTargets).toEqual(['bar-till'])
+    expect(before.practiceOpen).toEqual([])
+
+    await openTheRegister(id)
+    expect((await readRegister(id)).practiceOpen).toEqual(['bar-till'])
   })
 
   it('opens both targets when a session teaches modules in each', async () => {
@@ -363,6 +417,35 @@ describe('targets are data', () => {
 
     const after = await sessionTeaching(['TECH-111'], ['bob'])
     expect((await openTheRegister(after)).practiceOpened).toEqual(['bar-till'])
+  })
+
+  it('refuses a payload that omits the module list or the status', async () => {
+    // A full replacement, so a missing field would empty a live target's
+    // module list or un-retire one that was shut on purpose.
+    await expect(putTarget({ key: 'bar-till', name: 'Bar till', moduleIds: undefined }))
+      .rejects.toThrow()
+    await expect(putTarget({ key: 'bar-till', name: 'Bar till', status: undefined }))
+      .rejects.toThrow()
+
+    const target = await db.select().from(schema.practiceTargets)
+      .where(eq(schema.practiceTargets.key, 'bar-till')).get()
+    expect(target!.moduleIds).toEqual(['ADMN-102', 'ADMN-103'])
+  })
+
+  it('refuses a create on a key that is already taken', async () => {
+    // The page checks against a list it last refreshed, so two admins can both
+    // pass it; the server holds the line.
+    await expect(putTarget({
+      key: 'bar-till',
+      name: 'Something else',
+      moduleIds: ['TECH-111'],
+      create: true,
+    })).rejects.toMatchObject({ statusCode: 409 })
+
+    const target = await db.select().from(schema.practiceTargets)
+      .where(eq(schema.practiceTargets.key, 'bar-till')).get()
+    expect(target!.name).toBe('Bar till')
+    expect(target!.moduleIds).toEqual(['ADMN-102', 'ADMN-103'])
   })
 
   it('needs config.manage to edit', async () => {

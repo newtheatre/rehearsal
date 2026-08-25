@@ -13,6 +13,7 @@ import { db, schema } from './mocks/nuxthub-db'
 import { eq } from 'drizzle-orm'
 import { makeEvent, runtimeConfig, type FakeEvent } from './setup'
 import { seedDepartments, seedLead, seedModule, seedRecord, seedUser } from './helpers/fixtures'
+import { ensureLocalUser, resetMirrorDebounce } from '../server/utils/ensureLocalUser'
 
 type Handler = (event: FakeEvent) => Promise<unknown>
 const call = (handler: unknown, event: FakeEvent) => (handler as Handler)(event)
@@ -290,7 +291,7 @@ describe('merge', () => {
     expect(await db.select().from(schema.users).where(eq(schema.users.id, 'alice')).get()).toBeTruthy()
   })
 
-  it('re-points every column this app owns, so the delete cannot violate a key', async () => {
+  it('re-points every column this app owns, and says so when it misses one', async () => {
     await setup()
     await seedSession('s1', '2026-02-01', 'alice', ['alice'])
 
@@ -307,8 +308,8 @@ describe('merge', () => {
 
     await call(mergeHandler, hookEvent({ fromUserId: 'alice', toUserId: 'winner' }))
 
-    // The losing row going is the proof: it cannot while anything still points at it.
-    expect(await db.select().from(schema.users).where(eq(schema.users.id, 'alice')).get()).toBeUndefined()
+    // The handler re-counts afterwards, so a passing merge is the proof: two
+    // of these tables have no key a delete could have failed on.
     expect((await db.select().from(schema.moduleRequests).all())[0]!.userId).toBe('winner')
     expect((await db.select().from(schema.practiceWindows).all())[0]!.userId).toBe('winner')
     expect((await db.select().from(schema.practiceTargets).all())[0]!.updatedBy).toBe('winner')
@@ -340,7 +341,9 @@ describe('merge', () => {
     expect(await db.select().from(schema.records).where(eq(schema.records.userId, 'winner')).all()).toHaveLength(1)
     expect(await db.select().from(schema.sessionAttendees).where(eq(schema.sessionAttendees.userId, 'winner')).all()).toHaveLength(1)
     expect(await db.select().from(schema.sessions).where(eq(schema.sessions.trainerUserId, 'winner')).all()).toHaveLength(1)
-    expect(await db.select().from(schema.users).where(eq(schema.users.id, 'alice')).get()).toBeUndefined()
+
+    const tombstone = await db.select().from(schema.users).where(eq(schema.users.id, 'alice')).get()
+    expect(tombstone!.mergedInto).toBe('winner')
   })
 
   it('re-points the staff-attribution columns, not just the obvious one', async () => {
@@ -408,10 +411,124 @@ describe('merge', () => {
     await seedRecord({ userId: 'alice', moduleId: 'NNT-001', expiresAt: null })
 
     await call(mergeHandler, hookEvent({ fromUserId: 'alice', toUserId: 'winner' }))
-    const second = await call(mergeHandler, hookEvent({ fromUserId: 'alice', toUserId: 'winner' })) as { notMirrored: boolean }
+    const second = await call(mergeHandler, hookEvent({ fromUserId: 'alice', toUserId: 'winner' })) as { alreadyMerged: boolean }
 
-    expect(second.notMirrored).toBe(true)
+    expect(second.alreadyMerged).toBe(true)
     expect(await db.select().from(schema.records).where(eq(schema.records.userId, 'winner')).all()).toHaveLength(1)
+    // Exactly one, because the second call recognises a finished merge.
+    expect(await db.select().from(schema.auditLog)
+      .where(eq(schema.auditLog.action, 'user.merge')).all()).toHaveLength(1)
+  })
+
+  it('re-points the audit actor, so a lead\'s history is not left as "Deleted user"', async () => {
+    await setup()
+    await db.insert(schema.auditLog).values({
+      actorUserId: 'alice', action: 'record.signoff', target: 'r1',
+    })
+
+    const result = await call(mergeHandler, hookEvent({
+      fromUserId: 'alice', toUserId: 'winner', dryRun: true,
+    })) as { counts: Record<string, number> }
+    expect(result.counts.auditActions).toBe(1)
+
+    await call(mergeHandler, hookEvent({ fromUserId: 'alice', toUserId: 'winner' }))
+
+    const moved = await db.select().from(schema.auditLog)
+      .where(eq(schema.auditLog.actorUserId, 'winner')).all()
+    expect(moved.map(row => row.action)).toContain('record.signoff')
+  })
+
+  it('keeps the attendance that was marked, not the one the winner happens to hold', async () => {
+    await setup()
+    await seedSession('s1', '2026-02-01', 'trainer', [])
+    const markedAt = new Date('2026-02-01T20:00:00Z')
+    await db.insert(schema.sessionAttendees).values([
+      { sessionId: 's1', userId: 'alice', status: 'ATTENDED', markedAt, markedByUserId: 'trainer' },
+      { sessionId: 's1', userId: 'winner', status: 'CANCELLED' },
+    ])
+
+    await call(mergeHandler, hookEvent({ fromUserId: 'alice', toUserId: 'winner' }))
+
+    const attendance = await db.select().from(schema.sessionAttendees).all()
+    expect(attendance).toHaveLength(1)
+    expect(attendance[0]!.userId).toBe('winner')
+    expect(attendance[0]!.status).toBe('ATTENDED')
+    expect(attendance[0]!.markedByUserId).toBe('trainer')
+    expect(attendance[0]!.markedAt).toEqual(markedAt)
+  })
+
+  it('keeps the winner\'s attendance when it is the marked one', async () => {
+    await setup()
+    await seedSession('s1', '2026-02-01', 'trainer', [])
+    await db.insert(schema.sessionAttendees).values([
+      { sessionId: 's1', userId: 'alice', status: 'CANCELLED' },
+      { sessionId: 's1', userId: 'winner', status: 'ATTENDED', markedAt: new Date(), markedByUserId: 'trainer' },
+    ])
+
+    await call(mergeHandler, hookEvent({ fromUserId: 'alice', toUserId: 'winner' }))
+
+    const attendance = await db.select().from(schema.sessionAttendees).all()
+    expect(attendance).toHaveLength(1)
+    expect(attendance[0]!.status).toBe('ATTENDED')
+  })
+
+  it('keeps the earlier appointment when both accounts lead a department', async () => {
+    await setup()
+    await db.insert(schema.departmentLeads).values([
+      { department: 'TECH', userId: 'alice', grantedBy: 'trainer', createdAt: new Date('2025-10-01') },
+      { department: 'TECH', userId: 'winner', createdAt: new Date('2026-06-01') },
+    ])
+
+    await call(mergeHandler, hookEvent({ fromUserId: 'alice', toUserId: 'winner' }))
+
+    const leads = await db.select().from(schema.departmentLeads).all()
+    expect(leads).toHaveLength(1)
+    expect(leads[0]!.userId).toBe('winner')
+    expect(leads[0]!.createdAt).toEqual(new Date('2025-10-01'))
+    expect(leads[0]!.grantedBy).toBe('trainer')
+  })
+
+  it('leaves nothing behind when the write fails, so the retry does the whole merge', async () => {
+    await setup()
+    await seedRecord({ userId: 'alice', moduleId: 'NNT-001', expiresAt: null })
+
+    type Batching = { batch: (...args: unknown[]) => Promise<unknown> }
+    const batching = db as unknown as Batching
+    const realBatch = batching.batch.bind(batching)
+    batching.batch = async () => {
+      throw new Error('D1 hiccup')
+    }
+
+    try {
+      await expect(call(mergeHandler, hookEvent({ fromUserId: 'alice', toUserId: 'winner' })))
+        .rejects.toThrow()
+    }
+    finally {
+      batching.batch = realBatch
+    }
+
+    // Nothing tombstoned, so the retry cannot mistake this for a done merge.
+    expect((await db.select().from(schema.users).where(eq(schema.users.id, 'alice')).get())!.mergedInto).toBeNull()
+    expect(await db.select().from(schema.auditLog).all()).toHaveLength(0)
+
+    await call(mergeHandler, hookEvent({ fromUserId: 'alice', toUserId: 'winner' }))
+    expect(await db.select().from(schema.records).where(eq(schema.records.userId, 'winner')).all()).toHaveLength(1)
+    expect(await db.select().from(schema.auditLog)
+      .where(eq(schema.auditLog.action, 'user.merge')).all()).toHaveLength(1)
+  })
+
+  it('does not let a session sealed before the merge resurrect the losing id', async () => {
+    await setup()
+    await seedRecord({ userId: 'alice', moduleId: 'NNT-001', expiresAt: null })
+    await call(mergeHandler, hookEvent({ fromUserId: 'alice', toUserId: 'winner' }))
+
+    resetMirrorDebounce()
+    await ensureLocalUser({ id: 'alice', email: 'alice@nottingham.ac.uk', name: 'Alice Anderson' })
+
+    const tombstone = await db.select().from(schema.users).where(eq(schema.users.id, 'alice')).get()
+    expect(tombstone!.mergedInto).toBe('winner')
+    expect(tombstone!.name).toBe('Merged account')
+    expect(tombstone!.email).not.toBe('alice@nottingham.ac.uk')
   })
 
   it('refuses to merge an account into itself', async () => {

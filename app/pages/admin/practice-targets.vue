@@ -62,12 +62,6 @@ function edit(target: typeof targets.value[number] | null) {
 
 async function save() {
   if (!editing.value) return
-  // The endpoint upserts, so a new target on a taken key would replace the
-  // live one a consumer depends on.
-  if (editing.value.isNew && targets.value.some(target => target.key === editing.value!.key)) {
-    actionError.value = `A target called "${editing.value.key}" already exists. Edit that one, or pick another key.`
-    return
-  }
   busy.value = true
   actionError.value = null
   try {
@@ -81,6 +75,8 @@ async function save() {
         moduleIds: editing.value.moduleIds,
         graceHours: editing.value.graceHours === '' ? null : editing.value.graceHours,
         status: editing.value.status,
+        // The server refuses a create on a taken key: this list may be stale.
+        create: editing.value.isNew,
       },
     })
     editing.value = null

@@ -4,11 +4,11 @@
  */
 
 import { db, schema } from '@nuxthub/db'
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 
 export async function ensureKnownUser(userId: string): Promise<void> {
   const user = await db.select({ id: schema.users.id }).from(schema.users)
-    .where(eq(schema.users.id, userId)).get()
+    .where(and(eq(schema.users.id, userId), isNull(schema.users.mergedInto))).get()
 
   if (!user) {
     throw createError({

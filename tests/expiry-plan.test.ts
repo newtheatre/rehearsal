@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from 'bun:test'
 import {
-  isDigestDay,
+  isDigestWindow,
   planExpirySweep,
   FINAL_WARNING_DAYS,
   type SweepInputs,
@@ -42,7 +42,7 @@ function inputs(overrides: Partial<SweepInputs> = {}): SweepInputs {
     leads: [{ department: 'TECH', userId: 'ctd' }],
     alreadyNotified: new Set(),
     digestSentThisMonth: new Set(),
-    isDigestDay: false,
+    isDigestWindow: false,
     adminCacheDays: 90,
     ...overrides,
   }
@@ -165,14 +165,14 @@ describe('monthly digests', () => {
   })
 
   it('sends none on an ordinary day', () => {
-    const plan = planExpirySweep(inputs({ records: [expiringSoon], isDigestDay: false }))
+    const plan = planExpirySweep(inputs({ records: [expiringSoon], isDigestWindow: false }))
     expect(plan.digests).toEqual([])
   })
 
   it('gives a lead only their own department, and an admin everything', () => {
     const plan = planExpirySweep(inputs({
       records: [expiringSoon, techExpired],
-      isDigestDay: true,
+      isDigestWindow: true,
     }))
 
     const lead = plan.digests.find(d => d.userId === 'ctd')!
@@ -196,7 +196,7 @@ describe('monthly digests', () => {
     const plan = planExpirySweep(inputs({
       people: departed,
       records: [expiringSoon, techExpired],
-      isDigestDay: true,
+      isDigestWindow: true,
     }))
 
     // No unscoped digest, so no membership-wide personal data leaves.
@@ -208,7 +208,7 @@ describe('monthly digests', () => {
   it('keeps an admin who is still using the system', () => {
     const plan = planExpirySweep(inputs({
       records: [expiringSoon],
-      isDigestDay: true,
+      isDigestWindow: true,
       adminCacheDays: 1,
     }))
 
@@ -216,7 +216,7 @@ describe('monthly digests', () => {
   })
 
   it('sends an empty digest anyway, its absence is the alert', () => {
-    const plan = planExpirySweep(inputs({ records: [], isDigestDay: true }))
+    const plan = planExpirySweep(inputs({ records: [], isDigestWindow: true }))
 
     expect(plan.digests).toHaveLength(2) // the lead and the admin
     expect(plan.digests.every(d => d.expiring.length === 0 && d.expired.length === 0)).toBe(true)
@@ -225,7 +225,7 @@ describe('monthly digests', () => {
   it('does not send a second digest in the same month', () => {
     const plan = planExpirySweep(inputs({
       records: [expiringSoon],
-      isDigestDay: true,
+      isDigestWindow: true,
       digestSentThisMonth: new Set(['ctd', 'tm']),
     }))
     expect(plan.digests).toEqual([])
@@ -235,16 +235,19 @@ describe('monthly digests', () => {
     const plan = planExpirySweep(inputs({
       records: [expiringSoon, techExpired],
       leads: [{ department: 'TECH', userId: 'tm' }],
-      isDigestDay: true,
+      isDigestWindow: true,
     }))
 
     expect(plan.digests).toHaveLength(1)
     expect(plan.digests[0]!.departments).toBeNull()
   })
 
-  it('recognises the first of the month', () => {
-    expect(isDigestDay('2026-09-01')).toBe(true)
-    expect(isDigestDay('2026-09-30')).toBe(false)
+  it('opens on the first and closes a few days later', () => {
+    expect(isDigestWindow('2026-09-01')).toBe(true)
+    expect(isDigestWindow('2026-09-03')).toBe(true)
+    // Past the window the ledger is no longer what stops a second digest.
+    expect(isDigestWindow('2026-09-04')).toBe(false)
+    expect(isDigestWindow('2026-09-30')).toBe(false)
   })
 })
 
@@ -259,7 +262,7 @@ describe('the 1 October rollover', () => {
     const septemberFirst = planExpirySweep(inputs({
       asOf: '2026-09-01',
       records: inductions,
-      isDigestDay: true,
+      isDigestWindow: true,
     }))
     // 29 days out: gentle warning, and the digest that tells leads to book
     // October inductions.
@@ -276,7 +279,7 @@ describe('the 1 October rollover', () => {
     const october = planExpirySweep(inputs({
       asOf: '2026-10-01',
       records: inductions,
-      isDigestDay: true,
+      isDigestWindow: true,
     }))
     // The mass expiry is emergent: nothing ran, the date simply passed.
     expect(october.counts.expired).toBe(3)
@@ -289,7 +292,7 @@ describe('the whole plan, exactly', () => {
   it('is fully predictable for a fixed fixture', () => {
     const plan = planExpirySweep(inputs({
       asOf: '2026-09-01',
-      isDigestDay: true,
+      isDigestWindow: true,
       records: [
         record({ recordId: 'r1', userId: 'alice', expiresAt: '2026-09-30' }),
         record({ recordId: 'r2', userId: 'bob', moduleId: 'TECH-111', department: 'TECH', expiresAt: '2026-09-10' }),

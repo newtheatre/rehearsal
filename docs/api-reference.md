@@ -25,7 +25,7 @@ Query: `status=ACTIVE` (default) | `all` (includes DRAFT/RETIRED, for admin tool
 
 ### `GET /records?module=TECH-112&state=VALID`
 
-→ `{ module, users: [{ id, name, state, expiresAt }] }`: who currently holds X (find-a-supervisor, rota UI badges). `state` filter optional; default VALID+EXPIRING. 404 unknown module.
+→ `{ module, users: [{ id, name, state, expiresAt }] }`: who currently holds X (find-a-supervisor, rota UI badges). `state` filter optional; default VALID+EXPIRING. 404 unknown module. **400 for a BRIEF module**: a brief recurs per event and has no validity, so it has no holders to badge, and answering with a null `state` (neither VALID, EXPIRING nor EXPIRED) would invite a consumer to gate on it ([ADR-0003](decisions/0003-certifications-as-modules.md)). Ask `GET /users/:id/records` instead, which reports a brief's `lastAttended`.
 
 ### `GET /eligibility/:key?userId=<id>` <a name="eligibility"></a>
 
@@ -74,7 +74,7 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `GET /api/directory` | session | id and name only, for the attendee and lead pickers. No record aggregation, so it can return the whole membership (`limit` default 500) |
 | `GET /api/people/:id` | session | one person's records; revoked history and actions for leads/admins |
 | `POST /api/people/:id/signoff` | lead (module's dept) or admin | certification sign-off; **422 with the gaps named** if prerequisites are unmet. Optional `expiresAt` overrides module policy (after the award, within ten years, refused when the module never expires). `neverExpires: true` needs `record.manage` and is **API only on purpose**: it is break-glass against a lockout, not a routine choice, so no UI offers it |
-| `POST /api/people/:id/external` | lead (module's dept) or admin | external certificate; its own expiry wins over module config. 400 unless the module sets `allows_external` |
+| `POST /api/people/:id/external` | lead (module's dept) or admin | external certificate; its own expiry wins over module config, and is held to the same bounds as a sign-off's (after the award, within ten years). 400 unless the module sets `allows_external` |
 | `POST /api/records/:id/revoke` | admin | revoke with a mandatory reason; idempotent |
 | `GET /api/sessions` | session | delivery log, newest first. **`DELIVERED` only**: a scheduled session is not in the log until its register is submitted. Paged: `limit` (default 50, max 100) with a keyset cursor `(beforeHeldOn, beforeId)`; `held_on` is a date, so the id breaks ties. Returns `{ sessions, hasMore }`. Column allow-listed: `id`, `heldOn`, `status`, `startsAt`, `endsAt`, `location`, `capacity`, `trainerUserId`, `trainerName`, `deliveredAt`, `moduleIds`, `attendeeCount`. **`notes` is not in it**: any member may read this list, and the trainer's working notes are for the steward only, as on `GET /api/sessions/:id` |
 | `POST /api/sessions/check` | trainer | dry run: the exact records that would be created, plus warnings |
@@ -89,8 +89,8 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `POST /api/sessions/:id/signup` | session | take a place, or join the waitlist. Returns `{ hasPlace, waitlistPosition, warnings }` |
 | `DELETE /api/sessions/:id/signup` | session | withdraw. Allowed until the session is delivered or cancelled, including while the register is open. Returns how many people that moved into a place |
 | `POST /api/sessions/:id/attendees` | steward | add a walk-in. Bypasses the sign-up prerequisite gate on purpose; the register-time check still applies |
-| `POST /api/sessions/:id/register/open` | steward | start taking the register. Idempotent, and **closes sign-ups**. 409 while `held_on` is still in the future: opening early would open everybody's practice windows early |
-| `GET /api/sessions/:id/register` | steward | who to mark off, in sign-up order, waitlist marked, plus `practiceTargets`: the sandboxes this session's modules unlock, or empty when they unlock none |
+| `POST /api/sessions/:id/register/open` | steward | start taking the register. Idempotent, and **closes sign-ups**. The stamp, the practice windows and the audit entry are one batch, so a failure leaves the register unopened and the retry does the whole thing. 409 while `held_on` is still in the future: opening early would open everybody's practice windows early |
+| `GET /api/sessions/:id/register` | steward | who to mark off, in sign-up order, waitlist marked, plus `practiceTargets` (the sandboxes this session's modules unlock, or empty when they unlock none) and `practiceOpen` (those with a live window right now). The page's banner is driven by the second: a matching target is not a window |
 | `POST /api/sessions/:id/register` | steward | **mark it, which creates the records.** 409 if already marked, and 409 while `held_on` is still in the future: records are stamped with `held_on`, and a record dated ahead of today is valid to every gate. Move the date to today first |
 | `GET /api/module-requests` | session | your own requests, paged (`limit` default 50) and returned with `hasMore`, plus the demand board if you lead a department |
 | `POST /api/module-requests` | session | ask for a module to be taught. 409 if you already have one open, 400 if it is not `ACTIVE` |
@@ -112,7 +112,7 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `GET /api/admin/eligibility-rules` | admin | rules and what they require; `requires` is `null` for a rule stored in an unparseable form |
 | `PUT /api/admin/eligibility-rules` | admin | create or update a rule; audit-logged with before and after |
 | `GET /api/admin/practice-targets` | admin | targets, and every window open right now |
-| `PUT /api/admin/practice-targets` | admin | create or update a target; module ids validated; audit-logged |
+| `PUT /api/admin/practice-targets` | admin | create or update a target; module ids validated; audit-logged with before and after, in the same batch as the write. **A full replacement, so `moduleIds` and `status` are required**: omitting them would empty a live target's module list or un-retire one that was shut on purpose. Send `create: true` to mean create, which answers **409** if the key is taken: a consumer hardcodes the key, so an accidental overwrite is not recoverable by editing it back |
 | `POST /api/practice-windows` | trainer or lead | open a sandbox by hand for ad-hoc coaching; a reason is required |
 | `DELETE /api/practice-windows/:id` | trainer or lead | shut one early |
 
@@ -140,10 +140,14 @@ without anybody being written to ([ADR-0013](decisions/0013-a-scheduled-session-
 cohort only. The marks must match the register in both directions: `409` if a mark names somebody no
 longer signed up, and `409` naming who was missed if a register entry has no mark, because a partial
 submission would otherwise deliver the session and strand that person with no record and no email. It
+is `409` too if one person is marked twice: those two checks compare membership, not cardinality, so a
+repeated id would otherwise pass both and could award somebody the same request marks absent. It
 answers `409` with `requiresAllAbsentAcknowledgement` when nobody is marked present, until
 `acknowledgeAllAbsent: true`, because one tap on an untouched register would otherwise award
 nobody and send everybody a no-show note. It also answers `409` if the register has already been marked (a double tap, a retry, or a second lead
-on a second phone must not award the same training twice), `409` if the register exceeds
+on a second phone must not award the same training twice: the status check is a read, so a partial
+unique index on `records` is what enforces it when two submissions genuinely race, and the loser is
+answered `409` with nothing written), `409` if the register exceeds
 `MAX_REGISTER` (200) with an instruction to split the session, `422` for a safety-critical
 prerequisite gap among the people **present**, and `409` for ordinary gaps until
 `acknowledgeWarnings: true`. Prerequisites are checked again here
@@ -170,7 +174,7 @@ Per the estate hook pattern (stage-door docs/api-reference.md §app-hooks), auth
 | `POST /api/_hooks/auth/export` | `{ userId }` → this app's personal data: mirror row, records (with modules/dates/sources), sessions attended/delivered |
 | `POST /api/_hooks/auth/anonymise` | Rewrite mirror row to anonymised values. **Records survive**, keyed to the anonymised id: training/safety history is retained as anonymous rows, same stance as bookings ([gdpr-retention.md](gdpr-retention.md)). Idempotent. |
 | `POST /api/_hooks/auth/last-activity` | `{ userIds }` → latest of: last record awarded, last session attended/delivered, per user |
-| `POST /api/_hooks/auth/merge` | `{ fromUserId, toUserId, dryRun? }` → re-point every user-referencing column onto `toUserId`, delete the losing mirror row, return `{ ok, notMirrored, counts }`. Idempotent (stage-door ADR-0015). **Every column means every column:** records (`user_id`/`granted_by`/`revoked_by`), sessions (`trainer_user_id`/`created_by`), attendees (`user_id`/`marked_by_user_id`), leads, rules, notifications, module requests (`user_id`/`resolved_by`), practice windows (`user_id`/`opened_by`/`closed_by`) and practice targets (`updated_by`). The closing delete is what enforces it: miss one and the whole merge fails on a foreign key, so adding a user-referencing column means adding it here. |
+| `POST /api/_hooks/auth/merge` | `{ fromUserId, toUserId, dryRun? }` → re-point every user-referencing column onto `toUserId`, tombstone the losing mirror row (`merged_into`), return `{ ok, notMirrored, alreadyMerged, counts }`. One `db.batch()`, audit entry included, so a failure leaves nothing behind and the retry re-runs the whole merge ([ADR-0015](decisions/0015-a-merged-mirror-row-is-tombstoned.md), stage-door ADR-0015). **Every column means every column:** records (`user_id`/`granted_by`/`revoked_by`), sessions (`trainer_user_id`/`created_by`), attendees (`user_id`/`marked_by_user_id`), leads (`user_id`/`granted_by`), rules, notifications, module requests (`user_id`/`resolved_by`), practice windows (`user_id`/`opened_by`/`closed_by`), practice targets (`updated_by`) and `audit_log` (`actor_user_id`). **A foreign key does not enforce that:** `audit_log` and `notification_log` have none, so the hook re-counts every column afterwards and answers **500** naming any that still has rows. Adding a user-referencing column means adding it to `USER_COLUMNS` in the handler. Collisions are resolved by outcome, not by which account holds the row: the stronger attendance survives (ATTENDED > ABSENT > SIGNED_UP > CANCELLED) with the earlier sign-up time, and the earlier lead appointment survives with its `granted_by`. |
 | `GET /api/_hooks/auth/manifest` | This app's declaration: namespace (`training`), the roles it reads, the permissions each carries, and **the eligibility rules it offers**. The auth service polls it and turns the roles into definitions, so adding a role here is what makes it grantable (stage-door ADR-0017). |
 
 `eligibilityRules` in the manifest is read from the `eligibility_rules` table, never written as a

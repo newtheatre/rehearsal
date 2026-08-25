@@ -4,7 +4,7 @@
  */
 
 import { db, schema } from '@nuxthub/db'
-import { and, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, lte, sql } from 'drizzle-orm'
 import { runAtomic } from './batch'
 import { chunk } from './d1'
 
@@ -14,11 +14,18 @@ export interface DemandRow {
   moduleId: string
   moduleName: string
   department: string
+  /** Every open request for the module, not the number of names below. */
   openCount: number
   /** Names, for a lead deciding whether a session is worth an evening.
    * `requestId` is what the decline route takes; `id` is the person. */
   requesters: { id: string, requestId: string, name: string, note: string | null }[]
+  /** Open requests past the per-module cap, so the page can say how many. */
+  requestersNotShown: number
 }
+
+/** Modules per page of the board, and names under each. Both bound the read. */
+export const BOARD_MODULE_LIMIT = 25
+export const BOARD_REQUESTERS_PER_MODULE = 10
 
 /** Raise a request, or refuse because one is already open. */
 export async function requestModule(options: {
@@ -77,45 +84,95 @@ export async function requestsFor(userId: string, { limit = 50 }: { limit?: numb
 
 /**
  * The demand board, busiest first. Scoped to `departments` unless it is null,
- * which is an admin seeing everything.
+ * which is an admin seeing everything. docs/api-reference.md
  */
-export async function demandBoard(departments: string[] | null): Promise<DemandRow[]> {
+export async function demandBoard(
+  departments: string[] | null,
+  options: { limit?: number, requestersPerModule?: number } = {},
+): Promise<{ modules: DemandRow[], hasMore: boolean }> {
+  const limit = options.limit ?? BOARD_MODULE_LIMIT
+  const perModule = options.requestersPerModule ?? BOARD_REQUESTERS_PER_MODULE
+
   const scope = departments === null
     ? undefined
     : departments.length === 0
       ? sql`1 = 0`
       : inArray(schema.modules.department, departments)
+  const match = and(eq(schema.moduleRequests.status, 'OPEN'), scope)
 
-  const rows = await db.select({
-    requestId: schema.moduleRequests.id,
+  // Counted in SQL: an openCount worked out from one page of requesters would
+  // be a smaller number than the truth, on the figure a lead decides from.
+  const counted = await db.select({
     moduleId: schema.moduleRequests.moduleId,
     moduleName: schema.modules.name,
     department: schema.modules.department,
-    userId: schema.moduleRequests.userId,
-    userName: schema.users.name,
-    note: schema.moduleRequests.note,
+    openCount: sql<number>`count(*)`.as('open_count'),
   })
     .from(schema.moduleRequests)
     .innerJoin(schema.modules, eq(schema.moduleRequests.moduleId, schema.modules.id))
-    .innerJoin(schema.users, eq(schema.moduleRequests.userId, schema.users.id))
-    .where(and(eq(schema.moduleRequests.status, 'OPEN'), scope))
+    .where(match)
+    .groupBy(schema.moduleRequests.moduleId)
+    .orderBy(desc(sql`count(*)`), asc(schema.moduleRequests.moduleId))
+    // One extra row says whether there is another page without counting.
+    .limit(limit + 1)
     .all()
 
-  const byModule = new Map<string, Omit<DemandRow, 'openCount'>>()
+  const page = counted.slice(0, limit)
+  if (page.length === 0) return { modules: [], hasMore: false }
+
+  // A subquery, never the ids just returned: an IN list built from a result
+  // set binds one parameter per row and blows D1's cap of 100.
+  const pageModules = db.select({ moduleId: schema.moduleRequests.moduleId })
+    .from(schema.moduleRequests)
+    .innerJoin(schema.modules, eq(schema.moduleRequests.moduleId, schema.modules.id))
+    .where(match)
+    .groupBy(schema.moduleRequests.moduleId)
+    .orderBy(desc(sql`count(*)`), asc(schema.moduleRequests.moduleId))
+    .limit(limit)
+
+  const ranked = db.select({
+    requestId: schema.moduleRequests.id,
+    moduleId: schema.moduleRequests.moduleId,
+    userId: schema.moduleRequests.userId,
+    userName: schema.users.name,
+    note: schema.moduleRequests.note,
+    rank: sql<number>`row_number() over (
+      partition by ${schema.moduleRequests.moduleId}
+      order by ${schema.moduleRequests.createdAt}, ${schema.moduleRequests.id}
+    )`.as('rank'),
+  })
+    .from(schema.moduleRequests)
+    .innerJoin(schema.users, eq(schema.moduleRequests.userId, schema.users.id))
+    .where(and(
+      eq(schema.moduleRequests.status, 'OPEN'),
+      inArray(schema.moduleRequests.moduleId, pageModules),
+    ))
+    .as('ranked')
+
+  // Capped in SQL as well: one popular module must not decide the payload.
+  const rows = await db.select().from(ranked).where(lte(ranked.rank, perModule)).all()
+
+  const named = new Map<string, DemandRow['requesters']>()
   for (const row of rows) {
-    const entry = byModule.get(row.moduleId) ?? {
-      moduleId: row.moduleId,
-      moduleName: row.moduleName,
-      department: row.department,
-      requesters: [],
-    }
-    entry.requesters.push({ id: row.userId, requestId: row.requestId, name: row.userName, note: row.note })
-    byModule.set(row.moduleId, entry)
+    const list = named.get(row.moduleId) ?? []
+    list.push({ id: row.userId, requestId: row.requestId, name: row.userName, note: row.note })
+    named.set(row.moduleId, list)
   }
 
-  return [...byModule.values()]
-    .map(entry => ({ ...entry, openCount: entry.requesters.length }))
-    .sort((a, b) => b.openCount - a.openCount || a.moduleId.localeCompare(b.moduleId))
+  return {
+    modules: page.map((entry) => {
+      const requesters = named.get(entry.moduleId) ?? []
+      return {
+        moduleId: entry.moduleId,
+        moduleName: entry.moduleName,
+        department: entry.department,
+        openCount: Number(entry.openCount),
+        requesters,
+        requestersNotShown: Math.max(0, Number(entry.openCount) - requesters.length),
+      }
+    }),
+    hasMore: counted.length > limit,
+  }
 }
 
 /** Open request counts per module, for the catalogue pages. */

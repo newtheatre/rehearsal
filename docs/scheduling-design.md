@@ -156,7 +156,10 @@ nothing else: it creates no obligation, no queue position and no promise.
 - A member sees their own requests and may withdraw one.
 - A department lead sees a **demand board** for their departments: modules ordered by open request
   count, with the names, so "six people want TECH-111 and four of them are new this term" is a
-  glance rather than a spreadsheet.
+  glance rather than a spreadsheet. Nothing on a timer closes a request, so the board is paged in
+  SQL: the busiest 25 modules, with the first 10 names under each and a remainder count. The
+  ordering count is a `count(*)` over every open request, never the length of the page, because the
+  number is what a lead decides an evening from.
 - Scheduling a session that teaches a requested module offers to resolve the matching requests to
   `SCHEDULED` and links them to it. The requesters are told.
 - A lead may `DECLINE` a request with a reason (the module is retired in practice, the person needs a

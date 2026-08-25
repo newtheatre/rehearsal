@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, mock } from 'bun:test'
 
-import { db, schema } from './mocks/nuxthub-db'
+import { db, schema, resetQueryCount, widestBoundStatement } from './mocks/nuxthub-db'
 import { makeEvent, signIn, type FakeEvent } from './setup'
 import { seedDepartments, seedLead, seedModule, seedRecord, seedUser } from './helpers/fixtures'
 import { eq } from 'drizzle-orm'
@@ -69,7 +69,15 @@ async function listFor(userId: string) {
   signIn(event, { id: userId })
   return call(listHandler, event) as Promise<{
     mine: { moduleId: string, status: string }[]
-    board: { moduleId: string, openCount: number, requesters: { name: string }[] }[]
+    board: {
+      modules: {
+        moduleId: string
+        openCount: number
+        requesters: { name: string }[]
+        requestersNotShown: number
+      }[]
+      hasMore: boolean
+    }
     canSeeBoard: boolean
   }>
 }
@@ -118,7 +126,7 @@ describe('the demand board', () => {
     const view = await listFor('alice')
 
     expect(view.canSeeBoard).toBe(false)
-    expect(view.board).toHaveLength(0)
+    expect(view.board.modules).toHaveLength(0)
   })
 
   it('counts and names the people waiting, busiest first', async () => {
@@ -129,10 +137,42 @@ describe('the demand board', () => {
     const view = await listFor('techlead')
 
     expect(view.canSeeBoard).toBe(true)
-    expect(view.board[0]).toMatchObject({ moduleId: 'TECH-111', openCount: 2 })
-    expect(view.board[0]!.requesters.map(person => person.name).sort())
+    expect(view.board.modules[0]).toMatchObject({ moduleId: 'TECH-111', openCount: 2 })
+    expect(view.board.modules[0]!.requesters.map(person => person.name).sort())
       .toEqual(['Alice Adams', 'Bob Barnes'])
-    expect(view.board[1]).toMatchObject({ moduleId: 'TECH-112', openCount: 1 })
+    expect(view.board.modules[1]).toMatchObject({ moduleId: 'TECH-112', openCount: 1 })
+  })
+
+  it('counts every open request while showing only the first names', async () => {
+    for (let n = 0; n < 12; n++) {
+      await seedUser(`member-${n}`, `Member ${n}`)
+      await ask(`member-${n}`, 'TECH-111')
+    }
+
+    const [row] = (await listFor('techlead')).board.modules
+
+    // The count is what a lead decides from, so it is the whole demand and
+    // not the length of the list under it.
+    expect(row!.openCount).toBe(12)
+    expect(row!.requesters).toHaveLength(10)
+    expect(row!.requestersNotShown).toBe(2)
+  })
+
+  it('pages the board rather than reading every open request', async () => {
+    for (let n = 0; n < 30; n++) {
+      const moduleId = `TECH-2${String(n).padStart(2, '0')}`
+      await seedModule(moduleId, { department: 'TECH', name: `Module ${n}` })
+      await seedUser(`member-${n}`, `Member ${n}`)
+      await ask(`member-${n}`, moduleId)
+    }
+
+    resetQueryCount()
+    const { board } = await listFor('techlead')
+
+    expect(board.modules).toHaveLength(25)
+    expect(board.hasMore).toBe(true)
+    // The rule itself: no statement's parameter count tracks the row count.
+    expect(widestBoundStatement()).toBeLessThan(100)
   })
 
   it('shows a lead only their own departments', async () => {
@@ -140,7 +180,7 @@ describe('the demand board', () => {
     await ask('alice', 'STGE-101')
 
     const view = await listFor('techlead')
-    expect(view.board.map(row => row.moduleId)).toEqual(['TECH-111'])
+    expect(view.board.modules.map(row => row.moduleId)).toEqual(['TECH-111'])
   })
 })
 

@@ -9,7 +9,9 @@ const { data, status, error, refresh } = await useFetch('/api/module-requests')
 const { data: catalogue } = await useFetch('/api/modules')
 
 const mine = computed(() => data.value?.mine ?? [])
-const board = computed(() => data.value?.board ?? [])
+const board = computed(() => data.value?.board.modules ?? [])
+// The board is capped: a term's worth of asks must not become one long page.
+const boardHasMore = computed(() => data.value?.board.hasMore ?? false)
 
 const alreadyAsked = computed(() =>
   new Set(mine.value.filter(request => request.status === 'OPEN').map(request => request.moduleId)),
@@ -248,6 +250,12 @@ const STATUS: Record<string, { label: string, color: 'neutral' | 'success' | 'wa
                 @click="startDecline(person, row.moduleId)"
               />
             </li>
+            <li
+              v-if="row.requestersNotShown"
+              class="italic"
+            >
+              and {{ row.requestersNotShown }} more waiting
+            </li>
           </ul>
           <UButton
             to="/sessions/schedule"
@@ -259,6 +267,13 @@ const STATUS: Record<string, { label: string, color: 'neutral' | 'success' | 'wa
           />
         </div>
       </div>
+
+      <p
+        v-if="boardHasMore"
+        class="text-xs text-muted"
+      >
+        The busiest modules are shown first. Answer or schedule some of these to see the rest.
+      </p>
     </section>
 
     <UModal

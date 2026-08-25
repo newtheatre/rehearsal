@@ -50,6 +50,10 @@ const signoffBusy = ref(false)
 const signoffError = ref<string | null>(null)
 const signoff = ref({ moduleId: '', awardedAt: todayIso, expiresAt: '', note: '' })
 
+// The API refuses an expiry more than ten years out (ADR-0012), so the form
+// does not invite one.
+const signoffExpiryMax = computed(() => addMonths(signoff.value.awardedAt, 120))
+
 async function submitSignoff() {
   signoffBusy.value = true
   signoffError.value = null
@@ -82,6 +86,7 @@ const externalOpen = ref(false)
 const externalBusy = ref(false)
 const externalError = ref<string | null>(null)
 const external = ref({ moduleId: '', awardedAt: todayIso, expiresAt: '', externalRef: '' })
+const externalExpiryMax = computed(() => addMonths(external.value.awardedAt, 120))
 
 async function submitExternal() {
   externalBusy.value = true
@@ -408,6 +413,7 @@ async function submitRevoke() {
               v-model="signoff.expiresAt"
               type="date"
               :min="signoff.awardedAt"
+              :max="signoffExpiryMax"
               class="w-full"
             />
           </UFormField>
@@ -487,6 +493,7 @@ async function submitRevoke() {
               v-model="external.expiresAt"
               type="date"
               :min="external.awardedAt"
+              :max="externalExpiryMax"
               class="w-full"
             />
           </UFormField>

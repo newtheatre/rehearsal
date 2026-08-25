@@ -4,8 +4,7 @@
  */
 
 import { z } from 'zod'
-import { addMonths } from './expiry'
-import { today } from '../../shared/utils/dates'
+import { addMonths, today } from '../../shared/utils/dates'
 
 /** `TECH-111` (DEPT-LCT) or `LD-CERT`. Matches the catalogue parser. */
 export const moduleIdSchema = z.string().trim().toUpperCase()

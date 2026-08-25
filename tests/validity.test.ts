@@ -5,8 +5,8 @@
 
 import { describe, it, expect } from 'bun:test'
 import { validityState, countsAsValid, isCurrentlyValid, addDays } from '../server/utils/validity'
-import { today } from '../shared/utils/dates'
-import { computeExpiresAt, nextAcademicYearEnd, addMonths } from '../server/utils/expiry'
+import { addMonths, today } from '../shared/utils/dates'
+import { computeExpiresAt, nextAcademicYearEnd } from '../server/utils/expiry'
 
 const asOf = '2026-08-14'
 

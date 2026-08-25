@@ -4,7 +4,7 @@
  */
 
 import { CONFIG_DEFAULTS } from '../../shared/utils/configDefaults'
-import { daysBetween } from '../../shared/utils/dates'
+import { addMonths, daysBetween } from '../../shared/utils/dates'
 
 export interface ExpiryPolicy {
   expiryMode: 'NONE' | 'MONTHS' | 'ACADEMIC_YEAR'
@@ -46,16 +46,6 @@ export function nextAcademicYearEnd(awardedAt: string, boundary: string = ACADEM
 
   if (daysBetween(awardedAt, candidate) >= ACADEMIC_YEAR_CARRY_OVER_DAYS) return candidate
   return `${Number(candidate.slice(0, 4)) + 1}-${boundary}`
-}
-
-/** `awardedAt` plus N calendar months, clamped to the end of a short month. */
-export function addMonths(isoDate: string, months: number): string {
-  const [y, m, d] = isoDate.split('-').map(Number)
-  const target = new Date(Date.UTC(y!, m! - 1 + months, 1))
-  // Clamp: 31 Jan + 1 month is 28/29 Feb, not 3 March.
-  const lastDayOfTargetMonth = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate()
-  target.setUTCDate(Math.min(d!, lastDayOfTargetMonth))
-  return target.toISOString().slice(0, 10)
 }
 
 /** Present means overridden; the date inside may be null for never (ADR-0012). */

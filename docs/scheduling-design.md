@@ -277,7 +277,14 @@ for fun.
 
 The commonest failure of any register system is a session that happened and was never marked, which
 silently means nobody got their record. A daily task nags the lead of any session whose date has
-passed with an unmarked register, and keeps nagging.
+passed with an unmarked register, and keeps nagging weekly until it is marked or until
+`register_nag_stop_days` (default 60) have passed since the session.
+
+**The nag stopping is not the session being forgiven.** Past the cutoff the emails stop, because by
+then the lead has had roughly nine of them and may well have graduated, but the session moves onto
+`/admin/notifications` under "Unmarked registers", flagged as no longer nagged, and stays there until
+somebody marks or cancels it. The sweep also reports how many it has stopped nagging about, as
+`stale`. Marking a register is possible however old it is, and still awards.
 
 **The nag never creates or destroys a record.** It emails a human, who marks the register.
 ([CLAUDE.md](../CLAUDE.md) invariant 10.)

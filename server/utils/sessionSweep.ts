@@ -4,7 +4,7 @@
  */
 
 import { db, schema } from '@nuxthub/db'
-import { and, eq, gte, inArray, lt } from 'drizzle-orm'
+import { and, eq, gte, inArray, lt, sql } from 'drizzle-orm'
 import { renderRegisterNag, renderSessionReminder, sendEmail } from './email'
 import { addressableUsers, sessionEmailSummary, type Recipient } from './sessionNotify'
 import { registerFor } from './scheduling'
@@ -21,6 +21,8 @@ export interface SessionSweepResult {
   mode: 'dry-run' | 'live'
   reminders: number
   nags: number
+  /** Past the nag cutoff and still unmarked: nobody emails these any more. */
+  stale: number
   windowsClosed: number
   failed: number
 }
@@ -57,16 +59,20 @@ async function lastSent(sessionIds: string[]): Promise<Map<string, Date>> {
 }
 
 export async function runSessionSweep(asOf: string = today()): Promise<SessionSweepResult> {
-  const [mode, reminderDays, nagDays] = await Promise.all([
+  const [mode, reminderDays, nagDays, nagStopDays] = await Promise.all([
     getConfig('notifications_mode'),
     getConfigNumber('session_reminder_days'),
     getConfigNumber('register_nag_days'),
+    getConfigNumber('register_nag_stop_days'),
   ])
   const live = mode === 'live'
 
   const reminderDay = addDays(asOf, reminderDays)
+  // The nag phase is bounded: every session it covers costs per-session reads
+  // and a weekly email to a lead who may have left (docs/operations.md).
+  const nagFloor = addDays(asOf, -nagStopDays)
 
-  const [dueReminders, unmarked] = await Promise.all([
+  const [dueReminders, unmarked, stale] = await Promise.all([
     db.select().from(schema.sessions)
       .where(and(
         eq(schema.sessions.heldOn, reminderDay),
@@ -77,10 +83,17 @@ export async function runSessionSweep(asOf: string = today()): Promise<SessionSw
     db.select().from(schema.sessions)
       .where(and(
         lt(schema.sessions.heldOn, asOf),
-        gte(schema.sessions.heldOn, addDays(asOf, -60)),
+        gte(schema.sessions.heldOn, nagFloor),
         inArray(schema.sessions.status, ['OPEN', 'FULL']),
       ))
       .all(),
+    // Counted, never read per session: the nag stops, the row must not vanish.
+    db.select({ count: sql<number>`count(*)` }).from(schema.sessions)
+      .where(and(
+        lt(schema.sessions.heldOn, nagFloor),
+        inArray(schema.sessions.status, ['OPEN', 'FULL']),
+      ))
+      .get(),
   ])
 
   const seen = await lastSent([...dueReminders, ...unmarked].map(session => session.id))
@@ -164,5 +177,13 @@ export async function runSessionSweep(asOf: string = today()): Promise<SessionSw
   // Housekeeping, not a notification, so it runs whatever the mode.
   const windowsClosed = await sweepExpiredWindows()
 
-  return { asOf, mode: live ? 'live' : 'dry-run', reminders, nags, windowsClosed, failed }
+  return {
+    asOf,
+    mode: live ? 'live' : 'dry-run',
+    reminders,
+    nags,
+    stale: Number(stale?.count ?? 0),
+    windowsClosed,
+    failed,
+  }
 }

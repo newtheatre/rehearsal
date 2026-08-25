@@ -133,7 +133,7 @@ Opening a register inserts one window per signed-up attendee per matching `ACTIV
 
 `service_tokens`: `id` · `name` unique (consumer app) · `token_hash` (SHA-256) · `scopes` (`read`) · `created_at` · `last_used_at`. Plaintext `nnt_trn_…` shown once at creation.
 
-`site_config`: `key` PK · `value`, `warning_window_days` (60), `academic_year_end` (`08-31`), `session_edit_window_days` (14), `notifications_mode` (`dry-run`|`live`), `admin_cache_days` (90), `session_reminder_days` (1), `register_nag_days` (2), `practice_window_grace_hours` (4). Rows are written by the seed, but every read falls back to the same defaults in `shared/utils/configDefaults.ts`, a missing config row must never change safety semantics.
+`site_config`: `key` PK · `value`, `warning_window_days` (60), `academic_year_end` (`08-31`), `session_edit_window_days` (14), `notifications_mode` (`dry-run`|`live`), `admin_cache_days` (90), `session_reminder_days` (1), `register_nag_days` (2), `register_nag_stop_days` (60), `practice_window_grace_hours` (4). Rows are written by the seed, but every read falls back to the same defaults in `shared/utils/configDefaults.ts`, a missing config row must never change safety semantics.
 
 `audit_log`: `id` · `actor_user_id` null (null = cron/import) · `action` · `target` · `detail` JSON · `created_at`. Append-only, with one sanctioned exception: an account merge re-points `actor_user_id` onto the winning id, because a merge asserts the two ids were always one person and the alternative is a trail that reads "Deleted user" for everything they ever signed off ([ADR-0015](decisions/0015-a-merged-mirror-row-is-tombstoned.md)).
 

@@ -101,6 +101,7 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `PUT /api/admin/config` | admin | change one value; per-key validation; audit-logged. `academic_year_end` is `MM-DD`, month first, and must be a real calendar day: `31-08`, `09-31` and `02-29` are refused with 400 |
 | `GET /api/admin/expiry-preview` | admin | what the next sweep would do; optional `asOf` date; sends and records nothing |
 | `GET /api/admin/notifications` | admin | what has actually been sent |
+| `GET /api/admin/unmarked-sessions` | admin | registers that were never marked, oldest first, paged on a keyset cursor `(afterHeldOn, afterId)`. Each row carries `daysAgo`, the lead, how many people are waiting on a record, and `stale` for the ones past `register_nag_stop_days` that the sweep no longer emails about. Nobody in one of these rooms has a record, so the list is what keeps them findable after the nag stops |
 | `POST /api/admin/recalculate` | admin | preview an expiry recalculation, or apply it by echoing the change count. Returns `{ changes, unchanged, skippedOverridden }`; records whose expiry was set explicitly are never recomputed |
 | `GET /api/admin/service-tokens` | admin | issued consumer tokens (never the tokens themselves) |
 | `POST /api/admin/service-tokens` | admin | issue one; the plaintext is in the response and nowhere else |

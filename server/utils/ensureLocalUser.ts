@@ -4,7 +4,7 @@
  */
 
 import { db, schema } from '@nuxthub/db'
-import { isNull } from 'drizzle-orm'
+import { and, isNull } from 'drizzle-orm'
 import type { User } from '#auth-utils'
 import { hasRole } from '@newtheatre/auth-types'
 import { ROLE_NAMESPACE } from './abilities'
@@ -26,9 +26,9 @@ export async function ensureLocalUser(user: Pick<User, 'id' | 'email' | 'name'> 
     .onConflictDoUpdate({
       target: schema.users.id,
       set: { email: user.email, name: user.name, isTrainingAdmin, updatedAt: new Date() },
-      // An erased row is never written back over: the session cookie outlives
-      // the erasure by up to 30 days and still carries the real name.
-      setWhere: isNull(schema.users.anonymisedAt),
+      // An erased or merged-away row is never written back over: the session
+      // cookie outlives both by up to 30 days and still carries the real name.
+      setWhere: and(isNull(schema.users.anonymisedAt), isNull(schema.users.mergedInto)),
     })
 
   lastUpserted.set(user.id, Date.now())

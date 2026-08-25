@@ -35,7 +35,7 @@ export async function sessionEmailSummary(sessionId: string): Promise<SessionEma
   }
 }
 
-/** Addressable people only: an erased account has an undeliverable address. */
+/** Addressable people only: an erased or merged account has no real address. */
 export async function addressableUsers(userIds: string[]): Promise<Recipient[]> {
   if (userIds.length === 0) return []
 
@@ -47,7 +47,11 @@ export async function addressableUsers(userIds: string[]): Promise<Recipient[]> 
       email: schema.users.email,
     })
       .from(schema.users)
-      .where(and(inArray(schema.users.id, batch), isNull(schema.users.anonymisedAt)))
+      .where(and(
+        inArray(schema.users.id, batch),
+        isNull(schema.users.anonymisedAt),
+        isNull(schema.users.mergedInto),
+      ))
       .all()
     found.push(...rows)
   }

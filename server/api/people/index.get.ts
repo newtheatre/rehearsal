@@ -50,6 +50,8 @@ export default defineEventHandler(async (event) => {
   const rows = await db.select({ id: schema.users.id, name: schema.users.name })
     .from(schema.users)
     .where(and(
+      // A merged-away row holds no records and is nobody to look up.
+      isNull(schema.users.mergedInto),
       q ? like(schema.users.name, `%${q}%`) : undefined,
       holdsModule,
       cursor,

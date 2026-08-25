@@ -4,7 +4,7 @@
  */
 
 import { db, schema } from '@nuxthub/db'
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 
 interface ShadowUserResponse {
   id: string
@@ -65,6 +65,9 @@ export async function findOrCreateAttendee(
     .onConflictDoUpdate({
       target: schema.users.id,
       set: { email: normalised, name: shadow.name || name || normalised },
+      // Same guard as the mirror upsert: an erased or merged-away row is
+      // never written back over.
+      setWhere: and(isNull(schema.users.anonymisedAt), isNull(schema.users.mergedInto)),
     })
 
   return { id: shadow.id, name: shadow.name || name || normalised, created: true }

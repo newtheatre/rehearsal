@@ -18,6 +18,7 @@ Why the system is the way it is. One decision per file, numbered, never edited a
 | [0012](0012-explicit-expiry-marked-on-the-record.md) | An expiry may be set explicitly, and the record says so | Accepted |
 | [0013](0013-a-scheduled-session-is-the-same-row.md) | A scheduled session is the same row as a delivered one; attendance awards | Accepted |
 | [0014](0014-practice-targets-are-data.md) | Practice targets are data, and are not eligibility rules | Accepted |
+| [0015](0015-a-merged-mirror-row-is-tombstoned.md) | A merged-away mirror row is tombstoned, not deleted | Accepted |
 
 ## Template
 

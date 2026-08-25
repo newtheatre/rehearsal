@@ -47,7 +47,9 @@ Module ids are the human ids (`TECH-111`, `LD-CERT`), they are the subcommittee'
 
 ### `users`
 
-Thin mirror: `id` text PK (canonical auth id) · `email` unique · `name` · `is_training_admin` · `anonymised_at` null · `updated_at`. Upserted by `ensureLocalUser` in the auth middleware, which skips any row with `anonymised_at` set so an erasure cannot be undone by a still-valid session cookie. Email is for pickers and notifications only: never exposed via the API.
+Thin mirror: `id` text PK (canonical auth id) · `email` unique · `name` · `is_training_admin` · `anonymised_at` null · `merged_into` FK null · `updated_at`. Upserted by `ensureLocalUser` in the auth middleware, which skips any row with `anonymised_at` **or** `merged_into` set, so neither an erasure nor a merge can be undone by a still-valid session cookie. Email is for pickers and notifications only: never exposed via the API.
+
+`merged_into` is the tombstone the merge hook leaves in place of a delete ([ADR-0015](decisions/0015-a-merged-mirror-row-is-tombstoned.md)): the row keeps the losing id so nothing can resurrect it, and its email and name are scrubbed because the person's identity now lives on the winning row. **Every query that lists people must exclude tombstoned rows**, as `GET /api/directory`, `GET /api/people`, `ensureKnownUser` and `addressableUsers` do. Rows here are never deleted.
 
 `is_training_admin` is a **derived cache** of the auth-service role, refreshed on every upsert. It exists solely so the expiry cron can address the monthly digest: a cron has no session to read roles from. Never gate access on it; the session is the authority.
 
@@ -133,7 +135,7 @@ Opening a register inserts one window per signed-up attendee per matching `ACTIV
 
 `site_config`: `key` PK · `value`, `warning_window_days` (60), `academic_year_end` (`08-31`), `session_edit_window_days` (14), `notifications_mode` (`dry-run`|`live`), `admin_cache_days` (90), `session_reminder_days` (1), `register_nag_days` (2), `practice_window_grace_hours` (4). Rows are written by the seed, but every read falls back to the same defaults in `shared/utils/configDefaults.ts`, a missing config row must never change safety semantics.
 
-`audit_log`: `id` · `actor_user_id` null (null = cron/import) · `action` · `target` · `detail` JSON · `created_at`. Append-only.
+`audit_log`: `id` · `actor_user_id` null (null = cron/import) · `action` · `target` · `detail` JSON · `created_at`. Append-only, with one sanctioned exception: an account merge re-points `actor_user_id` onto the winning id, because a merge asserts the two ids were always one person and the alternative is a trail that reads "Deleted user" for everything they ever signed off ([ADR-0015](decisions/0015-a-merged-mirror-row-is-tombstoned.md)).
 
 `notification_log`: `user_id` · `type` · `record_id`/`module_id` · `session_id` · `sent_at`: idempotency for both crons ([operations.md](operations.md#notifications)). `session_id` is set for `session.reminder` and `session.nag`; the nag repeats weekly, so the check is on the most recent row rather than on any row existing.
 

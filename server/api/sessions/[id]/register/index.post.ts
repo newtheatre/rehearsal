@@ -64,6 +64,16 @@ export default defineEventHandler(async (event) => {
   }
 
   const marked = new Set(input.marks.map(mark => mark.userId))
+
+  // Set membership is checked in both directions above, which cannot see a
+  // repeated id: one mark can then award somebody the other marks absent.
+  if (marked.size !== input.marks.length) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: 'Somebody is marked twice on your register. Reload it.',
+    })
+  }
+
   const unmarked = register.filter(entry => !marked.has(entry.userId))
   if (unmarked.length > 0) {
     throw createError({

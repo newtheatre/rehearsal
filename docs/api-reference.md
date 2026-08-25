@@ -140,6 +140,8 @@ without anybody being written to ([ADR-0013](decisions/0013-a-scheduled-session-
 cohort only. The marks must match the register in both directions: `409` if a mark names somebody no
 longer signed up, and `409` naming who was missed if a register entry has no mark, because a partial
 submission would otherwise deliver the session and strand that person with no record and no email. It
+is `409` too if one person is marked twice: those two checks compare membership, not cardinality, so a
+repeated id would otherwise pass both and could award somebody the same request marks absent. It
 answers `409` with `requiresAllAbsentAcknowledgement` when nobody is marked present, until
 `acknowledgeAllAbsent: true`, because one tap on an untouched register would otherwise award
 nobody and send everybody a no-show note. It also answers `409` if the register has already been marked (a double tap, a retry, or a second lead

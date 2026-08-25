@@ -315,6 +315,36 @@ describe('a register is marked once', () => {
       .rejects.toMatchObject({ statusMessage: expect.stringContaining('Bob Barnes') })
   })
 
+  it('refuses a person marked twice, present and absent, and writes nothing', async () => {
+    const id = await sessionWith(['alice', 'bob'])
+    await openTheRegister(id)
+    sent.length = 0
+
+    await expect(mark(id, [
+      { userId: 'alice', present: true },
+      { userId: 'alice', present: false },
+      { userId: 'bob', present: true },
+    ])).rejects.toMatchObject({ statusCode: 409 })
+
+    const rows = await db.select().from(schema.sessionAttendees)
+      .where(eq(schema.sessionAttendees.sessionId, id)).all()
+    expect(rows.every(row => row.status === 'SIGNED_UP')).toBe(true)
+    expect(await recordsFor('alice')).toHaveLength(0)
+    expect(sent).toHaveLength(0)
+  })
+
+  it('refuses a person marked present twice, which would award them twice', async () => {
+    const id = await sessionWith(['alice'])
+    await openTheRegister(id)
+
+    await expect(mark(id, [
+      { userId: 'alice', present: true },
+      { userId: 'alice', present: true },
+    ])).rejects.toMatchObject({ statusCode: 409 })
+
+    expect(await recordsFor('alice')).toHaveLength(0)
+  })
+
   it('refuses somebody who is not on the register', async () => {
     const id = await sessionWith(['alice'])
     await openTheRegister(id)

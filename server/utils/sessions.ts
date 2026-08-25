@@ -283,8 +283,18 @@ export async function listSessions(
       )
     : undefined
 
+  // Allow-listed: any member may read this, and `notes` are the trainer's
+  // working notes about the people in the room.
   const rows = await db.select({
-    session: schema.sessions,
+    id: schema.sessions.id,
+    heldOn: schema.sessions.heldOn,
+    status: schema.sessions.status,
+    startsAt: schema.sessions.startsAt,
+    endsAt: schema.sessions.endsAt,
+    location: schema.sessions.location,
+    capacity: schema.sessions.capacity,
+    trainerUserId: schema.sessions.trainerUserId,
+    deliveredAt: schema.sessions.deliveredAt,
     trainerName: schema.users.name,
   })
     .from(schema.sessions)
@@ -300,7 +310,7 @@ export async function listSessions(
 
   if (sessions.length === 0) return { sessions: [], hasMore: false }
 
-  const ids = sessions.map(s => s.session.id)
+  const ids = sessions.map(s => s.id)
   const [modules, attendees] = await Promise.all([
     db.select().from(schema.sessionModules)
       .where(inArray(schema.sessionModules.sessionId, ids)).all(),
@@ -309,9 +319,8 @@ export async function listSessions(
   ])
 
   return {
-    sessions: sessions.map(({ session, trainerName }) => ({
+    sessions: sessions.map(session => ({
       ...session,
-      trainerName,
       moduleIds: modules.filter(m => m.sessionId === session.id).map(m => m.moduleId),
       // Present, not signed up: an absentee got no record and did not attend.
       attendeeCount: attendees.filter(a => a.sessionId === session.id && a.status === 'ATTENDED').length,

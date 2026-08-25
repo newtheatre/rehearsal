@@ -72,6 +72,33 @@ describe('GET /api/sessions', () => {
     expect(new Set(seen).size).toBe(7)
   })
 
+  it('returns a fixed set of columns, with no trainer working notes among them', async () => {
+    await setup()
+    const event = makeEvent({
+      method: 'POST',
+      path: '/api/sessions',
+      body: {
+        heldOn: today(),
+        moduleIds: ['NNT-001'],
+        attendeeIds: ['trainer'],
+        notes: 'Watch this one on the fly floor',
+      },
+    })
+    signIn(event, { id: 'trainer' })
+    await call(createSessionHandler, event)
+
+    const page = await call(sessionsHandler, memberEvent('/api/sessions')) as {
+      sessions: Record<string, unknown>[]
+    }
+
+    // Any member reads this list, so the columns are allow-listed rather than
+    // whatever the table happens to hold.
+    expect(Object.keys(page.sessions[0]!).sort()).toEqual([
+      'attendeeCount', 'capacity', 'deliveredAt', 'endsAt', 'heldOn', 'id',
+      'location', 'moduleIds', 'startsAt', 'status', 'trainerName', 'trainerUserId',
+    ])
+  })
+
   it('says when there is more, rather than truncating in silence', async () => {
     await setup()
     await logSessions(3)

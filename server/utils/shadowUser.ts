@@ -21,6 +21,7 @@ export async function findOrCreateAttendee(
   const existing = await db.select().from(schema.users)
     .where(eq(schema.users.email, normalised)).get()
   if (existing) {
+    assertAttachable(existing)
     return { id: existing.id, name: existing.name, created: false }
   }
 
@@ -70,5 +71,21 @@ export async function findOrCreateAttendee(
       setWhere: and(isNull(schema.users.anonymisedAt), isNull(schema.users.mergedInto)),
     })
 
+  // The upsert leaves such a row alone rather than failing, so the refusal has
+  // to be read back: an unattachable id would otherwise take a record.
+  const mirrored = await db.select().from(schema.users)
+    .where(eq(schema.users.id, shadow.id)).get()
+  if (mirrored) assertAttachable(mirrored)
+
   return { id: shadow.id, name: shadow.name || name || normalised, created: true }
+}
+
+/** An erased or merged-away row is never written over, so never attached to. */
+function assertAttachable(row: { anonymisedAt: Date | null, mergedInto: string | null }): void {
+  if (!row.anonymisedAt && !row.mergedInto) return
+
+  throw createError({
+    statusCode: 409,
+    statusMessage: 'That account has been erased or merged and cannot be added to a session',
+  })
 }

@@ -5,10 +5,12 @@
 
 import { describe, it, expect } from 'bun:test'
 import authMiddleware from '../server/middleware/auth'
+import lookupHandler from '../server/api/attendees/lookup.post'
 import { ensureLocalUser, resetMirrorDebounce } from '../server/utils/ensureLocalUser'
 import { db, schema } from './mocks/nuxthub-db'
 import { eq } from 'drizzle-orm'
-import { makeEvent, signIn, type FakeEvent } from './setup'
+import { makeEvent, signIn, runtimeConfig, type FakeEvent } from './setup'
+import { seedDepartments, seedModule, seedRecord, seedUser } from './helpers/fixtures'
 
 type Handler = (event: FakeEvent) => Promise<unknown>
 const call = (handler: unknown, event: FakeEvent) => (handler as Handler)(event)
@@ -20,6 +22,30 @@ const sessionUser = {
   verified: true,
   guest: false,
   roles: [],
+}
+
+async function seedTrainer() {
+  runtimeConfig.authServiceToken = 'nnt_svc_test-token'
+  await seedDepartments()
+  await seedModule('LEAD-CERT', {
+    department: 'LEAD',
+    kind: 'CERTIFICATION',
+    signoffRequired: true,
+    grantsTrainer: true,
+  })
+  await seedUser('trainer', 'A Trainer')
+  await seedRecord({ userId: 'trainer', moduleId: 'LEAD-CERT', expiresAt: null })
+}
+
+/** What the auth service's shadow endpoint answers with. */
+function shadowAnswers(response: { id: string, email: string, name: string }) {
+  ;(globalThis as Record<string, unknown>).$fetch = async () => response
+}
+
+async function lookup(email: string) {
+  const event = makeEvent({ method: 'POST', path: '/api/attendees/lookup', body: { email } })
+  signIn(event, { id: 'trainer' })
+  return call(lookupHandler, event) as Promise<{ id: string, created: boolean }>
 }
 
 describe('ensureLocalUser', () => {
@@ -74,6 +100,44 @@ describe('an erased person', () => {
       .where(eq(schema.users.id, sessionUser.id)).get()
     expect(row!.name).toBe('Deleted user')
     expect(row!.email).toBe(`deleted-${sessionUser.id}@anonymised.invalid`)
+  })
+
+  it('cannot be added to a session by email through the shadow lookup', async () => {
+    await seedTrainer()
+    await seedUser('alice', 'Alice Adams')
+    await db.update(schema.users).set({
+      email: 'deleted-alice@anonymised.invalid',
+      name: 'Deleted user',
+      anonymisedAt: new Date(),
+    }).where(eq(schema.users.id, 'alice'))
+
+    // Stage-door's erasure is retried, so its own row can still answer with the
+    // real address while this app's mirror is already scrubbed.
+    shadowAnswers({ id: 'alice', email: 'alice@example.com', name: 'Alice Adams' })
+
+    await expect(lookup('alice@example.com')).rejects.toMatchObject({ statusCode: 409 })
+
+    const row = await db.select().from(schema.users).where(eq(schema.users.id, 'alice')).get()
+    expect(row!.name).toBe('Deleted user')
+    expect(await db.select().from(schema.auditLog).all()).toHaveLength(0)
+  })
+
+  it('cannot be added through a merged-away id either', async () => {
+    await seedTrainer()
+    await seedUser('winner', 'Alice Adams')
+    await seedUser('loser', 'Alice A')
+    await db.update(schema.users).set({ mergedInto: 'winner' })
+      .where(eq(schema.users.id, 'loser'))
+
+    shadowAnswers({ id: 'loser', email: 'alice@example.com', name: 'Alice Adams' })
+    await expect(lookup('alice@example.com')).rejects.toMatchObject({ statusCode: 409 })
+  })
+
+  it('still resolves somebody who has simply never trained here', async () => {
+    await seedTrainer()
+    shadowAnswers({ id: 'newcomer', email: 'new@example.com', name: 'A Newcomer' })
+
+    expect(await lookup('new@example.com')).toMatchObject({ id: 'newcomer', created: true })
   })
 })
 

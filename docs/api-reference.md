@@ -96,7 +96,7 @@ Used by this app's own pages; not a consumer contract, no version guarantee.
 | `POST /api/module-requests` | session | ask for a module to be taught. 409 if you already have one open, 400 if it is not `ACTIVE` |
 | `DELETE /api/module-requests/:id` | session (own) | withdraw, which frees you to ask again later |
 | `POST /api/module-requests/:id/decline` | lead (module's dept) or admin | reply with a reason, which the requester is shown |
-| `POST /api/attendees/lookup` | trainer | resolve an email to a canonical id, creating a shadow account if needed |
+| `POST /api/attendees/lookup` | trainer | resolve an email to a canonical id, creating a shadow account if needed. **409** when the id resolves to an erased or merged-away mirror row: an account nobody can sign in as must not be given a record ([gdpr-retention.md](gdpr-retention.md)) |
 | `GET /api/admin/config` | admin | operator-tunable values, with defaults and whether each is stored |
 | `PUT /api/admin/config` | admin | change one value; per-key validation; audit-logged. `academic_year_end` is `MM-DD`, month first, and must be a real calendar day: `31-08`, `09-31` and `02-29` are refused with 400 |
 | `GET /api/admin/expiry-preview` | admin | what the next sweep would do; optional `asOf` date; sends and records nothing |

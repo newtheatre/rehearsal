@@ -207,3 +207,29 @@ Check the row counts each statement reports against a `SELECT count(*)` run befo
 ## Monitoring
 
 `GET /api/health` on the uptime monitor. Termly glance: `audit_log` anomalies, token `last_used_at`, Resend bounces, digest arrival. **Nothing emails the ITM when a cron partially fails**: a failed send survives only as the `failed` count in that run's `expiry.sweep` audit row, so the termly glance is what finds it.
+
+### Database failures: the `[db]` log lines <a name="db-log-lines"></a>
+
+Any statement that fails writes one line to the worker log, whatever else happens to the request:
+
+```
+[db] GET /api/me: D1_ERROR: Network connection lost. code=D1_ERROR sql=insert into "users" ("id", "email", "name", ...) values (?, ?, ?, ...)
+```
+
+Read it as: the request, then the driver's own message, then its code, then the statement with
+placeholders where the values were. **Bound values are never logged**: for the mirror upsert they
+are a member's name and email address ([ADR-0016](decisions/0016-the-user-mirror-is-best-effort-on-a-read.md)).
+A line reading `mirror upsert on GET ...` is one this app deliberately continued past: the read
+answered, and the member's mirror row is one request stale.
+
+To pull them out:
+
+```bash
+npx wrangler tail rehearsal --format json | grep '\[db\]'
+```
+
+Or in the Cloudflare dashboard, Workers Observability, filter `$metadata.message` contains `[db]`.
+
+As of 2026-08-26 the message on these was not being captured at all, and what fails is not yet
+known. If a run of them names something specific, that answers the open entry in
+[known-issues.md](known-issues.md) and a retry may become arguable. Until then nothing retries.

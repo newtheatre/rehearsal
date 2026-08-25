@@ -2,7 +2,7 @@
 definePageMeta({ title: 'Dashboard' })
 
 const { data: me } = useMe()
-const { data } = await useFetch('/api/me/records')
+const { data, status, error, refresh } = await useFetch('/api/me/records')
 
 const records = computed(() => data.value?.records ?? [])
 const expiring = computed(() => data.value?.expiring ?? [])
@@ -30,6 +30,16 @@ const byDepartment = computed(() => {
         Your training at the Nottingham New Theatre.
       </p>
     </div>
+
+    <!-- Before the alerts: their absence would otherwise read as "nothing is
+         expiring", which is not an answer a failed read may give. -->
+    <LoadFailed
+      v-if="error"
+      :error="error"
+      what="your training"
+      :retrying="status === 'pending'"
+      @retry="refresh"
+    />
 
     <!-- Anything needing attention comes first: this is the whole reason a
          member opens the dashboard. -->
@@ -59,7 +69,7 @@ const byDepartment = computed(() => {
           </h2>
 
           <UAlert
-            v-if="!records.length"
+            v-if="!error && !records.length"
             icon="i-lucide-book-dashed"
             color="neutral"
             variant="subtle"

@@ -9,7 +9,12 @@ const search = ref('')
 const ALL_DEPARTMENTS = '__all__'
 const selectedDepartment = ref<string>(ALL_DEPARTMENTS)
 
-const { data: departmentData } = useFetch('/api/departments')
+const {
+  data: departmentData,
+  status: departmentStatus,
+  error: departmentError,
+  refresh: refreshDepartments,
+} = useFetch('/api/departments')
 const { data, status, error, refresh } = await useFetch('/api/modules')
 
 const departments = computed(() => departmentData.value?.departments ?? [])
@@ -79,6 +84,16 @@ const grouped = computed(() => {
       variant="subtle"
       title="You can see draft modules"
       description="Drafts are hidden from ordinary members until they're activated."
+    />
+
+    <!-- Its own banner: the catalogue below is still worth showing, it is
+         just grouped by department code rather than by name. -->
+    <LoadFailed
+      v-if="departmentError"
+      :error="departmentError"
+      what="the department list"
+      :retrying="departmentStatus === 'pending'"
+      @retry="refreshDepartments"
     />
 
     <LoadFailed

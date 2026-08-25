@@ -3,6 +3,8 @@
  * session except the allowlist. Also upserts the local user mirror.
  */
 
+import { dbFailureLine } from '../utils/dbError'
+
 const PUBLIC_API = [
   /^\/api\/_auth\//, // nuxt-auth-utils session read
   /^\/api\/_nuxt_icon\//, // @nuxt/ui icon bundle
@@ -12,6 +14,9 @@ const PUBLIC_API = [
   /^\/api\/v1\//,
   /^\/api\/health$/,
 ]
+
+/** Methods that create or destroy nothing, so the user mirror is optional. */
+const MIRROR_OPTIONAL_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 
 export default defineEventHandler(async (event) => {
   // event.path carries the query string, which anchored patterns must not see.
@@ -29,6 +34,15 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  await ensureLocalUser(user)
+  try {
+    await ensureLocalUser(user)
+  }
+  catch (error) {
+    // The mirror is derived, so a read proceeds without it; a write may need
+    // the row to exist, so a write still refuses (ADR-0016).
+    if (!MIRROR_OPTIONAL_METHODS.has(event.method)) throw error
+    console.error(dbFailureLine(`mirror upsert on ${event.method} ${path}`, error))
+  }
+
   event.context.user = user
 })

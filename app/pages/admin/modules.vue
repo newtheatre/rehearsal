@@ -2,8 +2,13 @@
 definePageMeta({ title: 'Modules', middleware: 'steward' })
 
 const { data: me } = useMe()
-const { data: departmentData } = await useFetch('/api/departments')
-const { data, refresh } = await useFetch('/api/modules', { query: { status: 'all' } })
+const {
+  data: departmentData,
+  status: departmentStatus,
+  error: departmentError,
+  refresh: refreshDepartments,
+} = await useFetch('/api/departments')
+const { data, status, error, refresh } = await useFetch('/api/modules', { query: { status: 'all' } })
 
 const modalOpen = ref(false)
 const editingId = ref<string | null>(null)
@@ -86,6 +91,24 @@ const statusColour = { ACTIVE: 'success', DRAFT: 'neutral', RETIRED: 'warning' }
       description="Existing records keep the expiry they were stamped with. Retroactive change is a separate, previewed admin action: deliberately not something an edit here can do by accident."
     />
 
+    <!-- Without the departments nothing is stewardable, so "New module" would
+         sit disabled with no reason given. -->
+    <LoadFailed
+      v-if="departmentError"
+      :error="departmentError"
+      what="the department list"
+      :retrying="departmentStatus === 'pending'"
+      @retry="refreshDepartments"
+    />
+
+    <LoadFailed
+      v-if="error"
+      :error="error"
+      what="the catalogue"
+      :retrying="status === 'pending'"
+      @retry="refresh"
+    />
+
     <div class="border border-default rounded-lg overflow-x-auto">
       <table class="w-full text-sm">
         <thead class="bg-elevated/50 text-left">
@@ -152,7 +175,7 @@ const statusColour = { ACTIVE: 'success', DRAFT: 'neutral', RETIRED: 'warning' }
             </td>
           </tr>
 
-          <tr v-if="filtered.length === 0">
+          <tr v-if="!error && filtered.length === 0">
             <td
               colspan="6"
               class="p-8 text-center text-muted"
